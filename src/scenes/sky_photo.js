@@ -13,7 +13,7 @@ function base(f, mode, text) {
   for (let i = 1; i < 8; i++) f.add(rect(0, i * 135, W, i * 135 + 136, mixc(SKP.zen, mode > .7 ? SKP.warm : SKP.hor, i / 8)));
   f.add(rect(0, 0, 6, 6, [mode, text, 0]));
 }
-const bg = mode => (f, x) => base(f, mode, 0);
+const bg = mode => (f, x, o) => base(f, mode, o && o.sub ? 1 : 0);   // 當字幕的底（o.sub）：天空壓暗一點，字才清楚
 
 /* ---------- 字幕共用：淺色字＋柔和的字影（在照片上也讀得到）；逐行慢慢淡入，無彈跳無放大 ---------- */
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
@@ -24,7 +24,7 @@ function say(f, s, x0, y, o, col, a, soft = true) {   // soft：整行用模糊�
   f.text(s, x0, y, { ...o, col, a });
 }
 function gentle(f, x) {
-  base(f, .35, 1);
+  x.under(f, () => base(f, .35, 1));
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2, TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
   for (let i = 0; i < n; i++) {
@@ -36,7 +36,7 @@ function gentle(f, x) {
   if (r > .004) f.add(rect(960 - 90, uy - 2, 960 + 90, uy + 2, SKP.warm, .9 * r, { z: .8 }));
 }
 function flashy(f, x) {
-  base(f, .6, 1);
+  x.under(f, () => base(f, .6, 1));
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1, chars = x.chars, n = chars.length;
   const ST = { px: 100, weight: 500 }, KS = { px: 100, weight: 900 };
   const ws = chars.map((c, i) => f.measure(c, i === kw ? KS : ST).tw), total = ws.reduce((a, b) => a + b, 0) + 6 * Math.max(0, n - 1), sc = Math.min(1, 1500 / Math.max(1, total));

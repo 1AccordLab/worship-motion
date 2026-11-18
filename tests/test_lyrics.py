@@ -65,8 +65,9 @@ async def main():
         for st in OLD:
             await p.ev("x=>__app.load(x)", cap_proj(st))
             for si, ci, t, nm in [(2, 1, 4.0, "gentle_4.0"), (1, 1, 0.9, "flashy_0.9")]:
+                if st == "type" and nm.startswith("gentle"): continue   # 大字排版的高潮背景左邊加了元素（有意的改變），收斂字幕底下就是高潮
                 im = await p.shot(si, ci, t); worst = max(worst, diff(im, Image.open(REF / f"{st}_{nm}.png").convert("RGB")))
-        rec("沒有第二語言：五個舊風格的字幕抽格和改之前一樣", worst < 500, f"最多 {worst} 個像素不同")
+        rec("沒有第二語言：五個舊風格的字幕抽格和改之前一樣（段落背景和以前寫死的一樣時）", worst < 500, f"最多 {worst} 個像素不同")
         # ---------- 雙語有／大小對調 ----------
         for st in OLD + NEW:
             await p.ev("x=>__app.load(x)", cap_proj(st)); a = await p.shot(2, 1, 4.0)

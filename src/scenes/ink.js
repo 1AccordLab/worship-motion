@@ -107,7 +107,7 @@ const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
-  calm(f, x);
+  x.under(f, calm);
   const TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
   for (let i = 0; i < n; i++) {
     const a = E.io(seg(t, .3 + i * .4, 1.8 + i * .4)), y = y0 + i * gap;
@@ -125,7 +125,7 @@ function brushMark(f, cx, y, len, a) {
 /* ---------- 華麗字幕（克制）：逐字慢慢淡入，關鍵字用字重與暖色加強，背後一團暖墨慢慢暈開 ---------- */
 function flashy(f, x) {
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
-  build(f, x);
+  x.under(f, build);
   const ST = { style: { px: 100, weight: 500 }, kwStyle: { px: 100, weight: 900 }, col: INK.ink, kwCol: INK.seal, spacing: 6 };
   const kt = .3 + x.chars.length * .08 + .35;
   if (kw >= 0 && x.chars.length) {                                   // 先算位置（不畫字），把暖墨放在字下面

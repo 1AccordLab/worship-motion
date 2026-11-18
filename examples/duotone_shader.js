@@ -7,7 +7,7 @@ function calm(f, x) {
   for (let i = 0; i < 6; i++) f.add(rect(0, 120 + i * 150, W, 150 + i * 150, C.g2, .15 + .1 * i));
 }
 function gentle(f, x) {
-  calm(f, x);
+  x.under(f, calm);
   x.lines.forEach((l, i) => f.text(l, 960, 480 + i * 120, { px: 88, weight: 900, col: C.ink, a: seg(x.t, i * .1, .5 + i * .1) }));
 }
 defineScene({

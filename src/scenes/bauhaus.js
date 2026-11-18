@@ -54,7 +54,8 @@ function buildLayer(f, x, t, { skip = null } = {}) {
   f.add(disc(1700, 160, 110, BH.blu), sector(1700, 160, 110, a, PI, BH.red), ringFull(1700, 160, 128, 4, BH.crm, .6));
   beatDots(f, t, 760, 1020, 16, 26);
 }
-const build = (f, x) => buildLayer(f, x, mod(x.t, LOOP));
+const FLASHY_SKIP = (e, i) => (e === 6 && (i === 2 || i === 0)) || e === 102 && i === 2;   // 華麗字幕底下：拿掉會擋字的元件
+const build = (f, x, o) => o && o.sub === 'line' ? buildLayer(f, x, x.t, { skip: FLASHY_SKIP }) : buildLayer(f, x, mod(x.t, LOOP));
 /* ---------- 高潮：太陽、斷開的圓環、放射粗條 ---------- */
 function peak(f, x) {
   const SX = 960, SY = 1130, tt = mod(x.t, LOOP), beat = pulse(tt, 5), k = stateAt(x, tt, BAR);
@@ -79,7 +80,7 @@ function peak(f, x) {
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, sl = Math.min(200, 1500 / n), x0 = 960 - sl * (n - 1) / 2;
   const DY = [-34, 26, -12, 36, -28, 14, -20, 30], KINDS = ['c', 's', 't'], COLS = [BH.red, BH.blu, BH.yel];
-  buildLayer(f, x, t, { skip: (e, i) => (e === 6 && (i === 2 || i === 0)) || e === 102 && i === 2 });
+  x.under(f, build);
   const bar = Math.floor(Math.max(0, t - .8) / BAR);
   chars.forEach((ch, i) => {
     const ti = .1 + i * .07, si = seg(t, ti, ti + .32); if (si <= 0) return;
@@ -104,7 +105,7 @@ function flashy(f, x) {
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 132, y0 = 470 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const top = y0 - 92, bot = y0 + (n - 1) * gap + 104, TX = { px: 86, weight: 700, spacing: 10, blur: 12 };
   f.add(rect(0, top, W, bot, BH.bg, .94), rect(0, top - 6, W, top, BH.yel), rect(0, bot, W, bot + 6, BH.yel));
   lines.forEach((l, i) => {
@@ -119,7 +120,7 @@ function gentle(f, x) {
 /* ---------- 收斂字幕（雙語）：橫條加高，每行大字下面一行小字 ---------- */
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 156, y0 = 480 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const top = y0 - 92, bot = y0 + (n - 1) * gap + 132, TX = { px: 86, weight: 700, spacing: 10, blur: 12 }, SM = { px: 40, weight: 500, spacing: 3 };
   f.add(rect(0, top, W, bot, BH.bg, .94), rect(0, top - 6, W, top, BH.yel), rect(0, bot, W, bot + 6, BH.yel));
   for (let i = 0; i < n; i++) {

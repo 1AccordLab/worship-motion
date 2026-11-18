@@ -803,7 +803,7 @@ async function makeClip(si, ci) {
     out = { kind: 'sub', type: s.subtitle, loop: false, frames, duration: frames / FPS, map: tt => k * warp(tt, s.enterSpeed), text: pr.a, text2: pr.b, swap: !!s.swapLang, dur: k * warp(s.clipSeconds, s.enterSpeed) };
   }
   out.jump = jump;
-  await scene.clip({ kind: out.kind, type: out.type, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, pal: P.palette, params: paramsNow() });
+  await scene.clip({ kind: out.kind, type: out.type, bg: s.background, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, pal: P.palette, params: paramsNow() });
   sceneToRenderer(r);
   return out;
 }

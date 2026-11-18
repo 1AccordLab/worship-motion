@@ -168,7 +168,11 @@ function setClip(c) {
   const pk = lines2.length ? parseLine(bigRaw[0] || '') : parseLine(text.split('\n')[0].trim());
   const jump = c.jump || 1, jt = tt => tt * jump;
   CLIP = { def, x: { t: 0, beat: 0, dur: c.dur || 0, text, lines, text2, lines2, big, small, swap, chars: pk.chars, kw: pk.kw, pal: sc.palette, params, W, H, kind: c.kind, type: c.type,
-    jt, step: (list, every, tt) => list[Math.floor(mod(jt(tt ?? CLIP.x.t), 1e9) / every) % list.length] } };
+    jt, step: (list, every, tt) => list[Math.floor(mod(jt(tt ?? CLIP.x.t), 1e9) / every) % list.length],
+    /* 字幕底下的背景＝段落選的背景（x.bg）。under(f, 預設, 選項)：段落沒指定背景時用「預設」那個畫法 */
+    bg: c.kind === 'sub' && c.bg && sc.backgrounds[c.bg] ? c.bg : null,
+    under: (f, dflt, o) => { const b = CLIP.x.bg && sc.backgrounds[CLIP.x.bg], fn = b ? b.draw : dflt || Object.values(sc.backgrounds)[0].draw;
+      return fn(f, CLIP.x, { sub: def.split || 'line', ...(o || {}) }); } } };
   atlas.reset(); SENT_ALL = false;
 }
 const KIND = { 0: 0, 1: 1, 2: 2 }, BLEND = { multiply: 1, max: 2 };

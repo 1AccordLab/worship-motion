@@ -67,7 +67,8 @@ function buildLayers(f, t, { avoid = null } = {}) {
   f.add(rect(CW, 5.5 * RH + 18, CW + 384 * mod(t, BAR) / BAR, 5.5 * RH + 22, SW.org));   // 每小節一條進度條
   sequencer(f, t, CW, 5.5 * RH - 8, 16);
 }
-function build(f, x) {
+function build(f, x, o) {
+  if (o && o.sub === 'line') return buildLayers(f, x.t, { avoid: [6, 0, 11, 6] });   // 華麗字幕底下：避開放大的字
   const tt = mod(x.t, 16);
   const A = [[0, 0, 2, 2], [0, 0, 1, 6], [10, 0, 12, 2], [11, 0, 12, 6], [10, 4, 12, 6], [0, 4, 2, 6], [0, 0, 3, 1], [9, 5, 12, 6]];
   const B = [[11, 5, 12, 6], [2, 0, 3, 1], [0, 5, 1, 6], [9, 0, 10, 1], [2, 5, 3, 6], [11, 0, 12, 1], [4, 5, 5, 6], [0, 2, 1, 3]];
@@ -112,7 +113,7 @@ function flashy(f, x) {
   const span = sub ? 520 : 640, cy = sub ? 470 : 540;      // 有第二語言：直欄往上收，下面留一行小字
   const step = n > 1 ? Math.min(sub ? 100 : 112, span / (n - 1)) : 0, y0 = cy - step * (n - 1) / 2;
   const BIG = { px: 1150, weight: 900 };
-  buildLayers(f, t, { avoid: [6, 0, 11, 6] });
+  x.under(f, build);
   f.grid.flash += .16 * (1 - seg(t, 0, .6));
   const s = seg(t, .1, .55), sc = lerp(1.5, 1, E.out5(s)) * (1 + (t > .6 ? .025 * pulse(t, 6) : 0));
   const kx = lerp(300, 470, E.out5(s)) + 16 * Math.sin(Math.max(0, t - .6) * .9);
@@ -144,7 +145,7 @@ function flashy(f, x) {
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 132, y0 = 515 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const top = y0 - 92, bot = y0 + (n - 1) * gap + 104;
   f.add(rect(0, top, W, bot, SW.bg, .94), rect(0, top - 3, W, top, SW.crm, .5), rect(0, bot, W, bot + 3, SW.crm, .5));
   const TX = { px: 86, weight: 700, spacing: 10, blur: 12 };
@@ -160,7 +161,7 @@ function gentle(f, x) {
 /* ---------- 收斂字幕（雙語）：每一行大字下面一行小字（約 0.46 倍、同色較淡） ---------- */
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 158, y0 = 510 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const top = y0 - 92, bot = y0 + (n - 1) * gap + 136;
   f.add(rect(0, top, W, bot, SW.bg, .94), rect(0, top - 3, W, top, SW.crm, .5), rect(0, bot, W, bot + 3, SW.crm, .5));
   const TX = { px: 86, weight: 700, spacing: 10, blur: 12 }, SM = { px: 40, weight: 500, spacing: 3 };

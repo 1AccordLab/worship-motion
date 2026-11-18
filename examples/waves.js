@@ -79,7 +79,7 @@ function peak(f, x) {
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length);
   const two = small.length > 0, gap = two ? 156 : 130, y0 = 510 - gap * (n - 1) / 2;
-  calm(f, x);
+  x.under(f, calm);
   const top = y0 - 92, bot = y0 + (n - 1) * gap + (two ? 132 : 104);
   f.add(rect(0, top, W, bot, C.deep), rect(0, top - 4, W, top, C.warm), rect(0, bot, W, bot + 3, C.foam, .45));
   const TX = { px: 86, weight: 700, spacing: 10, blur: 12 }, SM = { px: 40, weight: 500, spacing: 3 };
@@ -98,7 +98,7 @@ function gentle(f, x) {
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, sub = x.small[0] || '';
   const size = Math.min(170, 1440 / Math.max(1, n)), x0 = 960 - size * (n - 1) / 2, cy = sub ? 470 : 500;
-  storm(f, x);
+  x.under(f, storm);
   f.add(rect(0, cy - size * .9, W, cy + size * .9 + (sub ? 150 : 0), C.bg));
   chars.forEach((ch, i) => {
     const ti = .35 + i * .09, si = seg(t, ti, ti + .25); if (si <= 0) return;

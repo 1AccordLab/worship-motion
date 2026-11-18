@@ -169,8 +169,8 @@ function calm(f, x) {
   f.add(rect(0, y, W, y + 40, C.main));
   f.add(circle(1640, 300, 90 * (1 + .06 * pulse(x.t)), C.soft, .9));
 }
-function gentle(f, x) {                                    // 字幕：背景＋深色橫條＋逐行淡入
-  calm(f, x);
+function gentle(f, x) {                                    // 字幕：段落選的背景＋深色橫條＋逐行淡入
+  x.under(f, calm);                                        // 畫段落選的背景（段落沒指定時用 calm）
   f.add(rect(0, 400, W, 680, C.bg, .92));
   x.lines.forEach((l, i) => f.text(l, 960, 480 + i * 120, { px: 84, col: C.soft, a: seg(x.t, i * .1, .5 + i * .1) }));
 }
@@ -211,6 +211,7 @@ defineScene({
 | `text2` `lines2` | 第二語言：原文、各行（和 `lines` 逐行配對） |
 | `big` `small` | 依 `swapLang` 對調好的兩組行：`big` 畫大字、`small` 畫小字（沒有第二語言時 `small` 是空陣列，畫面要和單語一樣） |
 | `swap` | 這段有沒有大小對調 |
+| `bg` `under(f, 預設, 選項)` | 字幕用：段落選的背景名稱；`x.under(f, calm)` 畫段落選的那種背景當字幕的底（沒指定時畫「預設」）。背景的 `draw(f, x, o)` 會收到 `o.sub`（`'line'`＝華麗、`'block'`＝收斂），可以在字幕底下讓出放大字的位置 |
 
 | `f.` | 用法（z：大的在上） |
 |---|---|
@@ -315,6 +316,7 @@ fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {
 - [ ] JSON 是純 JSON；`format` 是 `worship-motion/1`；每段都有 `background`。
 - [ ] `flashy` 每行最多一個 `[ ]`；`gentle` 每支最多 3 行。
 - [ ] 背景的 `draw` 沒有 `f.text`（`type` 風格的大字紋理例外）。
+- [ ] 字幕的底用 `x.under(f, 某個背景)`，不要寫死成某一種背景：段落選平靜，字幕底下就要是平靜。
 - [ ] 沒有光暈、光斑、霓虹、漸層球、玻璃、3D 旋轉；沒有純白 `#ffffff`、純黑 `#000000`。
 - [ ] 背景在 16 秒頭尾接得上；位置變化用 `x.step` 跳，不是一直滑。
 - [ ] 歌詞區（x 420–1500、y 260–820）在背景影片裡保持乾淨。

@@ -68,7 +68,7 @@ function rowText(f, x, chars, kw, cy, t0, o) {
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
-  calm(f, x);
+  x.under(f, calm);
   const TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
   for (let i = 0; i < n; i++) {
     const a = E.io(seg(t, .3 + i * .4, 1.8 + i * .4)), y = y0 + i * gap;
@@ -82,7 +82,7 @@ function gentle(f, x) {
 /* ---------- 華麗字幕（克制）：逐字慢慢淡入；關鍵字加粗、暖金，一道細光柱慢慢淡入落在它上面 ---------- */
 function flashy(f, x) {
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
-  build(f, x);
+  x.under(f, build);
   const ST = { style: { px: 100, weight: 500 }, kwStyle: { px: 100, weight: 900 }, col: NV.light, kwCol: NV.gold };
   const row = rowText(f, { t: -99 }, x.chars, kw, cy, .3, ST);                       // 只算關鍵字位置
   if (kw >= 0) { const a = .14 * E.io(seg(t, row.kt, row.kt + 2)), wd = 120;

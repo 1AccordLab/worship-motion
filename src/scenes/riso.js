@@ -75,7 +75,7 @@ function peak(f, x) {
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, size = Math.min(190, 1500 / n), x0 = 960 - size * (n - 1) / 2;
   const cols = [RS.blue, RS.teal, RS.yel];
-  build(f, x);
+  x.under(f, build);
   chars.forEach((ch, i) => {
     const ti = .15 + i * .1, si = seg(t, ti, ti + .18); if (si <= 0) return;
     const isK = i === kw, bounce = t > ti + .6 ? pulse(t, 7, BEAT, i * BEAT / n) : 0;
@@ -97,7 +97,7 @@ function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 130, y0 = 500 - gap * (n - 1) / 2;
   const top = y0 - 90, bot = y0 + (n - 1) * gap + 100, TX = { px: 84, weight: 900, spacing: 8 };
-  peak(f, x);
+  x.under(f, peak);
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
   lines.forEach((l, i) => {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
@@ -110,7 +110,7 @@ function gentle(f, x) {
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 154, y0 = 500 - gap * (n - 1) / 2;
   const top = y0 - 90, bot = y0 + (n - 1) * gap + 128, TX = { px: 84, weight: 900, spacing: 8 }, SM = { px: 40, weight: 700, spacing: 3 };
-  peak(f, x);
+  x.under(f, peak);
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
   for (let i = 0; i < n; i++) {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;

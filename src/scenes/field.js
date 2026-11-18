@@ -65,7 +65,7 @@ function peak(f, x) {
 /* ---------- 字幕：深色字在天空上，逐行慢慢淡入（約 1.5 秒），無彈跳無放大；雙語時每行下面一行小字 ---------- */
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 function gentle(f, x) {
-  calm(f, x);
+  x.under(f, calm);
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 140 : 116, y0 = 440 - gap * (n - 1) / 2, TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
   for (let i = 0; i < n; i++) {
@@ -77,7 +77,7 @@ function gentle(f, x) {
   if (r > .004) f.line(960 - 90, uy, 960 + 90, uy, 4, FD.gold, r);
 }
 function flashy(f, x) {
-  build(f, x);
+  x.under(f, build);
   const t = x.t, sub = x.small[0] || '', cy = sub ? 410 : 440, kw = hasMark(x) ? x.kw : -1, chars = x.chars, n = chars.length;
   const ST = { px: 100, weight: 500 }, KS = { px: 100, weight: 900 };
   const ws = chars.map((c, i) => f.measure(c, i === kw ? KS : ST).tw), total = ws.reduce((a, b) => a + b, 0) + 6 * Math.max(0, n - 1), sc = Math.min(1, 1500 / Math.max(1, total));

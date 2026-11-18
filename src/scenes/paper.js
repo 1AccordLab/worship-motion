@@ -52,7 +52,7 @@ function buildLayers(f, x, t, { conf = 14 } = {}) {
   sunrise(f, t, 960, 1280, [720, 630, 545, 465, 390], [PC.brn, PC.pnk, PC.red, PC.yel, PC.crm], { kick: 5 });
   confetti(f, x, t, conf, 1, 2);
 }
-const build = (f, x) => buildLayers(f, x, x.t);
+const build = (f, x, o) => buildLayers(f, x, x.t, o && o.sub === 'line' ? { conf: 10 } : undefined);   // 華麗字幕底下：紙屑少一點
 /* ---------- 高潮：放射紙條光芒、太陽、中間一條深色紙條 ---------- */
 function peak(f, x) {
   const t = x.t, RAYS = 40, RW = TAU / RAYS, cols = [PC.red, PC.yel, PC.crm, PC.pnk], rot = RW * 4 * (t / LOOP);
@@ -73,7 +73,7 @@ function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length;
   const size = n > 7 ? 150 : 176, gap = 26, x0 = 960 - (n * size + (n - 1) * gap) / 2 + size / 2, cy = 470;
   const tagCols = [PC.crm, PC.pnk, PC.yel, PC.crm, PC.pnk, PC.crm, PC.yel];
-  buildLayers(f, x, t, { conf: 10 });
+  x.under(f, build);
   chars.forEach((ch, i) => {
     const ti = .38 + i * .12, si = seg(t, ti, ti + .24); if (si <= 0) return;
     const isK = i === kw, rot0 = (hash(i * 9.1 + n) - .5) * 16 * Math.PI / 180;
@@ -100,7 +100,7 @@ function flashy(f, x) {
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = n > 2 ? 104 : 124, y0 = 532 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const TX = { px: 84, weight: 700, spacing: 10, blur: 10 };
   lines.forEach((l, i) => {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 14;
@@ -114,7 +114,7 @@ function gentle(f, x) {
 /* ---------- 收斂字幕（雙語）：紙條加高，每行大字下面一行小字 ---------- */
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = n > 2 ? 146 : 156, y0 = 512 - gap * (n - 1) / 2;
-  peak(f, x);
+  x.under(f, peak);
   const top = y0 - 80, bot = y0 + (n - 1) * gap + 128;
   if (bot - top > 320) f.add(paper(band(960, (top + bot) / 2, 1540, bot - top + 24, -1.2, PC.strip), 501, { rough: 12, shadow: 1, fiber: .08 }));
   const TX = { px: 84, weight: 700, spacing: 10, blur: 10 }, SM = { px: 38, weight: 500, spacing: 3 };

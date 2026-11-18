@@ -37,7 +37,7 @@ function ellipsis(f, t, px, py, n, size, gap, col) {
 }
 
 /* ---------- 平靜：每 2 秒跳一次，中間留給歌詞 ---------- */
-function calm(f, x) {
+function calm(f, x, o) {
   const tt = mod(x.t, 16), k = slot(x, tt, 16, 2), b = pulse(tt, 4);
   const A = [[-40, 0, 420, 1080], [-40, 620, 560, 1080], [-40, 0, 300, 1080], [-40, 0, 520, 380],
              [-40, 0, 360, 1080], [-40, 700, 500, 1080], [-40, 0, 440, 260], [-40, 0, 260, 1080]];
@@ -69,9 +69,13 @@ function buildLayers(f, x, t, L, k, { ibeam = true, paras = true, big = true, su
   ellipsis(f, t, 140, 1000, 8, 16, 10, TY.org);
   f.add(rect(380, 1004, 380 + 520 * mod(t, BAR) / BAR, 1016, TY.crm, .9));
 }
-function build(f, x) { const tt = mod(x.t, 16); buildLayers(f, x, tt, 16, slot(x, tt, 16, 1)); }
-/* ---------- 高潮：段落往上捲、大橘塊跟拍、圓點跳位 ---------- */
-function peak(f, x) {
+function build(f, x, o) {
+  if (o && o.sub === 'line') return buildLayers(f, x, x.t, 16, slot(x, x.t, 16, 1), FLASHY_BUILD);   // 華麗字幕底下：拿掉中間的直條和段落剪影，讓放大的字乾淨
+  const tt = mod(x.t, 16); buildLayers(f, x, tt, 16, slot(x, tt, 16, 1));
+}
+const FLASHY_BUILD = { ibeam: false, paras: false, sub: true, D: [[230, 640], [1780, 200], [200, 780], [1700, 360]] };
+/* ---------- 高潮：段落往上捲、大橘塊跟拍、圓點跳位；左邊：左上橘塊、圓環跳位、小節進度條 ---------- */
+function peak(f, x, o) {
   const L = 16, P = 48, SPEED = P * 40 / L, GAP = 980;
   const D = [[1660, 230, 260], [1760, 520, 140], [1540, 160, 180], [1720, 300, 320], [1600, 210, 220], [1780, 420, 160], [1560, 260, 280], [1700, 190, 200]];
   const tt = mod(x.t, L), k = slot(x, tt, L, 2), b = pulse(tt, 5), bar = pulse(tt, 3, BAR);
@@ -84,10 +88,17 @@ function peak(f, x) {
     let w = 200 + hash(id * 3.7) * 300; if (hash(id * 9.1) < .18) w *= .4;
     f.add(rect(120, y, 120 + w, y + 24, TY.tone2));
   }
+  /* 左邊：左上大橘塊跟拍、高度每 2 秒跳一次（和右下大橘塊對角呼應）；米白圓環跳位、跟反拍輕跳；左下小節進度條。都不進歌詞區 */
+  const LW = [380, 330, 400, 350, 370, 320, 400, 360], LH = [210, 170, 240, 190, 220, 160, 250, 200], lh = LH[k] + 22 * b;
+  f.add(rect(-40, -40, LW[k], lh, TY.org), rect(60, lh + 22, 60 + 140 + 160 * hash(k * 2.7), lh + 34, TY.crm));
+  const LD = [[220, 560, 110], [250, 740, 80], [200, 450, 140], [240, 860, 95], [210, 640, 125], [260, 500, 75], [200, 780, 130], [235, 600, 100]], [lx, ly, lr] = LD[k];
+  f.add(arc(lx, ly, lr * (1 + .08 * pulse(tt, 5, BEAT, BEAT / 2)), 16, 0, 7, TY.crm, .9));
+  f.add(rect(120, 1004, 120 + 260 * mod(tt, BAR) / BAR, 1016, TY.org));
   const [dx, dy, dr] = D[k];
   f.add(disc(dx, dy, dr * (1 + .08 * b), TY.org));
   for (let i = 0; i < 3; i++) { const w = 280 + hash(k * 5.1 + i * 2.3) * 520, y = 96 + i * 46; f.add(rect(1820 - w, y, 1820, y + (i === 0 ? 22 : 10), TY.crm, i === 0 ? .9 : .5)); }
-  f.add(rect(1080, 760 - 26 * b, W, H, TY.org), rect(1080, 760 - 26 * b - 40, 1080 + 300 + 200 * hash(k * 1.3), 760 - 26 * b - 28, TY.crm));
+  const by = (o && o.sub === 'line' ? 930 : 760) - 26 * b;   // 華麗字幕底下：右下大橘塊放低，不吃掉放大的字
+  f.add(rect(1080, by, W, H, TY.org), rect(1080, by - 40, 1080 + 300 + 200 * hash(k * 1.3), by - 28, TY.crm));
   f.add(disc(980, 960, 70 * (1 + .1 * pulse(tt, 5, BEAT, BEAT / 2)), TY.crm));
   ellipsis(f, tt, 1180, 1000, 8, 16, 10, TY.bg);
 }
@@ -95,7 +106,7 @@ function peak(f, x) {
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, kwCh = chars[kw], before = chars.slice(0, kw), after = chars.slice(kw + 1);
   const KX = 1080, KY = 560, BIG = { px: 700, weight: 900 };
-  buildLayers(f, x, t, 16, slot(x, t, 16, 1), { ibeam: false, paras: false, sub: true, D: [[230, 640], [1780, 200], [200, 780], [1700, 360]] });
+  x.under(f, build);
   const FL = .08, flashEnd = n * FL;
   if (t < flashEnd) {
     const i = Math.min(n - 1, Math.floor(t / FL)), odd = i % 2;
@@ -130,7 +141,7 @@ function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 136, y0 = 515 - gap * (n - 1) / 2;
   const top = y0 - 100, bot = y0 + (n - 1) * gap + 112, TX = { px: 90, weight: 900, spacing: 16, blur: 12 };
-  peak(f, x);
+  x.under(f, peak);
   f.add(rect(0, top, W, bot, TY.panel, .95), rect(0, top - 10, W, top, TY.org), rect(0, bot, W, bot + 4, TY.crm, .6));
   lines.forEach((l, i) => {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 14;
@@ -145,7 +156,7 @@ function gentle(f, x) {
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 160, y0 = 505 - gap * (n - 1) / 2;
   const top = y0 - 96, bot = y0 + (n - 1) * gap + 136, TX = { px: 90, weight: 900, spacing: 16, blur: 12 }, SM = { px: 42, weight: 600, spacing: 4 };
-  peak(f, x);
+  x.under(f, peak);
   f.add(rect(0, top, W, bot, TY.panel, .95), rect(0, top - 10, W, top, TY.org), rect(0, bot, W, bot + 4, TY.crm, .6));
   for (let i = 0; i < n; i++) {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 14;

@@ -7,7 +7,7 @@ function calm(f, x) {
   f.add(circle(1640, 300, 90 * (1 + .06 * pulse(x.t)), C.soft, .9));
 }
 function gentle(f, x) {                                    // 字幕：背景＋深色橫條＋逐行淡入
-  calm(f, x);
+  x.under(f, calm);
   f.add(rect(0, 400, W, 680, C.bg, .92));
   x.lines.forEach((l, i) => f.text(l, 960, 480 + i * 120, { px: 84, col: C.soft, a: seg(x.t, i * .1, .5 + i * .1) }));
 }
