@@ -14,7 +14,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者�
 
 回覆規則（任何 AI 都一樣）：資訊不夠時先**問**（見第零節）；給設定時只回程式碼區塊＋一兩句說明＋「下次可以這樣說」；給**完整**內容，不要只給差異；不要外部資源（字型檔、圖片、網址、import、fetch、DOM）。
 
-編輯器：https://claude.ai/artifact/71JzqXH1C9BDh6iQnv7X8L （永遠是最新版；也可以用存好的單檔 HTML），用 Chrome 或 Edge 打開。
+編輯器：https://1accordlab.github.io/worship-motion/ （正式版，永遠是最新版；開發中的新功能在 /dev/；也可以用存好的單檔 HTML），用 Chrome 或 Edge 打開。
 
 ---
 
