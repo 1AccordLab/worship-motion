@@ -1,0 +1,48 @@
+# 部署到 GitHub Pages：main → 網站根目錄（正式版）、develop → /dev/（開發版）
+# 任一分支有新的 commit 就把兩邊都重新打包，一起部署
+name: 部署
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, path: prod }
+      - uses: actions/checkout@v4
+        with: { ref: develop, path: dev }
+        continue-on-error: true
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: 打包
+        run: |
+          mkdir -p site/dev
+          build() { (cd "$1" && python3 build_simple.py) && cp "$1/dist/simple/詩歌影片編輯器.html" "$2/index.html"; }
+          build prod site
+          if [ -f dev/build_simple.py ]; then build dev site/dev; else cp site/index.html site/dev/index.html; fi
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

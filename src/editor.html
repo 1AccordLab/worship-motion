@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>詩歌影片編輯器</title>
+<style id="wm-css">
+:root{--page:#1f1e1b;--surface:#282723;--sunk:#302f2a;--ink:#ddd7ca;--muted:#a39d91;--line:#3d3b35;--accent:#86b497;--accent-soft:#253229;--on-accent:#1f1e1b;--warn:#d8b46a;--warn-soft:#3a3119;--bad:#e5907f;--bad-soft:#3d2622;--wobble-sm:255px 15px 225px 15px/15px 225px 15px 255px;--wobble-lg:18px 6px 22px 5px/5px 22px 6px 18px;--sans:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/26px var(--sans)}
+.wrap{max-width:1440px;margin:0 auto;padding:16px 28px 48px}
+.eyebrow{font:600 11.5px/16px var(--mono);letter-spacing:.08em;color:var(--muted)}
+h2{margin:0 0 8px;font-size:16px;line-height:24px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
+/* 頂端 */
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.titlebox{flex:1;min-width:240px}
+.top input.title{display:block;width:100%;font:900 24px/34px var(--sans);color:var(--ink);background:transparent;border:1.5px dashed transparent;border-radius:4px;padding:0 6px;margin-left:-6px}
+.top input.title:hover{border-color:var(--line)}
+.topact{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border:1.5px solid var(--warn);background:var(--warn-soft);border-radius:999px;font-size:13px;line-height:20px}
+.pill i{width:9px;height:9px;border-radius:50%;background:var(--warn);flex:none}
+.pill.saved{border-color:var(--accent);background:var(--accent-soft)}
+.pill.saved i{background:var(--accent)}
+.savemsg{flex-basis:100%;text-align:right;font-size:12.5px;line-height:18px;color:var(--muted);min-height:0;margin:0}
+/* 三步驟 */
+.steps{display:flex;align-items:stretch;gap:6px;margin-top:4px;position:sticky;top:0;z-index:10;background:var(--page);padding:8px 0}
+.card,.frame{scroll-margin-top:92px}
+.steps>button{flex:1;display:flex;align-items:center;gap:10px;text-align:left;padding:8px 12px;border-color:var(--line);background:var(--surface);border-radius:var(--wobble-lg)}
+.steps>button b,.num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--muted);font:700 13px/1 var(--mono);flex:none;color:var(--muted)}
+.steps>button span{display:flex;flex-direction:column;line-height:20px}
+.steps>button small{color:var(--muted);font-size:12.5px}
+.steps>button[aria-current=step]{border-color:var(--accent);background:var(--accent-soft)}
+.steps>button[aria-current=step] b{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.steps .arr{align-self:center;color:var(--muted)}
+.num{width:24px;height:24px;font-size:12px;border-color:var(--accent);color:var(--accent)}
+/* 版面 */
+.grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(360px,1fr);gap:22px;margin-top:14px;align-items:start}
+.left{display:flex;flex-direction:column;gap:12px;min-width:0}
+.frame{padding:10px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--wobble-lg)}
+canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:#2b2a27}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
+.time{font:13px/21px var(--mono);color:var(--muted);min-width:110px;text-align:right}
+.card{padding:14px 16px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--wobble-lg)}
+.card.soft{border-style:dashed;border-color:var(--muted)}
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.pane{display:flex;flex-direction:column;gap:12px}
+/* 段落分頁 */
+.sectabs{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-end;border-bottom:1.5px solid var(--line);padding-bottom:0;margin-bottom:-6px}
+.sectabs button{border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;min-height:36px;padding:6px 16px;background:var(--surface);color:var(--muted)}
+.sectabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.sectabs .lab{font-size:12.5px;color:var(--muted);margin-right:6px;align-self:center}
+/* 影片清單 */
+.clips{display:flex;flex-direction:column;gap:6px}
+.clip{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:var(--line);border-radius:6px;padding:6px 10px;min-height:38px}
+.clip{border-left-width:4px}
+.clip.bgc{border-left-color:var(--accent)}
+.clip .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.clip .cm{font-size:12.5px;color:var(--muted);flex:none}
+.clip[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+/* 匯出 */
+.exgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+.exopt{display:flex;align-items:center;gap:10px;margin:6px 0}
+.exopt button{min-width:176px;text-align:left}
+.exopt span{font-size:13px;line-height:20px;color:var(--muted)}
+.pp{padding:10px 12px;background:var(--sunk);border-radius:var(--wobble-lg);font-size:13px;line-height:20px}
+.pp .t{font-weight:700;margin-bottom:6px}
+.pprow{display:flex;align-items:center;gap:8px;margin:5px 0}
+.chip{display:inline-block;padding:1px 9px;border:1.5px solid var(--ink);border-radius:var(--wobble-sm);font-size:12.5px;line-height:20px;white-space:nowrap}
+.chip.g{border-color:var(--accent);color:var(--accent)}
+.arr{color:var(--muted)}
+/* 右邊分頁 */
+.tabs{display:flex;gap:4px;border-bottom:1.5px solid var(--line)}
+.tabs button{flex:1;border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;color:var(--muted);background:var(--surface)}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.tabs button .badge{font-size:11px;color:var(--accent);margin-left:4px}
+/* 欄位 */
+.field{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.field>.lab,.field>label:first-child{min-width:76px;color:var(--muted);font-size:14px;display:inline-flex;align-items:center;gap:4px}
+.field .grow{flex:1;min-width:0}
+.sub{margin:-4px 0 6px 86px;font-size:12.5px;line-height:19px;color:var(--muted)}
+label.lab{display:block;font-size:14px;color:var(--muted);margin:6px 0 4px}
+select,input[type=number],input[type=text]{font:14px var(--sans);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+input[type=number]{width:84px}
+input[type=color]{width:40px;height:32px;padding:0;border:1.5px solid var(--line);border-radius:4px;background:var(--sunk)}
+input[type=range]{accent-color:var(--accent)}
+textarea{width:100%;min-height:84px;resize:vertical;font:14px/22px var(--sans);color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:4px;padding:8px}
+textarea.code{font:12.5px/19px var(--mono);min-height:120px}
+button{font:500 14px/20px var(--sans);color:var(--ink);background:var(--sunk);border:1.5px solid var(--ink);border-radius:var(--wobble-sm);padding:8px 14px;cursor:pointer;min-height:40px}
+button:hover{background:var(--line)}
+button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
+button.primary:hover{background:#9cc4aa}
+button.strong{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+button.strong:hover{background:#2e3d33}
+button.small{padding:4px 10px;min-height:32px;font-size:13px}
+button.link{border:none;background:none;color:var(--accent);padding:2px 4px;min-height:0;text-decoration:underline}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row.mt{margin-top:8px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:0;border:1.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;border-right:1.5px solid var(--line);border-radius:0;min-height:36px;padding:4px 12px;display:flex;flex-direction:column;align-items:center;line-height:18px;background:var(--sunk)}
+.seg button:last-child{border-right:none}
+.seg button small{font-size:11px;color:var(--muted);line-height:14px}
+.seg button[aria-pressed=true]{background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.chips button{min-height:30px;padding:3px 10px;font-size:13px;border-color:var(--line);border-radius:999px}
+.check{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;line-height:21px;color:var(--muted);margin:6px 0}
+.check input{margin-top:4px;accent-color:var(--accent)}
+.sec{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0;cursor:pointer}
+.sec[aria-current=true]{border-color:var(--accent);background:var(--accent-soft)}
+.sec .n{flex:1;font-weight:600}
+.sec .m{font-size:12px;color:var(--muted)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
+.hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
+.count{margin:4px 0 0;font-size:13px;line-height:20px}
+.count b{color:var(--accent)}
+.progress{height:8px;background:var(--sunk);border-radius:999px;overflow:hidden;margin-top:10px}
+.progress>div{height:100%;width:0;background:var(--accent);transition:width .15s}
+.status{font-size:13px;line-height:21px;color:var(--muted);white-space:pre-wrap;margin-top:6px}
+.status:empty{display:none}
+.status.ok{color:var(--ink);padding:8px 10px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:4px}
+.status.err{color:var(--bad);font-size:13px;padding:8px 10px;background:var(--bad-soft);border-left:3px solid var(--bad);border-radius:4px}
+.aifix{margin-top:6px}
+.callout{padding:10px 12px;background:var(--warn-soft);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:21px;margin-top:8px}
+.err{padding:16px;background:var(--bad-soft);border:1.5px solid var(--bad);border-radius:var(--wobble-lg);margin-top:14px}
+/* 貼上 */
+.flow{display:grid;grid-template-columns:auto auto 1fr;gap:4px 8px;align-items:center;font-size:12.5px;line-height:20px;padding:8px 10px;background:var(--sunk);border-radius:var(--wobble-lg);margin-bottom:8px}
+.flow code{font:12px/18px var(--mono);color:var(--ink)}
+.flow .dim,.dim{color:var(--muted)}
+.flow .cap{grid-column:1/-1;color:var(--muted)}
+.detect{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;line-height:20px;margin:6px 0;min-height:24px}
+.found{padding:1px 9px;border-radius:999px;border:1.5px solid var(--line);color:var(--muted)}
+.found.yes{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+.warnline{flex-basis:100%;color:var(--warn)}
+.badline{flex-basis:100%;color:var(--bad)}
+/* 第一次說明 */
+.intro{border-color:var(--accent)}
+.intro .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;list-style:none;margin:6px 0 0;padding:0}
+.flow3 li{position:relative;display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:20px;color:var(--muted)}
+.flow3 li strong{color:var(--ink);font-size:14px;display:flex;align-items:center;gap:6px}
+.flow3 li:not(:last-child)::after{content:"→";position:absolute;right:-17px;top:2px;color:var(--accent);font-size:16px}
+/* ? 說明 */
+.q{min-height:22px;width:22px;height:22px;padding:0;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font:700 12px/1 var(--mono);background:transparent;flex:none}
+.q:hover,.q[aria-expanded=true]{border-color:var(--accent);color:var(--accent);background:transparent}
+.tipbox{position:fixed;z-index:50;width:280px;padding:10px 12px;background:var(--sunk);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:20px;color:var(--ink);font-weight:400;box-shadow:0 6px 20px rgba(10,10,8,.45);display:none}
+.tipbox.show{display:block}
+/* 對話框 */
+dialog{max-width:520px;width:calc(100% - 32px);background:var(--surface);color:var(--ink);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);padding:18px 20px}
+dialog::backdrop{background:rgba(20,19,17,.66)}
+dialog p{margin:0 0 12px;font-size:14px;line-height:22px;color:var(--muted);white-space:pre-wrap}
+dialog textarea{min-height:160px;margin-bottom:12px}
+/* 歌曲分頁 */
+.songbar{flex:1;min-width:240px}
+.songrow{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;overflow-y:hidden;padding:6px 2px 0;scrollbar-width:thin}
+.songtabs{display:flex;gap:4px;flex-wrap:nowrap;align-items:flex-end}
+.stab{display:flex;align-items:center;flex:none;border:1.5px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;background:var(--surface);max-width:280px}
+.stab .sname{border:none;background:none;border-radius:12px 0 0 0;font:700 15px/22px var(--sans);color:var(--muted);padding:8px 12px;min-height:40px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.stab .sname[aria-selected=true]{color:var(--ink);font-size:18px}
+.stab:has(.sname[aria-selected=true]){border-color:var(--accent);background:var(--accent-soft)}
+.stab .smenu,.stab .sclose{border:none;background:none;min-height:32px;padding:2px 8px;color:var(--muted);border-radius:6px;font-size:15px}
+.stab .smenu:hover,.stab .sclose:hover{color:var(--ink);background:var(--line)}
+.stab.drag{opacity:.5}.stab.over{box-shadow:inset 3px 0 0 var(--accent)}
+.songrow #newSong{flex:none;min-height:36px;padding:4px 12px;font-size:13.5px;border-style:dashed;border-color:var(--muted);color:var(--muted);margin-bottom:4px}
+.songline{border-bottom:1.5px solid var(--line)}
+.songrow #closedBtn{flex:none;margin-bottom:4px;white-space:nowrap}
+.menu{position:fixed;z-index:60;display:flex;flex-direction:column;min-width:220px;padding:6px;background:var(--sunk);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);box-shadow:0 6px 20px rgba(10,10,8,.45)}
+.menu button{border:none;background:none;text-align:left;border-radius:6px;min-height:34px;padding:6px 10px;font-size:14px}
+.menu button:hover{background:var(--line)}
+.undo{display:inline-flex;gap:4px}.undo button:disabled{opacity:.45}
+.hlist{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto;margin:6px 0;padding:2px}
+.hrow{display:flex;gap:10px;align-items:baseline;text-align:left;border:none;background:none;border-radius:6px;padding:6px 8px;font-size:14px;min-height:32px}
+.hrow:hover{background:var(--line)}.hrow[aria-pressed=true]{background:var(--accent-soft);outline:1.5px solid var(--accent)}.hrow[aria-current=true]{font-weight:700}
+.hrow .ht{color:var(--muted);font-variant-numeric:tabular-nums;min-width:3.2em}
+.hprev{border-top:1.5px dashed var(--line);padding-top:8px;margin-top:4px}.hprev p{white-space:pre-line;margin:0 0 8px;font-size:14px}
+.menu hr{border:none;border-top:1.5px solid var(--line);margin:4px 2px}
+.songnote{margin:0;padding:8px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:4px;font-size:13.5px;line-height:21px}
+/* 整首歌詞 */
+textarea.big{min-height:180px}
+.lyrlist{margin:6px 0 10px;padding-left:18px;font-size:13.5px;line-height:24px}
+.lyrlist li{margin:2px 0}
+.lyrlist .dim{font-size:12.5px}
+.radios{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;margin:4px 0 10px}
+.radios label{display:flex;align-items:center;gap:6px}
+.radios input{accent-color:var(--accent)}
+dialog.wide{max-width:640px}
+dialog .lyrbody{max-height:52vh;overflow:auto}
+dialog .lyrbody p{margin:4px 0}
+dialog input[type=text]{width:100%;margin-bottom:12px}
+[hidden]{display:none!important}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:1180px){.exgrid{grid-template-columns:1fr}}
+@media (max-width:980px){.grid{grid-template-columns:1fr}.steps{flex-direction:column;position:static}.card,.frame{scroll-margin-top:8px}.steps .arr{display:none}.flow3{grid-template-columns:1fr}.flow3 li::after{display:none}.savemsg{text-align:left}}
+</style>
+</head>
+<body>
+<template id="wm-ui"><div class="wrap">
+  <header class="top">
+    <div class="songbar">
+      <div class="eyebrow">詩歌影片編輯器 · 做簡報軟體用的動態背景與字幕影片 · 一個分頁一首歌</div>
+      <div class="songrow songline">
+        <div class="songtabs" id="songTabs" role="tablist" aria-label="歌曲分頁（可以拖曳排序）"></div>
+        <button type="button" id="newSong" title="開新分頁做另一首（目前這首不會被蓋掉）">＋ 新的一首</button>
+        <button type="button" class="small" id="closedBtn" hidden aria-haspopup="menu" title="叫回最近關閉的分頁（最多 5 首）">最近關閉 ▾</button>
+      </div>
+      <div class="status" id="songMsg" role="status"></div>
+    </div>
+    <div class="topact">
+      <span class="undo" role="group" aria-label="還原與重做"><button type="button" class="small" id="undoBtn" disabled>↶ 還原</button><button type="button" class="small" id="redoBtn" disabled>↷ 重做</button></span>
+      <span class="pill" id="saveState" role="status" aria-live="polite"><i aria-hidden="true"></i><span id="saveText">這台電腦已暫存，還沒存成檔案</span></span>
+      <button type="button" class="q" data-tip="你改的東西（全部分頁）會自動暫存在這台電腦的瀏覽器裡（換電腦、清除瀏覽紀錄就沒了）。按「存成單檔 HTML」會下載一個檔案，裡面是整本（全部分頁的歌）：放雲端、換電腦都能打開接著改。只要一首：分頁上的「⋯」→「只存這一首」。">?</button>
+      <button class="primary" id="saveHTML">存成單檔 HTML</button>
+    </div>
+    <p class="savemsg" id="saveMsg" role="status"></p>
+  </header>
+
+  <nav class="steps" id="steps" aria-label="三個步驟（可以隨時跳著用）">
+    <button type="button" data-step="1"><b>1</b><span><strong>跟 AI 要設定</strong><small>複製給 AI → 把回覆貼回來</small></span></button>
+    <span class="arr" aria-hidden="true">→</span>
+    <button type="button" data-step="2"><b>2</b><span><strong>預覽與微調</strong><small>點段落、點影片看效果；小地方自己調</small></span></button>
+    <span class="arr" aria-hidden="true">→</span>
+    <button type="button" data-step="3"><b>3</b><span><strong>匯出放進簡報軟體</strong><small>下載 MP4；記得存成單檔 HTML</small></span></button>
+  </nav>
+
+  <div class="err" id="err" hidden></div>
+  <div id="guard" role="status" hidden></div>
+
+  <div class="grid" id="main">
+    <!-- ================= 左：預覽 ================= -->
+    <section class="left" aria-label="預覽">
+      <div class="card intro" id="intro" hidden>
+        <div class="head"><h2>第一次用？三步驟做完一首歌</h2><button class="small" id="introClose">知道了，不再顯示</button></div>
+        <ol class="flow3">
+          <li><strong><span class="num">1</span>跟 AI 要設定</strong>「請 AI 改」分頁按「複製給 AI」→ 貼到 ChatGPT／Claude／Gemini → 回覆整則貼回來</li>
+          <li><strong><span class="num">2</span>預覽與微調</strong>點上面的段落、下面的影片看效果；小地方在「自己調」改</li>
+          <li><strong><span class="num">3</span>匯出</strong>下載 MP4 放進簡報軟體；這首歌按「存成單檔 HTML」留著</li>
+        </ol>
+      </div>
+
+      <p class="songnote" id="songNote" hidden></p>
+      <div class="sectabs" id="secTabs" role="tablist" aria-label="段落"></div>
+      <div class="frame"><canvas id="view" width="1920" height="1080" aria-label="影片預覽"></canvas></div>
+      <div class="bar">
+        <button class="small" id="play" aria-label="暫停">暫停</button>
+        <input type="range" id="scrub" min="0" max="10" step="0.0333" value="0" aria-label="預覽時間">
+        <span class="time" id="time">0.0 / 0.0 秒</span>
+      </div>
+      <div class="status" id="pvMsg" role="status"></div>
+
+      <div class="card" id="clipCard">
+        <h2>這一段的影片 <span class="m" id="clipCount"></span><button type="button" class="q" data-tip="匯出「這一段全部」時，下面每一列都會變成一支 MP4。點一列就在上面預覽那一支。">?</button></h2>
+        <div class="clips" id="clips" role="group" aria-label="這一段的影片"></div>
+      </div>
+
+      <div class="card" id="exportCard">
+        <h2><span class="num">3</span>匯出放進簡報軟體</h2>
+        <div class="exgrid">
+          <div>
+            <div class="exopt"><button id="exOne">這一支影片（MP4）</button><span id="exOneD">上面預覽中的那一支</span></div>
+            <div class="exopt"><button id="exSec">這一段全部（ZIP）</button><span id="exSecD"></span></div>
+            <div class="exopt"><button id="exSong">整首歌全部（ZIP）</button><span id="exSongD"></span></div>
+            <div class="exopt"><button id="exAll">全部歌曲（ZIP）</button><span id="exAllD"></span></div>
+            <div class="row"><button id="cancel" class="small" hidden>取消匯出</button></div>
+          </div>
+          <div class="pp" aria-label="放進簡報軟體的方法">
+            <div class="t">放進簡報軟體</div>
+            <div class="pprow"><span class="chip g">背景影片</span><span class="arr">→</span><span>設「循環」↻</span></div>
+            <div class="pprow"><span class="chip">字幕影片</span><span class="arr">→</span><span>播一次、停在最後一格</span></div>
+            <div class="hint">用了字幕影片的投影片，不要再打歌詞。</div>
+          </div>
+        </div>
+        <div class="progress"><div id="prog"></div></div>
+        <div class="status" id="status" role="status"></div>
+        <p class="hint">請在要播放的那台電腦上匯出（字型才會一樣）。1920×1080、30fps。</p>
+      </div>
+    </section>
+
+    <!-- ================= 右：調整 ================= -->
+    <section class="panel" aria-label="調整">
+      <div class="tabs" role="tablist" aria-label="調整方式">
+        <button role="tab" id="tab-ai" aria-controls="pane-ai" aria-selected="true">請 AI 改<span class="badge">建議</span></button>
+        <button role="tab" id="tab-self" aria-controls="pane-self" aria-selected="false" tabindex="-1">自己調</button>
+        <button role="tab" id="tab-adv" aria-controls="pane-adv" aria-selected="false" tabindex="-1">進階</button>
+      </div>
+
+      <!-- 請 AI 改 -->
+      <div class="pane" role="tabpanel" id="pane-ai" aria-labelledby="tab-ai">
+        <div class="card" id="askCard">
+          <h2><span class="num">1</span>告訴 AI 想改什麼</h2>
+          <label class="lab" for="askText">想改的地方（可以留空）</label>
+          <textarea id="askText" rows="3" placeholder="例如：副歌背景太躁，想穩一點。&#10;留空的話 AI 會用選擇題問你。"></textarea>
+          <div class="chips" id="chips" role="group" aria-label="常用說法（點了會加進上面）"></div>
+          <label class="check" id="withCodeRow" hidden><input type="checkbox" id="withCode"><span>連同目前「新風格」的程式一起給 AI（想改畫面長相，不只是顏色、速度時勾）</span></label>
+          <div class="row mt"><button class="strong" id="copyAI">複製給 AI</button><span class="hint">→ 貼到 AI 對話裡送出</span></div>
+          <div class="status" id="copyMsg" role="status"></div>
+        </div>
+
+        <div class="card" id="pasteCard">
+          <h2><span class="num">2</span>把 AI 的回覆整則貼回來</h2>
+          <div class="flow" aria-label="貼上時怎麼讀">
+            <span class="cap">整則貼上就好，編輯器會自己找：</span>
+            <code>```json 框</code><span class="arr">→</span><span><b>設定</b>（段落、歌詞、顏色、速度）</span>
+            <code>```js 框</code><span class="arr">→</span><span><b>新風格</b>（AI 做的新畫面）</span>
+            <span class="dim">框外的文字</span><span class="arr">→</span><span class="dim">略過</span>
+          </div>
+          <textarea class="code" id="pasteText" spellcheck="false" aria-label="AI 的回覆" aria-describedby="detect" placeholder="在 AI 回覆下方按「複製」，整則貼到這裡"></textarea>
+          <div class="detect" id="detect" aria-live="polite"></div>
+          <div class="row"><button class="strong" id="pasteApply" disabled>套用</button><button class="small" id="pasteClear">清空</button><span class="hint">只有歌詞？</span><button type="button" class="link" id="lyrFromAI">貼上整首歌詞（自動分段）→</button></div>
+          <div class="status" id="cfgStatus" role="status"></div>
+        </div>
+
+        <div class="card soft" id="openCard">
+          <h2>還沒開始跟 AI 聊？</h2>
+          <p class="hint">開場白＝一句說明＋整份做法說明。貼給任何 AI（ChatGPT、Gemini、Claude），它會用選擇題問你歌名、感覺、歌詞，最後給你可以貼回來的設定。</p>
+          <div class="row mt"><button id="copyOpen">複製開場白</button><button class="small" id="copyOpenShort">已裝 skill 的 AI 用：複製短開場白</button></div>
+          <div class="status" id="openMsg" role="status"></div>
+        </div>
+      </div>
+
+      <!-- 自己調 -->
+      <div class="pane" role="tabpanel" id="pane-self" aria-labelledby="tab-self" hidden>
+        <div class="card">
+          <h2>整首歌</h2>
+          <div class="field"><label for="title">歌名</label><input type="text" id="title" class="grow" placeholder="歌名"></div>
+          <div class="field"><label for="style">風格</label><select id="style" class="grow"></select></div>
+          <p class="sub" id="styleDesc"></p>
+          <div class="field"><label for="bpm">速度（BPM）</label><input type="number" id="bpm" min="40" max="220" step="1"><span class="hint">不知道就 120</span><button type="button" class="q" data-tip="每分鐘幾拍。背景的色塊跟著這個速度跳；對不準沒關係。">?</button></div>
+          <p class="sub" id="bpmNote"></p>
+          <div class="field"><span class="lab">配色</span><div class="swatches" id="swatches"></div></div>
+          <div class="status" id="selfMsg" role="status"></div>
+        </div>
+
+        <div class="card" id="lyrCard">
+          <h2>貼上整首歌詞<button type="button" class="q" data-tip="把整首歌詞貼進來，按「分到各段」：認得 [Verse 1]、Chorus、【主歌】、副歌、橋段… 這類段落標題（拼錯一點也認得），沒有標題就照空行分。會先給你看預覽，確定才套用。版權說明（詞、曲、©、CCLI）會自動拿掉。歌詞只在這台電腦的瀏覽器裡處理，不會送出去。">?</button></h2>
+          <textarea class="big" id="lyrAll" spellcheck="false" aria-label="整首歌詞" placeholder="例如：&#10;[Verse 1]&#10;這是第一行示意文字&#10;這是第二行示意文字&#10;&#10;[Chorus]&#10;這是第三行示意文字"></textarea>
+          <div class="row mt"><button class="strong" id="lyrSplit">分到各段</button><span class="hint">先預覽，確定才套用</span></div>
+          <div class="status" id="lyrAllMsg" role="status"></div>
+        </div>
+
+        <div class="card" id="secCard">
+          <h2>這一段：<span id="secTitle"></span></h2>
+          <div class="field"><label for="sName">名稱</label><input type="text" id="sName" class="grow"></div>
+          <div class="field"><span class="lab" id="lBg">背景<button type="button" class="q" data-tip="這一段用哪一種背景。內建風格是三種強度：主歌通常「平靜」，導歌「累積」，副歌「高潮」。AI 做的新風格可以每一段都有自己的背景。">?</button></span><div class="seg" id="sBg" role="group" aria-labelledby="lBg"></div></div>
+          <div class="field"><span class="lab" id="lJump">色塊換位<button type="button" class="q" data-tip="背景裡的色塊多久跳一次位置。覺得太躁就調慢，不夠嗨就調快。">?</button></span><div class="seg" id="sJump" role="group" aria-labelledby="lJump"></div></div>
+          <div class="field"><span class="lab" id="lSub">動態字幕<button type="button" class="q" data-tip="要不要把歌詞做成會動的字幕影片。選「不要」就只做背景，歌詞用簡報軟體自己打。">?</button></span><div class="seg" id="sSub" role="group" aria-labelledby="lSub"></div></div>
+          <p class="sub" id="subDesc"></p>
+          <label class="lab" for="sLyrics">歌詞</label>
+          <textarea id="sLyrics" spellcheck="false"></textarea>
+          <label class="lab" for="sLyrics2">第二語言歌詞（小字，可留空）</label>
+          <textarea id="sLyrics2" spellcheck="false" rows="3" placeholder="例如英文歌詞：第 1 行配上面的第 1 行"></textarea>
+          <label class="check"><input type="checkbox" id="sSwap"><span>大小對調：第二語言大、第一語言小</span></label>
+          <div class="row"><button class="small" type="button" id="s2tBtn">轉成繁體</button><button type="button" class="q" data-tip="把這一段兩個歌詞框裡的簡體字轉成繁體（台灣常用字形）。先看詞（例如 头发→頭髮），再看單字。少數一字多義的字請自己檢查。">?</button></div>
+          <div class="status" id="lyrMsg" role="status"></div>
+          <p class="count" id="lyricHint" aria-live="polite"></p>
+          <div id="subOpts">
+            <div class="field"><label for="sDur">每支長度</label><input type="number" id="sDur" min="2" max="60" step="1"><span class="hint">秒</span></div>
+            <div class="field"><label for="sEnter">進場速度</label><span class="hint">慢</span><input type="range" id="sEnter" min="0.5" max="2" step="0.1" class="grow"><span class="hint">快</span><b id="sEnterV" style="min-width:40px;text-align:right;font-size:13px"></b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>段落 <span class="m">點一列就切到那一段</span></h2>
+          <div id="secList"></div>
+          <div class="row"><button class="small" id="secAdd">＋ 新增段落</button></div>
+          <div class="status" id="secMsg" role="status"></div>
+        </div>
+      </div>
+
+      <!-- 進階 -->
+      <div class="pane" role="tabpanel" id="pane-adv" aria-labelledby="tab-adv" hidden>
+        <div class="card">
+          <h2>這一段的背景循環長度<button type="button" class="q" data-tip="背景影片多長之後從頭接回去（頭尾接得起來）。越長越不容易看出重複，但檔案越大。通常用最短的就好。">?</button></h2>
+          <div class="seg" id="sLoop" role="group" aria-label="背景循環長度"></div>
+        </div>
+        <div class="card">
+          <h2>質感與配色</h2>
+          <div id="params"></div>
+          <p class="hint" id="noParams" hidden>這個風格沒有可調的質感參數。</p>
+          <div class="row mt"><button class="small" id="palReset">配色與參數還原成風格原本的樣子</button></div>
+        </div>
+        <div class="card">
+          <h2>新風格<button type="button" class="q" data-tip="內建風格都不像你要的時候，AI 可以寫一個「新風格」（一段程式，決定畫面長什麼樣子）。它也是從「請 AI 改」的貼上框貼進來，寫錯會標出第幾行、保留原本的風格。">?</button></h2>
+          <p class="hint" id="sceneName"></p>
+          <div class="row mt">
+            <button class="small" id="sceneCopy">複製目前風格的程式給 AI</button>
+            <button class="small" id="scenePaste">貼上新風格（用貼上框）→</button>
+          </div>
+          <div class="status" id="sceneStatus" role="status"></div>
+        </div>
+        <div class="card" id="histCard">
+          <h2>歷史紀錄<button type="button" class="q" data-tip="這首歌每一次改動都會記一步（連續打字、拖滑桿算一步）。點一列看和現在差在哪裡，再按「回到這個狀態」；回去之後還是可以按「↶ 還原」反悔。歷史存在這台電腦的瀏覽器裡，重新整理、關掉再開都還在；存成單檔 HTML 不帶歷史。">?</button></h2>
+          <p class="hint" id="histNote"></p>
+          <div class="hlist" id="histList" role="list" aria-label="這首歌的歷史紀錄（新的在上面）"></div>
+          <div class="hprev" id="histPrev" hidden><p id="histPrevT"></p><button type="button" class="strong" id="histGo">回到這個狀態</button></div>
+          <div class="row mt"><button type="button" class="small" id="histReset">一鍵還原到初始狀態</button></div>
+          <div class="status" id="histMsg" role="status"></div>
+        </div>
+        <div class="card">
+          <h2>設定檔</h2>
+          <p class="hint">設定檔是這首歌的設定（純文字），可以備份、傳給別人，或給不能貼長文的 AI 當附件。平常存檔用頂端「存成單檔 HTML」就好，它已經包含設定。</p>
+          <div class="row mt">
+            <button class="small" id="exportCfg">下載設定檔（.json）</button>
+            <button class="small" id="importCfg">打開設定檔</button>
+            <input type="file" id="importFile" accept=".json,.js,.txt,application/json" hidden>
+          </div>
+          <div class="status" id="fileMsg" role="status"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="dlg" aria-labelledby="dlgT" aria-describedby="dlgB">
+    <h2 id="dlgT"></h2>
+    <p id="dlgB"></p>
+    <input type="text" id="dlgIn" hidden aria-label="輸入">
+    <textarea class="code" id="dlgText" readonly hidden aria-label="要複製的文字"></textarea>
+    <div class="row" id="dlgBtns"></div>
+  </dialog>
+  <dialog id="lyrDlg" class="wide" aria-labelledby="lyrT">
+    <h2 id="lyrT">分到各段（預覽）</h2>
+    <label class="check"><input type="checkbox" id="lyrTrad"><span>轉成繁體</span></label>
+    <div id="lyrLangRow" hidden><p>偵測到中英交錯（一行中文、一行英文）：</p>
+      <div class="radios" role="radiogroup" aria-label="中英交錯怎麼放">
+        <label><input type="radio" name="lyrLang" value="zh">只留中文</label>
+        <label><input type="radio" name="lyrLang" value="en">只留英文</label>
+        <label><input type="radio" name="lyrLang" value="both" checked>中文當主要、英文當第二語言</label>
+        <label><input type="radio" name="lyrLang" value="bothEn">英文當主要、中文當第二語言</label>
+      </div></div>
+    <div id="lyrTargetRow"><div class="radios" role="radiogroup" aria-label="放進哪個歌詞框">
+      <label><input type="radio" name="lyrTarget" value="lyrics" checked>放進「歌詞」</label>
+      <label><input type="radio" name="lyrTarget" value="lyrics2">放進「第二語言歌詞」（小字）</label>
+    </div></div>
+    <div class="lyrbody" id="lyrBody"></div>
+    <div class="row"><button class="primary" type="button" id="lyrApply">套用</button><button type="button" id="lyrCancel">取消</button></div>
+  </dialog>
+  <div class="menu" id="closedMenu" role="menu" hidden aria-label="最近關閉的分頁"></div>
+  <div class="menu" id="songMenu" role="menu" hidden aria-label="這一首的選項">
+    <button type="button" role="menuitem" id="smRename">改名</button>
+    <button type="button" role="menuitem" id="smLeft">往左移</button>
+    <button type="button" role="menuitem" id="smRight">往右移</button>
+    <button type="button" role="menuitem" id="smReset">還原到初始狀態</button>
+    <hr>
+    <button type="button" role="menuitem" id="smSaveOne">只存這一首（單檔 HTML）</button>
+    <button type="button" role="menuitem" id="smClose">關閉這一首</button>
+  </div>
+</div></template>
+{{BODY}}
+</body>
+</html>
