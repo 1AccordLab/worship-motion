@@ -1,5 +1,5 @@
 dist/
-q/
+q
 __pycache__/
 *.mp4
 *.zip
