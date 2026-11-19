@@ -28,19 +28,19 @@ function beams(f, x, t, sets, every, col, a) {
     for (const [wi, wid, c] of s) beam(f, typeof wi === 'number' && wi < 10 ? WIN[wi] : wi, wid, c === 'g' ? NV.gold : col, a * w);
 }
 
-/* ---------- 平靜：一兩道細光 ---------- */
+// 平靜：一兩道細光
 function calm(f, x) {
   const t = mod(x.t, LOOP);
   ground(f); windows(f, 0);
   beams(f, x, t, [[[0, 40]], [[3, 34], [1, 22]], [[1, 44]], [[2, 30], [0, 22]]], 4, NV.light, .12);
 }
-/* ---------- 累積：光變多、變寬 ---------- */
+// 累積：光變多、變寬
 function build(f, x) {
   const t = mod(x.t, LOOP);
   ground(f); windows(f, .7);
   beams(f, x, t, [[[0, 60], [1, 34], [3, 40]], [[1, 70], [2, 46], [0, 26]], [[0, 50], [2, 60], [3, 30]], [[1, 56], [3, 64], [2, 24]]], 2, NV.light, .13);
 }
-/* ---------- 高潮：最多、最寬，暖金重點（中間圓窗也落下一道很淡的寬光） ---------- */
+// 高潮：最多、最寬，暖金重點（中間圓窗也落下一道很淡的寬光）
 function peak(f, x) {
   const t = mod(x.t, LOOP);
   ground(f); windows(f, 1);
@@ -48,7 +48,7 @@ function peak(f, x) {
   beams(f, x, t, [[[0, 96], [1, 60, 'g'], [2, 70], [3, 50, 'g']], [[0, 70, 'g'], [1, 100], [2, 56, 'g'], [3, 84]], [[0, 84], [1, 70], [2, 96, 'g'], [3, 60]], [[0, 60, 'g'], [1, 90], [2, 80], [3, 96, 'g']]], 2, NV.light, .15);
 }
 
-/* ---------- 字幕共用 ---------- */
+// 字幕共用
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 function rowText(f, x, chars, kw, cy, t0, o) {
   const n = chars.length, gapX = 6, ws = chars.map((c, i) => f.measure(c, i === kw ? o.kwStyle : o.style).tw);
@@ -63,7 +63,7 @@ function rowText(f, x, chars, kw, cy, t0, o) {
   return { kx, end: t0 + n * .08 + 1.3, kt: t0 + n * .08 + .35 };
 }
 
-/* ---------- 收斂字幕：平靜的光＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字 ---------- */
+// 收斂字幕：平靜的光＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
@@ -78,7 +78,7 @@ function gentle(f, x) {
   if (r > .004) f.add(rect(960 - 90, uy - 2, 960 + 90, uy + 2, NV.gold, .85 * r));
 }
 
-/* ---------- 華麗字幕（克制）：逐字慢慢淡入；關鍵字加粗、暖金，一道細光柱慢慢淡入落在它上面 ---------- */
+// 華麗字幕（克制）：逐字慢慢淡入；關鍵字加粗、暖金，一道細光柱慢慢淡入落在它上面
 function flashy(f, x) {
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
   x.under(f, build);

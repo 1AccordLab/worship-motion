@@ -29,7 +29,7 @@ struct It { a: vec4f, c: vec4f, p: vec4f, q: vec4f, e: vec4f, b: vec4f };
 @group(0) @binding(4) var smp: sampler;
 ${WGSL_NOISE}
 fn ndc(p: vec2f) -> vec4f { return vec4f(p.x / u.res.x * 2.0 - 1.0, 1.0 - p.y / u.res.y * 2.0, 0.0, 1.0); }
-/* 質感 slot = [種類, 作用圖層, 參數1, 參數2][參數3, 參數4]；種類與作用圖層的編號對應 setScene 的 T、ON */
+/* 注意：質感 slot = [種類, 作用圖層, 參數1, 參數2][參數3, 參數4]；種類與作用圖層的編號對應 setScene 的 T、ON */
 fn slotOn(i: u32, mask: u32, cls: u32) -> u32 {
   let s = u.tex[i * 2u];
   if ((mask & (1u << i)) == 0u || (u32(s.y) & cls) == 0u) { return 0u; }
@@ -83,7 +83,7 @@ fn texInk(px: vec2f, col: vec3f, cov: f32, a: f32, sd: f32, mask: u32, cls: u32,
   }
   return vec4f(c, al);
 }
-/* 形狀種類 0 旋轉矩形、1 圓弧、2 圓、3 扇形、4 三角形；q = 手撕邊、亂數、紙影、纖維（和 runtime.js 的 frame() 一致） */
+/* 注意：形狀種類 0 旋轉矩形、1 圓弧、2 圓、3 扇形、4 三角形；q = 手撕邊、亂數、紙影、纖維，和 runtime.js 的 frame() 一致 */
 fn sdShape(px: vec2f, s: It) -> f32 {
   let k = s.p.y; let d = px - s.a.xy; var sd = 0.0;
   if (k > 3.5) {
@@ -193,11 +193,11 @@ const WGSL_LAYER = WGSL_U + `
 @group(0) @binding(3) var smp: sampler;
 ${WGSL_NOISE}
 ${wgslFullscreen('vs_full')}
-/* getImageData 是未預乘的 RGBA，合成前要先預乘 */
+/* 注意：getImageData 是未預乘的 RGBA，合成前要先預乘 */
 @fragment fn fs_canvas(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let c = textureSampleLevel(lay, smp, fc.xy / vec2f(${W}.0, ${H}.0), 0.0); return vec4f(c.rgb * c.a, c.a);
 }
-/* 半解析度的自訂 shader：只把「差值」放大回去，原本清楚的地方保持清楚 */
+/* 注意：半解析度的自訂 shader 只把「差值」放大回去，原本清楚的地方保持清楚 */
 @fragment fn fs_half(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let uv = fc.xy / vec2f(${W}.0, ${H}.0);
   let base = textureLoad(lay, vec2i(fc.xy), 0);
@@ -217,7 +217,7 @@ ${wgslFullscreen('vs_full')}
   c = min(c, vec3f(u.post.w));
   return vec4f(c, 1.0);
 }`;
-/* YUV 為 BT.709 limited range，要和 readFrame 的 colorSpace、MP4 的 colr 一致 */
+/* 注意：YUV 為 BT.709 limited range，要和 readFrame 的 colorSpace、MP4 的 colr 一致 */
 const WGSL_YUV = `
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var<storage, read_write> outb: array<u32>;
@@ -327,11 +327,11 @@ class Renderer {
       { binding: 0, resource: { buffer: this.ubuf } }, { binding: 1, resource: { buffer: this.itemBuf } },
       { binding: 2, resource: this.texA.createView() }, { binding: 3, resource: this.texB.createView() }, { binding: 4, resource: this.smp }] }));
   }
-  setScene({ look = {}, textures = [], pal = {}, palKeys = [], params = [] }) {
+  setScene({ look = {}, textures = [], pal = {}, palOrder = [], params = [] }) {
     const L = this.look = { ...LOOK_DEFAULT };
     for (const k of Object.keys(L)) if (typeof look[k] === 'number') L[k] = look[k];
-    L.lift = Math.max(.015, L.lift); L.cap = Math.min(.95, L.cap);   // 產品規則：不要純黑純白
-    /* T、ON 要和 runtime.js 的 TEX_TYPES、TEX_ON 一致 */
+    L.lift = Math.max(.015, L.lift); L.cap = Math.min(.95, L.cap);  // 注意：產品規則，不要純黑純白
+    /* 注意：T、ON 要和 runtime.js 的 TEX_TYPES、TEX_ON 一致（check_repo 比對） */
     const T = { fiber: 1, grain: 2, halftone: 3, misreg: 4, bleed: 5, rough: 6, wobble: 7 }, ON = { shapes: 1, text: 2, lines: 4, bg: 8 };
     const t = this.tex = new Float32Array(64); let pad = 0;
     textures.slice(0, 8).forEach((x, i) => {
@@ -346,7 +346,7 @@ class Renderer {
       else if (x.type === 'wobble') { t[o + 2] = Math.min(20, v('amount', 3)); t[o + 3] = v('scale', .012); t[o + 4] = v('fps', 8); pad += t[o + 2] * 2; }
     });
     this.texPad = pad; this.texN = Math.min(8, textures.length);
-    this.pal8 = new Float32Array(32); palKeys.slice(0, 8).forEach((k, i) => this.pal8.set([...hexToRgb(pal[k] || '#808080'), 1], i * 4));
+    this.pal8 = new Float32Array(32); palOrder.slice(0, 8).forEach((k, i) => this.pal8.set([...hexToRgb(pal[k] || '#808080'), 1], i * 4));
     this.prm8 = new Float32Array(8); params.slice(0, 8).forEach((v, i) => { this.prm8[i] = v; });
   }
   uploadAtlas(at) {
@@ -362,7 +362,6 @@ class Renderer {
     this.device.queue.writeTexture({ texture: this.canvasTex }, px, { bytesPerRow: w * 4 }, [w, h]);
     this.canvasOn = true;
   }
-  /* fr = 場景 Worker 給的 { buf, n, runs, bg, grid }；target：'out'（匯出／抽格）或 'canvas'（預覽） */
   render(fr, idx, target, time, beat) {
     const d = this.device, L = this.look, q = d.queue;
     const U = new Float32Array(U_FLOATS);
@@ -429,7 +428,7 @@ class Renderer {
     if (ve && !errs.length) errs.push({ line: 0, msg: ve.message });
     return { pipeline, errs };
   }
-  /* WebGPU 沒有取消機制：用 onSubmittedWorkDone 加逾時判斷卡住 */
+  /* 注意：WebGPU 沒有取消機制，只能用 onSubmittedWorkDone 加逾時判斷卡住 */
   async timeShader(pipeline, w, h, reps, timeout) {
     const d = this.device;
     const tex = d.createTexture({ size: [w, h], format: 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT });

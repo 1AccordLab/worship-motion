@@ -18,9 +18,6 @@ async def main():
                 ims = [await p.shot(i, 1, t, out / f"{st}_{sub}_{n}.png") for i, n in enumerate(["calm", "build", "peak"])]
                 d = [diff(ims[0], ims[1]), diff(ims[1], ims[2]), diff(ims[0], ims[2])]
                 rec(f"{st}・{sub}：平靜／累積／高潮三種段落的字幕底圖不一樣", ok and min(d) > 3000, d)
-        # 背景影片本身：大字排版高潮左邊多了元素，歌詞區不動
-        await p.ev("x=>__app.load(x)", under_proj("type", "gentle"))
-        await p.shot(2, 0, 4.0, out / "type_peak_bg.png")
         n = await p.ev("document.querySelectorAll('#style option').length"); rec(f"風格選單：內建 {len(STYLES)} 種", n == len(STYLES), n)
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()

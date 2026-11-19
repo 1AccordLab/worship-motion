@@ -1,4 +1,4 @@
-// 名稱寬鬆比對：AI 會寫成各種變體（verse1Text、verse-1-text），大小寫、-、_、空白都不計
+// 注意：名稱寬鬆比對，因為 AI 會寫成各種變體（verse1Text、verse-1-text）；大小寫、-、_、空白都不計
 const keyNorm = k => String(k).toLowerCase().replace(/[\s_-]+/g, '');
 const pickKey = (obj, k) => { if (k == null) return null; if (Object.prototype.hasOwnProperty.call(obj, k)) return k; const n = keyNorm(k); return Object.keys(obj).find(x => keyNorm(x) === n) || null; };
 const NAME_ZH = { calm: '平靜', build: '累積', peak: '高潮', flashy: '華麗', gentle: '收斂', none: '不要' };
@@ -89,8 +89,8 @@ const JUMP_WORD = { 1: '很快', 2: '快', 4: '中', 8: '慢' };
 const bgLabel = (m, k) => (m && m.backgrounds[k] || {}).label || k;
 const subLabel = (m, k) => k === 'none' ? '不要' : ((m && m.subtitles[k]) || {}).label || k;
 function changes(a, b, mOld, mNew) {
-  if (!a) return [];
-  if (a.title !== b.title) return [`換成另一首歌「${b.title}」`];
+  if (!a) return { lines: [], otherSong: false };
+  if (a.title !== b.title) return { lines: [`換成另一首歌「${b.title}」`], otherSong: true };
   const out = [];
   if (a.style !== b.style) out.push(`風格：${mOld ? mOld.name : a.style} → ${mNew.name}`);
   if (a.bpm !== b.bpm) out.push(`速度：${a.bpm} → ${b.bpm}`);
@@ -112,5 +112,5 @@ function changes(a, b, mOld, mNew) {
     if (c.length) out.push(`${o.name}：${c.join('、')}`);
   });
   if (a.sections.length > b.sections.length) out.push(`刪掉：${a.sections.slice(b.sections.length).map(s => s.name).join('、')}`);
-  return out;
+  return { lines: out, otherSong: false };
 }

@@ -7,7 +7,7 @@ const disc = (cx, cy, r, col, a = 1) => arc(cx, cy, r / 2, r, 0, 7, col, a);
 const sector = (cx, cy, r, start, sweep, col, a = 1) => arc(cx, cy, r / 2, r, start, sweep, col, a);
 const stateAt = (x, t, step) => Math.floor(mod(x.jt(t), LOOP) / step);
 
-/* 邊緣的幾何形：每個元素有四個姿勢，依狀態跳換；中間（x 420–1500、y 260–820）留給歌詞 */
+// 邊緣的幾何形：每個元素有四個姿勢，依狀態跳換；中間（x 420–1500、y 260–820）留給歌詞
 const EDGE = [
   [s => sector(0, 300, 240 * s, -PI / 2, PI, BH.yel), s => sector(1920, 780, 240 * s, PI / 2, PI, BH.yel),
    s => sector(300, 0, 240 * s, 0, PI, BH.yel), s => sector(1620, 1080, 240 * s, PI, PI, BH.yel)],
@@ -38,14 +38,14 @@ function edgeShapes(f, list, k, s = 1, skip = null) {
 }
 function beatDots(f, t, px, py, n, gap = 34) { const k = Math.floor(t / BEAT) % n; for (let i = 0; i < n; i++) f.add(disc(px + i * gap, py, 9, i === k ? BH.red : BH.dim)); }
 
-/* ---------- 平靜：每 2 秒跳一次構圖 ---------- */
+// 平靜：每 2 秒跳一次構圖
 function calm(f, x) {
   const tt = mod(x.t, LOOP);
   edgeShapes(f, EDGE, stateAt(x, tt, BAR), 1 + .04 * pulse(tt, 3, BAR));
   f.add(arc(1700, 760, 120, 6, TAU * tt / LOOP, PI * 1.5, BH.crm, .5));
   beatDots(f, tt, 820, 1020, 8);
 }
-/* ---------- 累積：每 1 秒跳一次，元素更多 ---------- */
+// 累積：每 1 秒跳一次，元素更多
 function buildLayer(f, x, t, { skip = null } = {}) {
   const k = stateAt(x, t, BAR / 2);
   edgeShapes(f, EDGE, k, 1 + .05 * pulse(t, 4), skip);
@@ -54,9 +54,9 @@ function buildLayer(f, x, t, { skip = null } = {}) {
   f.add(disc(1700, 160, 110, BH.blu), sector(1700, 160, 110, a, PI, BH.red), ringFull(1700, 160, 128, 4, BH.crm, .6));
   beatDots(f, t, 760, 1020, 16, 26);
 }
-const FLASHY_SKIP = (e, i) => (e === 6 && (i === 2 || i === 0)) || e === 102 && i === 2;   // 華麗字幕底下：拿掉會擋字的元件
+const FLASHY_SKIP = (e, i) => (e === 6 && (i === 2 || i === 0)) || e === 102 && i === 2;
 const build = (f, x, o) => o && o.sub === 'line' ? buildLayer(f, x, x.t, { skip: FLASHY_SKIP }) : buildLayer(f, x, mod(x.t, LOOP));
-/* ---------- 高潮：太陽、斷開的圓環、放射粗條 ---------- */
+// 高潮：太陽、斷開的圓環、放射粗條
 function peak(f, x) {
   const SX = 960, SY = 1130, tt = mod(x.t, LOOP), beat = pulse(tt, 5), k = stateAt(x, tt, BAR);
   const NR = 18, rot = (TAU / NR) * tt / LOOP, cols = [BH.red, BH.blu, BH.crm];
@@ -76,7 +76,7 @@ function peak(f, x) {
   f.add(disc(SX, SY, 330 * (1 + .025 * beat), BH.yel), ringFull(SX, SY, 360, 4, BH.yel, .6));
   beatDots(f, tt, 120, 70, 8);
 }
-/* ---------- 華麗字幕：形狀撞進來，每個字落在一個形狀上，每小節重組 ---------- */
+// 華麗字幕：形狀撞進來，每個字落在一個形狀上，每小節重組
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, sl = Math.min(200, 1500 / n), x0 = 960 - sl * (n - 1) / 2;
   const DY = [-34, 26, -12, 36, -28, 14, -20, 30], KINDS = ['c', 's', 't'], COLS = [BH.red, BH.blu, BH.yel];
@@ -101,7 +101,7 @@ function flashy(f, x) {
   const w = seg(t, 0, .45);
   if (w < 1) f.top(disc(lerp(-700, 2600, E.io(w)), 540, 760, BH.yel), tri(lerp(2600, -700, E.io(seg(t, .05, .5))), 520, 620, PI, BH.red));
 }
-/* ---------- 收斂字幕：深色橫條從第一格就在 ---------- */
+// 收斂字幕：深色橫條從第一格就在
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 132, y0 = 470 - gap * (n - 1) / 2;
@@ -117,7 +117,7 @@ function gentle(f, x) {
   if (r > 0) f.add(disc(960 - 120 * r, uy, 14, BH.red), rect(960 - 100 * r, uy - 3, 960 + 100 * r, uy + 3, BH.red), tri(960 + 120 * r, uy, 14, PI / 2, BH.blu));
 }
 
-/* ---------- 收斂字幕（雙語）：橫條加高，每行大字下面一行小字 ---------- */
+// 收斂字幕（雙語）：橫條加高，每行大字下面一行小字
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 156, y0 = 480 - gap * (n - 1) / 2;
   x.under(f, peak);

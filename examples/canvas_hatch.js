@@ -11,7 +11,7 @@ defineScene({
   backgrounds: { calm: { label: '平靜', jumpBeats: 4, draw: calm } },
   canvas: {
     z: .5, half: false,
-    draw(ctx, t, info) {                                   // 只能用自己的參數；hash、lerp 等小工具可以直接用
+    draw(ctx, t, info) {
       const k = Math.floor(t * 8);
       ctx.strokeStyle = info.pal.line; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
       for (let i = 0; i < 60; i++) {

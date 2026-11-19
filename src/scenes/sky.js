@@ -68,7 +68,7 @@ function peak(f, x) {
   banks(f, t, .6, 140);
 }
 
-/* ---------- 字幕：淺色字、逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字 ---------- */
+// 字幕：淺色字、逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 function gentle(f, x) {
   x.under(f, calm);

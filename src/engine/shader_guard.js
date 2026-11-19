@@ -1,4 +1,4 @@
-/* cubuf 版面：res／time／beat 16 B + pal 8×16 B + prm 2×16 B（Renderer 的 CU_BYTES 留 192 B） */
+/* 注意：cubuf 版面是 res／time／beat 16 B + pal 8×16 B + prm 2×16 B，Renderer 的 CU_BYTES 留 192 B */
 const SH_PRE = `struct CU { res: vec2f, time: f32, beat: f32, pal: array<vec4f, 8>, prm: array<vec4f, 2> };
 @group(0) @binding(0) var<uniform> cu: CU;
 @group(0) @binding(1) var wm_src: texture_2d<f32>;
@@ -24,7 +24,7 @@ function shaderStaticCheck(code) {
   const lineAt = i => src.slice(0, i).split('\n').length;
   const err = (i, m) => errs.push({ line: i < 0 ? 0 : lineAt(i), msg: m });
   if (src.length > SH_MAX_LEN) err(-1, `程式太長（${src.length} 字，上限 ${SH_MAX_LEN}）。`);
-  // 註解換成空白但保留換行：回報給使用者的行號要和原始碼一致
+  // 注意：註解換成空白但保留換行，回報給使用者的行號才會和原始碼一致
   const s = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' ')).replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length));
   if (!/\bfn\s+shade\s*\(/.test(s)) err(-1, '找不到 fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f。');
   const ban = [[/\bloop\b/g, '不能用 loop（可能跑不完）。請改用 for，上限 64 次。'], [/\bwhile\b/g, '不能用 while。請改用 for，上限 64 次。'],
@@ -32,7 +32,7 @@ function shaderStaticCheck(code) {
     [/\btextureStore\b|\batomic\w*\b|\bptr\s*</g, '不能寫入資源或用指標。'], [/\b(enable|requires|diagnostic)\b/g, '不能用 enable／requires／diagnostic 指令。'],
     [/\bwm_\w+/g, 'wm_ 開頭的名稱保留給引擎。']];
   for (const [re, m] of ban) { const x = re.exec(s); if (x) err(x.index, m); }
-  // for 只允許常數邊界且次數有上限，避免 GPU 卡死；迴圈變數不能在別處被改
+  // 注意：for 只允許常數邊界且次數有上限，避免 GPU 卡死；迴圈變數不能在別處被改
   const FOR = /\bfor\s*\(\s*var\s+([A-Za-z_]\w*)\s*(?::\s*(?:i32|u32)\s*)?=\s*(\d+)[iu]?\s*;\s*\1\s*(<=?)\s*(\d+)[iu]?\s*;\s*(?:\1\s*\+\+|\+\+\s*\1|\1\s*\+=\s*1[iu]?)\s*\)\s*\{/g;
   const loops = []; let m;
   const anyFor = /\bfor\s*\(/g;

@@ -15,20 +15,17 @@ async def main():
         async def R(): await p.ev("__app.redo()")
         await p.ev("x=>__app.load(x)", proj("swiss", title="示意歌"))
         await p.ev("__app.tab('self')")
-        # 連續打字合併
         await pg.click("#title")
         for ch in "示意歌改": await pg.keyboard.press("End"); await pg.keyboard.type(ch)
         h = await p.ev("__app.history()")
         rec("連續打字（改歌名）合併成一步", h["labels"][-1] == "改歌名" and h["labels"].count("改歌名") == 1, h["labels"])
-        # 快捷鍵：文字框內 → 瀏覽器原生；文字框外 → 編輯器還原
         n0 = (await p.ev("__app.history()"))["pos"]
-        await pg.keyboard.press("Control+z"); await pg.wait_for_timeout(300)   # 要確認「沒有發生」，只能等一小段
+        await pg.keyboard.press("Control+z"); await pg.wait_for_timeout(300)  # 注意：要確認「沒有發生」只能等一小段時間
         rec("游標在文字框裡按 Ctrl+Z：不走編輯器還原（瀏覽器自己的文字還原）", (await p.ev("__app.history()"))["pos"] == n0)
         await pg.click("#secCard h2"); await pg.keyboard.press("Control+z"); await p.wait(f"__app.history().pos === {n0 - 1}")
         rec("離開文字框按 Ctrl+Z：編輯器還原（歌名回去）", (await pj())["title"] == "示意歌", (await pj())["title"])
         await pg.keyboard.press("Control+Shift+z"); await p.wait(f"__app.history().pos === {n0}")
         rec("Ctrl+Shift+Z 重做", (await pj())["title"].startswith("示意歌") and (await pj())["title"] != "示意歌", (await pj())["title"])
-        # 各動作可還原／重做
         async def act(label, js, check):
             before = await pj(); await p.ev(js); await p.wait(f"JSON.stringify(__app.project)!=={json.dumps(json.dumps(before))}"); after = await pj()
             info = await p.ev("__app.undoInfo()"); await U(); u = await pj(); await R(); r = await pj()
@@ -48,13 +45,11 @@ async def main():
         await act("套用新風格（程式）", "__app.pasteScene(" + json.dumps(MIN) + ")", lambda a, b: b["style"] == "bars")
         lab = await p.ev("__app.undoInfo()")
         rec("還原按鈕的說明寫出動作名稱", (await pg.get_attribute("#undoBtn", "title")).startswith("還原：") and lab["undo"] in await pg.get_attribute("#undoBtn", "title"), await pg.get_attribute("#undoBtn", "title"))
-        # 連續拖滑桿合併
         await p.ev("x=>__app.load(x)", proj("swiss", title="示意歌"))
         k0 = len((await p.ev("__app.history()"))["labels"])
         for v in [60, 70, 80, 90]: await pg.fill("#sEnter", "1." + str(v // 10 - 5)) if False else await p.ev(f"(()=>{{const s=document.querySelector('#sEnter');s.value={v/100+0.5};s.dispatchEvent(new Event('input'))}})()")
         h = await p.ev("__app.history()")
         rec("連續拖滑桿（進場速度）合併成一步", len(h["labels"]) == k0 + 1, h["labels"][-3:])
-        # 歷史面板
         await pg.click("#tab-adv")
         rows = await pg.locator("#histList .hrow").count()
         rec("歷史紀錄面板列出時間＋動作", rows >= 10 and "只保留最近 50 步" in await pg.inner_text("#histNote"), (await pg.inner_text("#histList")).split("\n")[:4])
@@ -66,13 +61,11 @@ async def main():
         h2 = await p.ev("__app.history()")
         rec("點一列 → 預覽差異 →「回到這個狀態」（新增一個紀錄點）", "和現在比" in prev or "就是現在" in prev, prev[:80])
         rec("回到之後還能「還原」", h2["labels"][-1].startswith("回到 ") and (await p.ev("__app.undoInfo()"))["undo"].startswith("回到"), h2["labels"][-1])
-        # 跨重新整理
         await p.ev("__app.flushHist()"); hb = await p.ev("__app.history()")
         await p.reload()
         ha = await p.ev("__app.history()")
         rec("重新整理後歷史還在（同一個位置）", ha == hb, f"{len(ha['labels'])} 步")
         await U(); rec("重新整理後仍可還原", (await p.ev("__app.history()"))["pos"] == hb["pos"] - 1)
-        # 做新的一首、關閉分頁、最近關閉
         n = len(await p.ev("__app.songs()")); await p.ev("__app.newSong()")
         rec("做新的一首 → 還原會把新分頁收起來", (await p.ev("__app.undoInfo()"))["undo"] == "做新的一首")
         await U(); rec("（還原後）分頁數回到原本、新的那首放在「最近關閉」", len(await p.ev("__app.songs()")) == n and await p.ev("__app.closed()"), await p.ev("__app.closed()"))
@@ -90,7 +83,6 @@ async def main():
         await U(); rec("（還原後）分頁回來", len(await p.ev("__app.songs()")) == m)
         await p.ev("__app.flushHist()"); await p.reload()
         rec("重新整理後「最近關閉」還在", len(await p.ev("__app.closed()")) >= 4)
-        # 每首歌各自一條歷史
         await p.ev("__app.switchSong(0)"); a = await p.ev("__app.history()"); await p.ev("__app.switchSong(1)"); bb = await p.ev("__app.history()")
         rec("每首歌各自一條歷史", a != bb, (len(a["labels"]), len(bb["labels"])))
         rec("沒有頁面錯誤", not [l for l in p.log if "pageerror" in l], p.log[:3])

@@ -24,7 +24,6 @@ async def main():
             await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "活著", "style": (await p.ev("__app.sceneInfo()"))["id"], "sections": [{"background": "calm"}]})
             im = await p.shot(0, 0, 2.0); rec(label, im.getbbox() is not None, "頁面還能抽格")
 
-        # ---------- 貼上場景 ----------
         await p.ev("p=>__app.load(p)", proj("swiss"))
         await paste(MIN, "貼上正確場景", True)
         await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "色帶", "style": "bars", "sections": [{"background": "calm", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字"}]})
@@ -34,7 +33,6 @@ async def main():
         await paste(MIN.replace("C.main));", "'red'));"), "API 用錯（顏色）→ 擋下並標行號", False, "第 6 行")
         await paste("console.log('沒有 defineScene')", "沒呼叫 defineScene → 擋下", False, "defineScene")
 
-        # ---------- 三層質感正例 ----------
         tex = MIN.replace("id: 'bars'", "id: 'bars_tex'").replace("palette: C,", "palette: C, textures: [{ type: 'halftone', on: 'shapes', cell: 10 }, { type: 'wobble', on: 'shapes', amount: 4 }, { type: 'bleed', on: 'shapes', amount: 8 }],").replace("C.soft, .9));", "C.soft, .55));")
         ok, _, _ = await paste(tex, "A 質感庫（網點＋抖動＋暈染）", True)
         await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "A", "style": "bars_tex", "sections": [{"background": "calm"}]})
@@ -48,7 +46,6 @@ async def main():
         await p.shot(0, 0, 3.0, OUT / "C_shader_bg.png"); await p.shot(0, 1, 2.0, OUT / "C_shader_sub.png")
         rec("C shader 已啟用", info["shader"], info)
 
-        # ---------- 惡意／錯誤 shader ----------
         await paste(with_shader("fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {\n  let k: f32 = vec3f(1.0);\n  return base;\n}"), "WGSL 編譯錯誤 → 擋下並標行號", False, "編譯錯誤")
         await paste(with_shader("fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {\n  loop { }\n  return base;\n}"), "loop{} → 靜態擋下", False, "loop")
         await paste(with_shader("fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {\n  var s = 0.0;\n  for (var i = 0; i < 64; i++) { for (var j = 0; j < 64; j++) { for (var k = 0; k < 64; k++) { s += noise(uv * f32(k)); } } }\n  return base * s;\n}"), "for 64 三層巢狀 → 靜態擋下", False, "巢狀")
@@ -63,7 +60,6 @@ async def main():
         im = await p.shot(0, 0, 2.0); rec("半解析度 shader 抽格正常", im.getbbox() is not None)
         await alive("惡意 shader 之後頁面正常")
 
-        # ---------- Canvas2D 無窮迴圈 ----------
         hatch = (EX / "canvas_hatch.js").read_text()
         await paste(hatch.replace("const k = Math.floor(t * 8);", "while (true) { }"), "Canvas2D 無窮迴圈 → 1 秒逾時擋下", False, "1 秒")
         late = hatch.replace("id: 'hatch'", "id: 'hatch_late'").replace("const k = Math.floor(t * 8);", "if (t > 3) while (true) { }\n      const k = Math.floor(t * 8);")
@@ -73,7 +69,6 @@ async def main():
         info = await p.ev("__app.sceneInfo()"); nt = await p.ev("__app.notices()")
         rec("Canvas2D 執行中卡住 → 停用該層、畫面照出", (not info["canvas"]) and any("Canvas" in n for n in nt) and im.getbbox() is not None, f"{time.time()-t0:.1f}s {nt}")
 
-        # ---------- 場景 JS 無窮迴圈 ----------
         await paste(MIN.replace("const y = x.step", "while (true) { }\n  const y = x.step"), "場景 draw 無窮迴圈 → 逾時擋下", False, "沒有回應")
         await paste("while (true) { }\n" + MIN, "場景頂層無窮迴圈 → 3 秒擋下", False, "3 秒")
         lateJs = MIN.replace("id: 'bars'", "id: 'bars_late'").replace("const y = x.step", "if (x.t > 20) while (true) { }\n  const y = x.step")
@@ -83,7 +78,6 @@ async def main():
         info = await p.ev("__app.sceneInfo()"); nt = await p.ev("__app.notices()")
         rec("場景執行中卡住 → 停用、退回內建場景", info["id"] in STYLES and im.getbbox() is not None, f"{time.time()-t0:.1f}s 目前 {info['id']}；{nt[-1][:90] if nt else ''}")
 
-        # ---------- 重開時偵測殘留的試跑標記 ----------
         await paste(MIN, "（準備）貼上場景", True)
         h = await p.ev("c=>__app.hash(c)", MIN)
         await p.ev("([k,h])=>localStorage.setItem(k, JSON.stringify({kind:'scene', hash:h, name:'色帶'}))", [LS_PROBE, h])
@@ -99,7 +93,6 @@ async def main():
         rec("重開：shader 試跑標記殘留 → 場景照常、shader 預設停用", info["id"] == "duotone" and not info["shader"] and any("shader" in n for n in nt), f"{info}；{' / '.join(nt)[:160]}")
         await p.ev("__app.clearSuspects()")
 
-        # ---------- GPU 遺失：重建、停用 shader、保留專案 ----------
         await paste((EX / "duotone_shader.js").read_text(), "（準備）重新貼上 shader 場景", True)
         await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "遺失測試", "style": "duotone", "sections": [{"background": "calm"}]})
         before = await p.ev("__app.project"); had = (await p.ev("__app.sceneInfo()"))["shader"]
@@ -107,7 +100,6 @@ async def main():
         info = await p.ev("__app.sceneInfo()"); after = await p.ev("__app.project"); im = await p.shot(0, 0, 2.0)
         rec("GPU 遺失 → 重建裝置、停用 shader、專案不變", had and (not info["shader"]) and before == after and im.getbbox() is not None, info)
 
-        # ---------- 設定 JSON 仍可用、壞設定不弄壞頁面 ----------
         ok = await p.ev("t=>__app.paste(t)", "好的：\n```json\n" + json.dumps(proj("paper", bpm=96), ensure_ascii=False) + "\n```")
         rec("貼上設定 JSON（含換風格）", ok and (await p.ev("__app.project"))["style"] == "paper")
         ok = await p.ev("t=>__app.paste(t)", '{"style":"neon","sections":[{"background":"wild"}]}')
@@ -116,13 +108,11 @@ async def main():
         ok = await p.ev("t=>__app.paste(t)", both)
         rec("一次貼上場景程式＋設定 JSON", ok and (await p.ev("__app.project"))["title"] == "一次貼兩個")
 
-        # ---------- 匯出 1 秒 ----------
         await p.ev("p=>__app.load(p)", proj("riso"))
         await p.ev("__app.select(0,0)")
         r = await p.ev("__app.exportTest(1)")
         rec("匯出 1 秒 MP4", r["ftyp"] == "ftyp" and r["size"] > 10000, r)
 
-        # ---------- 存成單檔 → 再打開 ----------
         song = {"format": "worship-motion/1", "title": "示意歌名", "style": "riso", "bpm": 120, "sections": [
             {"name": "主歌", "background": "calm", "subtitle": "none"},
             {"name": "導歌", "background": "build", "subtitle": "flashy", "clipSeconds": 6, "lyrics": "這是第[一]行示意文字\n這是第[二]行示意文字\n這是第[三]行示意文字\n這是第[四]行示意文字"},

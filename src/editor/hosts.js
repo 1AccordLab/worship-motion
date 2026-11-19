@@ -6,7 +6,7 @@ function realWorker(mode, src) {
   try { return new Worker(url); } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
 }
 function inlineWorker(src) {
-  // 沒有無窮迴圈保護，卡住只能靠重開時的試跑標記
+  // 注意：頁內執行沒有無窮迴圈保護，卡住只能靠重開時的試跑標記
   const w = { onmessage: null, onerror: null, dead: false };
   const scope = { onmessage: null };
   scope.self = scope;
@@ -17,7 +17,7 @@ function inlineWorker(src) {
   setTimeout(() => { if (w.dead) return; let fn; try { fn = new Function('self', 'postMessage', src + '\n//# sourceURL=wm-inline.js'); } catch (e) { fail(e); return; } try { fn.call(scope, scope, scope.postMessage); } catch (e) { fail(e); } }, 0);
   return w;
 }
-// Worker 的退路：blob → data: → 頁內執行（某些預覽環境不允許 Worker）
+// 注意：Worker 的退路是 blob → data: → 頁內執行，因為某些預覽環境不允許 Worker
 async function workerMode() {
   if (WMODE) return WMODE;
   for (const m of ['blob', 'data']) {
@@ -33,7 +33,7 @@ async function workerMode() {
   return WMODE;
 }
 const spawn = (mode, src) => mode === 'inline' ? inlineWorker(src) : realWorker(mode, src);
-const LINE_FIX = () => WMODE === 'inline' ? 2 : 0;   // new Function 會多兩行開頭
+const LINE_FIX = () => WMODE === 'inline' ? 2 : 0;  // 注意：new Function 會多兩行開頭，錯誤行號要扣掉
 
 function lineIn(stack, code) {
   const n = code.split('\n').length;

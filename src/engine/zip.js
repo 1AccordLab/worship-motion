@@ -5,7 +5,7 @@ async function makeZip(files) {
   for (const f of files) {
     const data = new Uint8Array(await f.blob.arrayBuffer()), name = new TextEncoder().encode(f.name), crc = crc32(data);
     const lh = new DataView(new ArrayBuffer(30));
-    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);  // 0x0800 = 檔名 UTF-8；0x21 = DOS 日期 1980-01-01
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);  // 注意：0x0800 = 檔名 UTF-8；0x21 = DOS 日期 1980-01-01
     lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
     parts.push(new Uint8Array(lh.buffer), name, data);
     const ch = new DataView(new ArrayBuffer(46));

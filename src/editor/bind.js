@@ -1,4 +1,4 @@
-// 游標在文字框裡時，讓瀏覽器自己的文字還原優先；離開文字框才是編輯器的還原
+// 注意：游標在文字框裡時讓瀏覽器自己的文字還原優先；離開文字框才是編輯器的還原
 const isTextField = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|number|search|url|email|tel|password)$/i.test(el.type)));
 function bindUI() {
   TABS.forEach((k, i) => {

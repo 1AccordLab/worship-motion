@@ -98,7 +98,7 @@ function renderGlobal() {
   $('#bpm').value = P.bpm;
   const eb = effBpm();
   $('#bpmNote').textContent = Math.abs(eb - P.bpm) > 0.005 ? `為了讓背景頭尾接得起來，實際用 ${eb.toFixed(2)}。` : '';
-  $('#styleDesc').textContent = isCustomNow() ? `${m.description || 'AI 做的新風格。'}想改它的長相：「請 AI 改」勾選「連同新風格的程式」。` : m.description;
+  $('#styleDesc').textContent = isCustomNow() ? `${withPeriod(m.description || 'AI 做的新風格')}想改它的長相：「請 AI 改」勾選「連同新風格的程式」。` : m.description;
   const box = $('#swatches'); box.innerHTML = '';
   for (const k of palKeys(m)) {
     const l = document.createElement('label'), i = document.createElement('input');

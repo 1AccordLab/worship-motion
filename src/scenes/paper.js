@@ -5,7 +5,7 @@ const paper = (s, seed = 0, { rough = 7, shadow = 1, fiber = .1 } = {}) => Objec
 const strip = (cx, cy, w, h, deg, col, a = 1) => band(cx, cy, w, h, deg, col, a);
 const slot = (x, t, period) => Math.floor(mod(x.jt(t), LOOP) / period);
 
-/* 邊緣的小紙片：圓點貼紙、小紙條、小方塊，跳到新位置後只輕輕呼吸 */
+// 邊緣的小紙片：圓點貼紙、小紙條、小方塊，跳到新位置後只輕輕呼吸
 const EDGE = [[60, 380, 60, 1040], [1540, 1860, 60, 1040], [380, 1540, 50, 220]];
 function confetti(f, x, t, count, period, seed, { scale = 1 } = {}) {
   const k = slot(x, t, period), cols = [PC.red, PC.yel, PC.crm, PC.pnk, PC.brn];
@@ -18,7 +18,7 @@ function confetti(f, x, t, count, period, seed, { scale = 1 } = {}) {
     f.add(paper(s, i + k * 10 + seed, { rough: 5 }));
   }
 }
-/* 日出紙層：從下方一圈圈往上，慢慢呼吸 */
+// 日出紙層：從下方一圈圈往上，慢慢呼吸
 function sunrise(f, t, cx, cy, radii, cols, { kick = 0 } = {}) {
   radii.forEach((r, i) => {
     const rr = r + 10 * Math.sin(TAU * t / LOOP + i * .9) + kick * pulse(t, 5, BEAT * 2) * (radii.length - i);
@@ -31,7 +31,7 @@ function cornerSheets(f, t) {
   f.add(paper(band(1830 - d, 1000, 620, 240, -14, PC.deep), 91, { rough: 12, shadow: .6 }));
 }
 
-/* ---------- 平靜：紙層日出、邊緣紙片每 2 秒跳一次 ---------- */
+// 平靜：紙層日出、邊緣紙片每 2 秒跳一次
 function calm(f, x) {
   const t = x.t, k = slot(x, t, 2);
   cornerSheets(f, t);
@@ -40,7 +40,7 @@ function calm(f, x) {
   sunrise(f, t, 960, 1370, [630, 540, 455, 375], [PC.brn, PC.red, PC.yel, PC.crm]);
   confetti(f, x, t, 12, 2, 1);
 }
-/* ---------- 累積：更高的日出、更多紙片、每 1 秒跳一次 ---------- */
+// 累積：更高的日出、更多紙片、每 1 秒跳一次
 function buildLayers(f, x, t, { conf = 14 } = {}) {
   cornerSheets(f, t);
   const dots = 24, rot = TAU / dots * (t / LOOP);
@@ -52,8 +52,8 @@ function buildLayers(f, x, t, { conf = 14 } = {}) {
   sunrise(f, t, 960, 1280, [720, 630, 545, 465, 390], [PC.brn, PC.pnk, PC.red, PC.yel, PC.crm], { kick: 5 });
   confetti(f, x, t, conf, 1, 2);
 }
-const build = (f, x, o) => buildLayers(f, x, x.t, o && o.sub === 'line' ? { conf: 10 } : undefined);   // 華麗字幕底下：紙屑少一點
-/* ---------- 高潮：放射紙條光芒、太陽、中間一條深色紙條 ---------- */
+const build = (f, x, o) => buildLayers(f, x, x.t, o && o.sub === 'line' ? { conf: 10 } : undefined);
+// 高潮：放射紙條光芒、太陽、中間一條深色紙條
 function peak(f, x) {
   const t = x.t, RAYS = 40, RW = TAU / RAYS, cols = [PC.red, PC.yel, PC.crm, PC.pnk], rot = RW * 4 * (t / LOOP);
   for (let i = 0; i < RAYS; i++) {
@@ -68,7 +68,7 @@ function peak(f, x) {
   confetti(f, x, t, 10, 1, 3, { scale: .9 });
   f.add(paper(band(960, 540, 1500, 330, -1.2, PC.strip), 500, { rough: 12, shadow: 1, fiber: .08 }));
 }
-/* ---------- 華麗字幕：紙片掃屏 → 每個字像貼紙啪地貼上 → 跟拍輕跳 ---------- */
+// 華麗字幕：紙片掃屏 → 每個字像貼紙啪地貼上 → 跟拍輕跳
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length;
   const size = n > 7 ? 150 : 176, gap = 26, x0 = 960 - (n * size + (n - 1) * gap) / 2 + size / 2, cy = 470;
@@ -96,7 +96,7 @@ function flashy(f, x) {
   if (w < 1) f.top(paper(band(lerp(W + 700, -800, E.io(w)), 540, 1300, 1500, -6, PC.red), 700, { rough: 16, shadow: 1 }));
   if (w2 < 1) f.top(paper(band(lerp(W + 400, -500, E.io(w2)), 540, 110, 1500, -6, PC.yel), 701, { rough: 10, shadow: 1 }));
 }
-/* ---------- 收斂字幕：深色紙條一直在，切下一句只有字在換 ---------- */
+// 收斂字幕：深色紙條一直在，切下一句只有字在換
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = n > 2 ? 104 : 124, y0 = 532 - gap * (n - 1) / 2;
@@ -111,7 +111,7 @@ function gentle(f, x) {
   if (r > .01) f.add(paper(band(960, uy, 240 * r, 12, -1.5, PC.yel), 800, { rough: 4, shadow: .6 }));
 }
 
-/* ---------- 收斂字幕（雙語）：紙條加高，每行大字下面一行小字 ---------- */
+// 收斂字幕（雙語）：紙條加高，每行大字下面一行小字
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = n > 2 ? 146 : 156, y0 = 512 - gap * (n - 1) / 2;
   x.under(f, peak);

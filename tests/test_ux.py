@@ -25,13 +25,11 @@ async def main():
             await p.wait("__app.dialog().open"); return await dlg()
         async def visible(sel): return await pg.is_visible(sel)
 
-        # ---------- 第一次打開 ----------
         rec("第一次打開：三步驟說明卡顯示", await visible("#intro"))
         rec("預設分頁是「請 AI 改」、步驟 1", await p.ev("__app.currentTab()") == "ai" and await p.ev("__app.step()") == 1 and await visible("#pane-ai") and not await visible("#pane-self"))
         st = await p.ev("__app.saveState()")
         rec("範例專案：存檔狀態＝未存成檔案", not st["saved"] and "還沒存成檔案" in st["text"], st)
 
-        # ---------- 分頁、步驟 ----------
         await pg.click("#tab-self")
         ok1 = await visible("#pane-self") and not await visible("#pane-ai") and await p.ev("__app.step()") == 2
         await pg.click("#tab-adv"); ok2 = await visible("#pane-adv") and await p.ev("__app.currentTab()") == "adv"
@@ -43,7 +41,6 @@ async def main():
         rec("點步驟② → 打開「自己調」", await p.ev("__app.currentTab()") == "self")
         await p.ev("__app.tab('ai')")
 
-        # ---------- 複製給 AI ----------
         await p.ev("p=>__app.load(p)", SONG); await p.ev("__app.select(2,0)")
         await pg.fill("#askText", "整體想暖一點")
         await pg.click("#chips button:has-text('太躁')")
@@ -60,7 +57,6 @@ async def main():
         rec("留空時請 AI 用選擇題問", "選擇題" in await p.ev("__app.aiText()"))
         rec("內建風格不顯示「附上新風格程式」選項", not await visible("#withCodeRow"))
 
-        # ---------- 貼上偵測 ----------
         cfg = json.dumps(SONG, ensure_ascii=False)
         cases = {
             "只有設定": ("好的，改好了：\n" + fence("json", cfg) + "\n下次可以這樣說：…", (True, False, False)),
@@ -85,7 +81,6 @@ async def main():
         await pg.fill("#pasteText", fence("json", '{"title": "x",, }'))
         rec("格式壞掉 → 偵測區紅字＋「複製錯誤訊息給 AI」", "格式有錯" in await pg.inner_text("#detect") and await visible("#detect button"))
 
-        # ---------- 套用＋摘要 ----------
         changed = json.loads(cfg); changed["bpm"] = 96; changed["sections"][2]["background"] = "build"
         await pg.fill("#pasteText", "好：\n" + fence("json", json.dumps(changed, ensure_ascii=False)))
         await pg.click("#pasteApply"); await pg.wait_for_function("document.querySelector('#cfgStatus').textContent.includes('已套用')", timeout=30000)
@@ -108,7 +103,6 @@ async def main():
         rec("勾選後複製給 AI 會附上 ```js 新風格程式", "```js" in txt and "defineScene" in txt and "```json" in txt)
         await pg.uncheck("#withCode")
 
-        # ---------- 貼上另一首歌 → 問：開新分頁／取代／取消 ----------
         await p.ev("__app.load(" + json.dumps(SONG, ensure_ascii=False) + ")")
         other = "```json\n" + json.dumps(OTHER, ensure_ascii=False) + "\n```"
         n0 = len(await p.ev("__app.songs()"))
@@ -125,7 +119,6 @@ async def main():
         r = await p.ev("window.__r")
         rec("按「取代目前這首」→ 目前分頁換成新歌", r is True and (await p.ev("__app.project"))["title"] == "示意歌乙" and len(await p.ev("__app.songs()")) == n0 + 1)
 
-        # ---------- 存檔狀態膠囊 ----------
         await p.ev("__app.tab('self')"); await p.ev("__app.markSaved()")
         s1 = await p.ev("__app.saveState()")
         await pg.fill("#title", "示意歌乙（改）")
@@ -136,7 +129,6 @@ async def main():
         await dl.value; await pg.wait_for_function("__app.saveState().saved", timeout=10000)
         rec("按頂端「存成單檔 HTML」→ 下載、狀態變已存、顯示檔案大小", "KB" in await pg.inner_text("#saveMsg"), await pg.inner_text("#saveMsg"))
 
-        # ---------- 做新的一首 = 開新分頁 ----------
         n0 = len(await p.ev("__app.songs()")); t0 = (await p.ev("__app.project"))["title"]
         await p.ev("document.querySelector('#openMsg').textContent=''")
         await pg.click("#newSong"); await p.wait("document.querySelector('#openMsg').textContent.includes('開場白')")
@@ -144,7 +136,6 @@ async def main():
         rec("做新的一首 → 開新分頁（原本那首還在）、回到「請 AI 改」、提示複製開場白", len(sg) == n0 + 1 and any(x["title"] == t0 for x in sg) and len(pj["sections"]) == 2 and st["fresh"] and await p.ev("__app.currentTab()") == "ai" and "開場白" in await pg.inner_text("#openMsg"), [x["title"] for x in sg])
         rec("做新的一首不跳對話框", not (await dlg())["open"])
 
-        # ---------- 開場白 ----------
         rec("編輯器內嵌完整 SKILL.md", await p.ev("__app.skill()") == SKILL, f"{len(await p.ev('__app.skill()'))} 字")
         await pg.click("#copyOpen"); await settle_copy(); await pg.wait_for_function("document.querySelector('#openMsg').textContent.includes('開場白 ✔')", timeout=5000)
         op = await p.ev("__app.lastCopied()")
@@ -153,7 +144,6 @@ async def main():
         sh = await p.ev("__app.lastCopied()")
         rec("短開場白：只叫 skill、不含整份說明", "worship-motion-backgrounds" in sh and len(sh) < 300, sh[:80])
 
-        # ---------- 刪段落、復原 ----------
         await p.ev("__app.load(" + json.dumps(SONG, ensure_ascii=False) + ")")
         await p.ev("__app.tab('self')")
         names0 = [s["name"] for s in (await p.ev("__app.project"))["sections"]]
@@ -167,7 +157,6 @@ async def main():
         r = await p.ev("__app.removeSection(0)")
         rec("只剩一段 → 不能刪、紅字在段落區", r is False and "至少" in await pg.inner_text("#secMsg"))
 
-        # ---------- 自己調 ----------
         await p.ev("__app.load(" + json.dumps(SONG, ensure_ascii=False) + ")"); await p.ev("__app.select(1,0)"); await p.ev("__app.tab('self')")
         await pg.click("#sJump button:has-text('慢')")
         await pg.click("#sBg button:has-text('高潮')")
@@ -188,19 +177,16 @@ async def main():
         await pg.fill("#bpm", "300"); await pg.dispatch_event("#bpm", "change")
         rec("速度超出範圍 → 紅字在「整首歌」卡片＋複製給 AI 按鈕", "40 到 220" in await pg.inner_text("#selfMsg") and await visible("#selfMsg + .aifix"))
 
-        # ---------- 「?」說明 ----------
         q = pg.locator("#pane-self .q").first
         await q.click(); tip_open = await p.ev("!!document.querySelector('.tipbox.show')")
         await pg.mouse.click(5, 5); tip_closed = not await p.ev("!!document.querySelector('.tipbox.show')")
         rec("「?」點開說明、點別處關閉", tip_open and tip_closed)
 
-        # ---------- 單檔帶著新介面與 SKILL.md ----------
         html = await p.ev("__app.singleHTML()")
         f = OUT / "單檔_新介面.html"; f.write_text(html)
         p2 = await open_url(ctx, f.as_uri())
         rec("存成單檔：新介面、SKILL.md 都在；打開是「已存成檔案」", await p2.pg.is_visible("#tab-ai") and await p2.ev("__app.skill()") == SKILL and (await p2.ev("__app.saveState()"))["saved"], f"{len(html.encode())/1024:.1f} KB")
 
-        # ---------- 說明卡關掉後不再出現 ----------
         await pg.click("#introClose")
         await p.reload()
         rec("說明卡「知道了」→ 重開不再顯示", not await visible("#intro"))

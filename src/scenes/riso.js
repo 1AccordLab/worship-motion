@@ -20,7 +20,7 @@ function ramp(f, rx, ry, w, h, n, col, vertical = false) {
   }
 }
 
-/* ---------- 平靜：兩個大圓疊印在角落，每 2 秒跳位置 ---------- */
+// 平靜：兩個大圓疊印在角落，每 2 秒跳位置
 function calm(f, x) {
   const tt = mod(x.t, 16), b = pulse(tt, 3, BAR);
   const A = x.step([[230, 900], [1700, 180], [260, 160], [1680, 880], [150, 560], [1760, 540], [420, 980], [1500, 110]], 2, tt);
@@ -34,13 +34,13 @@ function calm(f, x) {
   marks(f, 90, 90); marks(f, 1830, 990);
   swatches(f, tt, 96, 1000);
 }
-/* ---------- 累積：斜向網點條紋往右推、色塊每 1 秒跳 ---------- */
+// 累積：斜向網點條紋往右推、色塊每 1 秒跳
 function build(f, x) {
   const tt = mod(x.t, 16), b = pulse(tt, 5);
   const off = mod(tt * 60, 120);
   for (let i = -2; i < 18; i++) {
     const cx = i * 120 + off;
-    if (cx > 420 && cx < 1500) continue;                    // 中間留給歌詞
+    if (cx > 420 && cx < 1500) continue;
     f.add(ink(band(cx, 540, 1400, 46, 70, i % 3 ? RS.teal : RS.pink, .38)));
   }
   const A = x.step([[180, 180], [1740, 900], [1700, 170], [200, 880], [140, 540], [1780, 560], [400, 120], [1520, 980]], 1, tt);
@@ -52,7 +52,7 @@ function build(f, x) {
   marks(f, 90, 90); marks(f, 1830, 90); marks(f, 1830, 990);
   swatches(f, tt, 1520, 1000);
 }
-/* ---------- 高潮：底部大太陽、放射網點光芒慢慢轉、青色圓疊印 ---------- */
+// 高潮：底部大太陽、放射網點光芒慢慢轉、青色圓疊印
 function peak(f, x) {
   const tt = mod(x.t, 16), b = pulse(tt, 5), SX = 960, SY = 1180, N = 16, rot = (TAU / N) * tt / 16;
   for (let i = 0; i < N; i++) {
@@ -69,7 +69,7 @@ function peak(f, x) {
   marks(f, 90, 90); marks(f, 1830, 90);
   swatches(f, tt, 96, 60);
 }
-/* ---------- 華麗字幕：每個字像蓋印章，一格一格印上去；關鍵字粉紅大字、網點陰影 ---------- */
+// 華麗字幕：每個字像蓋印章，一格一格印上去；關鍵字粉紅大字、網點陰影
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, size = Math.min(190, 1500 / n), x0 = 960 - size * (n - 1) / 2;
   const cols = [RS.blue, RS.teal, RS.yel];
@@ -90,7 +90,7 @@ function flashy(f, x) {
   const w = seg(t, 0, .4);
   if (w < 1) f.top(ink(band(lerp(W + 800, -800, E.io(w)), 540, 1100, 1500, 8, RS.pink, .6)));
 }
-/* ---------- 收斂字幕：紙色橫條托住字，切下一句只有字在換 ---------- */
+// 收斂字幕：紙色橫條托住字，切下一句只有字在換
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 130, y0 = 500 - gap * (n - 1) / 2;
@@ -104,7 +104,7 @@ function gentle(f, x) {
   });
 }
 
-/* ---------- 收斂字幕（雙語）：紙色橫條加高，每行大字下面一行小字 ---------- */
+// 收斂字幕（雙語）：紙色橫條加高，每行大字下面一行小字
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 154, y0 = 500 - gap * (n - 1) / 2;
   const top = y0 - 90, bot = y0 + (n - 1) * gap + 128, TX = { px: 84, weight: 900, spacing: 8 }, SM = { px: 40, weight: 700, spacing: 3 };

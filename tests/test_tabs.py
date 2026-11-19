@@ -25,29 +25,24 @@ async def main():
         rec("切分頁：設定、風格、面板一起切換", (await p.ev("__app.sceneInfo()"))["id"] == "swiss" and await pg.input_value("#title") == "示意歌甲" and "導歌" in await pg.inner_text("#secTabs"))
         await p.ev("__app.select(2,1)"); await p.ev("__app.switchSong(1)"); await p.ev("__app.switchSong(0)")
         rec("切回來：記得原本在哪一段", "副歌" in await pg.inner_text("#secTitle"), await pg.inner_text("#secTitle"))
-        # 每首各自的自訂風格
         await p.ev("c=>__app.pasteScene(c)", MIN); await p.ev("__app.switchSong(1)"); await p.ev("c=>__app.pasteScene(c)", MIN2)
         await p.ev("__app.switchSong(0)"); a = (await p.ev("__app.sceneInfo()"))["id"]
         await p.ev("__app.switchSong(1)"); bb = (await p.ev("__app.sceneInfo()"))["id"]
         sg = await p.ev("__app.songs()")
         rec("每首歌各自保存自訂風格", a == "bars" and bb == "bars2" and [s["custom"] for s in sg] == ["bars", "bars2", None], [(s["title"], s["custom"]) for s in sg])
-        # 排序、改名
         await p.ev("__app.switchSong(2)"); await pg.click("#songTabs .smenu"); await pg.click("#smLeft")
         rec("分頁選單「往左移」", await titles() == ["示意歌甲", "示意歌丙", "示意歌乙"] and await p.ev("__app.active()") == 1, await titles())
         await p.ev("__app.moveSongTo(0,2)"); rec("拖曳排序（moveSongTo）", await titles() == ["示意歌丙", "示意歌乙", "示意歌甲"], await titles())
         await p.ev("()=>{window.__r=__app.renameSong(__app.active())}"); await p.wait_dialog()
         await p.ev("__app.dialogInput('示意歌丙改')"); await p.ev("__app.answer('ok')"); await p.ev("window.__r")
         rec("改名（頁內對話框）", (await p.ev("__app.project"))["title"] == "示意歌丙改" and "示意歌丙改" in await pg.inner_text("#songTabs"))
-        # 關閉、復原
         await p.ev("()=>{window.__r=__app.closeSong(1)}"); d = await p.ev("__app.dialog()")
         await dlg_answer("close"); await p.ev("window.__r")
         rec("關閉：頁內確認後拿掉", await titles() == ["示意歌丙改", "示意歌甲"] and "關閉" in d["title"], await titles())
         await pg.click("#undoClose"); await p.wait("__app.songs().length===3")
         rec("關閉後「復原」→ 放回原位、自訂風格還在", await titles() == ["示意歌丙改", "示意歌乙", "示意歌甲"] and (await p.ev("__app.songs()"))[1]["custom"] == "bars2", await titles())
-        # 複製給 AI 只帶目前這首
         await p.ev("__app.switchSong(2)"); txt = await p.ev("__app.aiText()")
         rec("複製給 AI 只帶目前分頁", "示意歌甲" in txt and "示意歌乙" not in txt and "示意歌丙" not in txt)
-        # 貼上另一首 → 開新分頁
         await p.ev("t=>{window.__r=__app.applyPaste(t)}", "```json\n" + json.dumps(song("示意歌丁"), ensure_ascii=False) + "\n```")
         await dlg_answer("new"); await p.ev("window.__r")
         rec("貼上另一首歌 → 開新分頁（放在目前這首後面）", await titles() == ["示意歌丙改", "示意歌乙", "示意歌甲", "示意歌丁"] and await p.ev("__app.active()") == 3, await titles())
@@ -55,14 +50,12 @@ async def main():
         dirs = sorted({n.split("/")[0] for n in plan})
         rec("全部歌曲（ZIP）：每首一個資料夾、依分頁順序", dirs == ["01_示意歌丙改", "02_示意歌乙", "03_示意歌甲", "04_示意歌丁"] and all(n.endswith(".mp4") for n in plan), dirs)
         rec("存檔狀態膠囊顯示整本", "整本 4 首" in (await p.ev("__app.saveState()"))["text"], (await p.ev("__app.saveState()"))["text"])
-        # 整本存檔再開
         book = OUT / "整本.html"; book.write_text(await p.ev("__app.singleHTML('book')"))
         q = await open_url(ctx, book.as_uri())
         sq = await q.ev("__app.songs()")
         rec("整本存成單檔 → 打開還是四個分頁、各自的風格", [s["title"] for s in sq] == ["示意歌丙改", "示意歌乙", "示意歌甲", "示意歌丁"] and [s["custom"] for s in sq] == [None, "bars2", "bars", None] and (await q.ev("__app.saveState()"))["saved"], [(s["title"], s["custom"]) for s in sq])
         await q.ev("__app.switchSong(1)"); rec("再開後切到自訂風格那首能用", (await q.ev("__app.sceneInfo()"))["id"] == "bars2" and not q.log, q.log[:2])
         await q.pg.close()
-        # 只存這一首
         await p.ev("__app.switchSong(2)")
         one = OUT / "只存這一首.html"; one.write_text(await p.ev("__app.singleHTML('one')"))
         q = await open_url(ctx, one.as_uri())
@@ -71,7 +64,6 @@ async def main():
         await q.pg.close()
         ok = await p.ev("t=>__app.importText(t)", json.dumps(song("示意設定檔", "type"), ensure_ascii=False))
         rec("打開設定 JSON（打開設定檔）→ 成為一個新分頁", ok and "示意設定檔" in await titles() and (await p.ev("__app.project"))["style"] == "type", await titles())
-        # 窄螢幕：分頁橫向捲動
         await pg.set_viewport_size({"width": 420, "height": 800})
         sw = await p.ev("(()=>{const r=document.querySelector('.songrow');return [r.scrollWidth,r.clientWidth,getComputedStyle(r).overflowX]})()")
         rec("窄螢幕：分頁列可以橫向捲動", sw[0] > sw[1] and sw[2] in ("auto", "scroll"), sw)

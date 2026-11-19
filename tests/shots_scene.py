@@ -1,4 +1,4 @@
-"""看一個風格：python3 tests/shots_scene.py 風格[,風格…] [輸出資料夾]
+"""看一個風格：python3 tests/shots_scene.py 風格[,風格…] [輸出資料夾，預設 tests/out/scene]
 每個風格抽 calm/build/peak 背景、gentle 雙語、flashy 雙語各一格（示意文字），並量歌詞安全區（x 420–1500、y 260–820）乾不乾淨。"""
 import asyncio, sys, pathlib, json, time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -13,7 +13,7 @@ def song(style, bgs):
 def safe(im):
     z = im.crop((420, 260, 1500, 820)).convert("L"); st = ImageStat.Stat(z); return round(st.stddev[0], 1)
 async def main():
-    styles = sys.argv[1].split(","); out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else "/tmp/shots")
+    styles = sys.argv[1].split(","); out = pathlib.Path(sys.argv[2] if len(sys.argv) > 2 else OUT / "scene")
     out.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as pw:
         b, ctx, p = await open_page(pw)

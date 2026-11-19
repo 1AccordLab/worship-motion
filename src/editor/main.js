@@ -13,12 +13,11 @@ async function boot() {
   window.__app = testApi();
 }
 
-// 測試用 API：只給 tests/ 的無頭瀏覽器呼叫
 async function grab(tt) {
   exporting = true;
   try {
-    try { await serial(() => drawAt(tt, 999, 'out')); }
-    catch (e) { if (!e.hang) throw e; exporting = false; await sceneFailed(e); await rebuild(); exporting = true; await serial(() => drawAt(tt, 999, 'out')); }
+    try { await serial(() => drawAt(tt, GRAB_FRAME_INDEX, 'out')); }
+    catch (e) { if (!e.hang) throw e; exporting = false; await sceneFailed(e); await rebuild(); exporting = true; await serial(() => drawAt(tt, GRAB_FRAME_INDEX, 'out')); }
     const vf = await r.readFrame(0);
     const c = new OffscreenCanvas(W, H); c.getContext('2d').drawImage(vf, 0, 0); vf.close();
     return new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
@@ -44,7 +43,7 @@ function testApi() {
     dialogInput: v => { $('#dlgIn').value = v; },
     songs: () => { stash(); return SONGS.map((s, i) => ({ title: (s.P || {}).title, style: (s.P || {}).style, custom: s.custom ? s.custom.id : null, active: i === ACT })); },
     active: () => ACT, switchSong, closeSong, undoClose, undo, redo, undoInfo, reopenSong, closed: () => CLOSED.map(c => ({ id: c.id, title: c.title })),
-    history: () => { const h = histOf(SONGS[ACT]); return { pos: h.pos, labels: h.stack.map(e => e.label) }; }, goHist, flushHist: () => writeHist(), moveSong, moveSongTo, renameSong, importText, bookJSON, allSongsPlan: async () => (await allSongsFiles(false)).map(f => f.name),
+    history: () => { const h = histOf(SONGS[ACT]); return { pos: h.pos, labels: h.stack.map(e => e.label) }; }, goHist, flushHist: () => writeHist(), moveSong, moveSongTo, renameSong, importText, bookJSON, allSongsPlan: async () => (await allSongsFiles({ encode: false })).map(f => f.name),
     headerOf, readSong: (t, o) => readSong(t, o || {}), isFresh, histPanel: () => $('#histCard').innerText,
     resetSong, slides: () => slidesOf(sec()),
     toTrad, planSplit: (text, o) => planSplit(text, o || {}), applySplitText: (text, o) => { applySplit(planSplit(text, o || {})); save('貼上整首歌詞'); return refresh().then(() => clone(P)); },

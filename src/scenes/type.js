@@ -3,10 +3,10 @@ const TY = { bg: '#3a1520', tone: '#4b1c29', tone2: '#5a2433', org: '#ff7a33', c
 const slot = (x, t, L, step) => Math.floor(mod(x.jt(t), L) / step);
 const disc = (cx, cy, R, col, a = 1) => arc(cx, cy, R / 2, R, 0, 7, col, a);
 
-/* 背景紋理大字：同色系、出血裁切，放在色塊底下（z = -1） */
+// 背景紋理大字：同色系、出血裁切，放在色塊底下（z = -1）
 const GIANT = ['光', '火', '愛'];
 function giant(f, list, col = TY.tone, a = 1) { for (const [ch, gx, gy, sc] of list) f.text(ch, gx, gy, { px: 640, weight: 900, scale: sc, col, a, z: -1 }); }
-/* 大字用滑的換位置（色塊仍然用跳的） */
+// 大字用滑的換位置（色塊仍然用跳的）
 function giantSlide(f, x, t, L, step, ease, chars, scales, states) {
   const n = states.length, k = slot(x, t, L, step), p = E.io(clamp01((mod(x.jt(t), L) - k * step) / ease));
   const c = states[k % n], pr = states[(k - 1 + n) % n];
@@ -21,7 +21,7 @@ const PRE_GS = [[[1650, 880], [1000, 250], [-900, 640]], [[2800, 880], [1100, 28
                 [[2800, 300], [900, 300], [340, 500]], [[1650, 800], [1000, 240], [-900, 500]],
                 [[2800, 800], [1000, -1200], [300, 700]], [[1600, 500], [950, 260], [260, 640]]];
 const SUB_GS = [[[380, 640]], [[300, 760]], [[420, 600]], [[260, 820]]];
-/* 段落剪影：一排長短不一的色條，像把一段文字塗掉 */
+// 段落剪影：一排長短不一的色條，像把一段文字塗掉
 function para(f, px, py, n, lineH, gap, seed, k, minW, maxW, col, a = 1, right = false) {
   for (let i = 0; i < n; i++) {
     let w = minW + hash(k * 7.3 + i * 1.7 + seed) * (maxW - minW); if (i === n - 1) w *= .45;
@@ -29,13 +29,13 @@ function para(f, px, py, n, lineH, gap, seed, k, minW, maxW, col, a = 1, right =
     f.add(right ? rect(px - w, yy, px, yy + lineH, col, a) : rect(px, yy, px + w, yy + lineH, col, a));
   }
 }
-/* 刪節號：一排方點，每拍亮下一顆 */
+// 刪節號：一排方點，每拍亮下一顆
 function ellipsis(f, t, px, py, n, size, gap, col) {
   const k = Math.floor(t / BEAT) % n, p = pulse(t, 4);
   for (let i = 0; i < n; i++) { const xx = px + i * (size + gap), on = i === k; f.add(rect(xx, py, xx + size, py + size, on ? col : TY.tone2, on ? .6 + .4 * p : 1)); }
 }
 
-/* ---------- 平靜：每 2 秒跳一次，中間留給歌詞 ---------- */
+// 平靜：每 2 秒跳一次，中間留給歌詞
 function calm(f, x, o) {
   const tt = mod(x.t, 16), k = slot(x, tt, 16, 2), b = pulse(tt, 4);
   const A = [[-40, 0, 420, 1080], [-40, 620, 560, 1080], [-40, 0, 300, 1080], [-40, 0, 520, 380],
@@ -52,7 +52,7 @@ function calm(f, x, o) {
   f.add(rect(140, 950, 140 + len, 964, TY.crm, .9), rect(140, 108, 1780, 110, TY.crm, .25));
   ellipsis(f, tt, 1700, 1000, 4, 14, 12, TY.crm);
 }
-/* ---------- 累積：共用元素 ---------- */
+// 累積：共用元素
 function buildLayers(f, x, t, L, k, { ibeam = true, paras = true, big = true, sub = false, D = null } = {}) {
   if (big) { if (sub) giantSlide(f, x, t, L, 1, .7, ['光'], [1.8], SUB_GS); else giantSlide(f, x, t, L, 1, .7, GIANT, [1.6, 1.9, 1.7], PRE_GS); }
   const b = pulse(t, 5), bar = pulse(t, 3, BAR);
@@ -69,11 +69,11 @@ function buildLayers(f, x, t, L, k, { ibeam = true, paras = true, big = true, su
   f.add(rect(380, 1004, 380 + 520 * mod(t, BAR) / BAR, 1016, TY.crm, .9));
 }
 function build(f, x, o) {
-  if (o && o.sub === 'line') return buildLayers(f, x, x.t, 16, slot(x, x.t, 16, 1), FLASHY_BUILD);   // 華麗字幕底下：拿掉中間的直條和段落剪影，讓放大的字乾淨
+  if (o && o.sub === 'line') return buildLayers(f, x, x.t, 16, slot(x, x.t, 16, 1), FLASHY_BUILD);
   const tt = mod(x.t, 16); buildLayers(f, x, tt, 16, slot(x, tt, 16, 1));
 }
 const FLASHY_BUILD = { ibeam: false, paras: false, sub: true, D: [[230, 640], [1780, 200], [200, 780], [1700, 360]] };
-/* ---------- 高潮：段落往上捲、大橘塊跟拍、圓點跳位；左邊：左上橘塊、圓環跳位、小節進度條 ---------- */
+// 高潮：段落往上捲、大橘塊跟拍、圓點跳位；左邊：左上橘塊、圓環跳位、小節進度條
 function peak(f, x, o) {
   const L = 16, P = 48, SPEED = P * 40 / L, GAP = 980;
   const D = [[1660, 230, 260], [1760, 520, 140], [1540, 160, 180], [1720, 300, 320], [1600, 210, 220], [1780, 420, 160], [1560, 260, 280], [1700, 190, 200]];
@@ -87,7 +87,6 @@ function peak(f, x, o) {
     let w = 200 + hash(id * 3.7) * 300; if (hash(id * 9.1) < .18) w *= .4;
     f.add(rect(120, y, 120 + w, y + 24, TY.tone2));
   }
-  /* 左邊：都不進歌詞區 */
   const LW = [380, 330, 400, 350, 370, 320, 400, 360], LH = [210, 170, 240, 190, 220, 160, 250, 200], lh = LH[k] + 22 * b;
   f.add(rect(-40, -40, LW[k], lh, TY.org), rect(60, lh + 22, 60 + 140 + 160 * hash(k * 2.7), lh + 34, TY.crm));
   const LD = [[220, 560, 110], [250, 740, 80], [200, 450, 140], [240, 860, 95], [210, 640, 125], [260, 500, 75], [200, 780, 130], [235, 600, 100]], [lx, ly, lr] = LD[k];
@@ -96,12 +95,12 @@ function peak(f, x, o) {
   const [dx, dy, dr] = D[k];
   f.add(disc(dx, dy, dr * (1 + .08 * b), TY.org));
   for (let i = 0; i < 3; i++) { const w = 280 + hash(k * 5.1 + i * 2.3) * 520, y = 96 + i * 46; f.add(rect(1820 - w, y, 1820, y + (i === 0 ? 22 : 10), TY.crm, i === 0 ? .9 : .5)); }
-  const by = (o && o.sub === 'line' ? 930 : 760) - 26 * b;   // 華麗字幕底下：右下大橘塊放低，不吃掉放大的字
+  const by = (o && o.sub === 'line' ? 930 : 760) - 26 * b;
   f.add(rect(1080, by, W, H, TY.org), rect(1080, by - 40, 1080 + 300 + 200 * hash(k * 1.3), by - 28, TY.crm));
   f.add(disc(980, 960, 70 * (1 + .1 * pulse(tt, 5, BEAT, BEAT / 2)), TY.crm));
   ellipsis(f, tt, 1180, 1000, 8, 16, 10, TY.bg);
 }
-/* ---------- 華麗字幕：整句逐字快閃 → 關鍵字放大塞滿、殘影外框 → 其他字彈出 ---------- */
+// 華麗字幕：整句逐字快閃 → 關鍵字放大塞滿、殘影外框 → 其他字彈出
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, kwCh = chars[kw], before = chars.slice(0, kw), after = chars.slice(kw + 1);
   const KX = 1080, KY = 560, BIG = { px: 700, weight: 900 };
@@ -135,7 +134,7 @@ function flashy(f, x) {
     f.text(sub, 86, 404 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 560, SM), align: 'left', col: TY.crm, a: .7 * a });
   }
 }
-/* ---------- 收斂字幕：深色底從第一格就在，切下一句只有字在換 ---------- */
+// 收斂字幕：深色底從第一格就在，切下一句只有字在換
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 136, y0 = 515 - gap * (n - 1) / 2;
@@ -151,7 +150,7 @@ function gentle(f, x) {
   if (uw > 1) f.add(rect(960 - uw / 2, uy - 4, 960 + uw / 2, uy + 4, TY.org));
 }
 
-/* ---------- 收斂字幕（雙語）：深色底加高，每行大字下面一行小字 ---------- */
+// 收斂字幕（雙語）：深色底加高，每行大字下面一行小字
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 160, y0 = 505 - gap * (n - 1) / 2;
   const top = y0 - 96, bot = y0 + (n - 1) * gap + 136, TX = { px: 90, weight: 900, spacing: 16, blur: 12 }, SM = { px: 42, weight: 600, spacing: 4 };

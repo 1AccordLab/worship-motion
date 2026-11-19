@@ -1,9 +1,9 @@
-// 32 拍 × 60 秒 × 30fps：BPM 微調成整數格，背景才接得起來
+// 注意：32 拍 × 60 秒 × 30fps；BPM 微調成整數格，背景才接得起來
 const FRAME_BPM = 32 * 60 * FPS;
 const frames32 = () => Math.max(1, Math.round(FRAME_BPM / P.bpm));
 const effBpm = () => FRAME_BPM / frames32();
 const K = () => effBpm() / BASE_BPM;
-// 進場速度只影響前 2 秒
+// 注意：進場速度只影響前 2 秒
 const ENTER_SECONDS = 2;
 function warp(tt, s) { if (s === 1) return tt; return tt < ENTER_SECONDS / s ? s * tt : ENTER_SECONDS + (tt - ENTER_SECONDS / s); }
 
@@ -31,7 +31,7 @@ async function startCanvas(manual) {
   const ch = new CanvasHost(m.canvas, sceneCode);
   try { await ch.start(); canvasHost = ch; if (manual) rebuild(); } catch (e) { ch.kill(); canvasFail(e); }
 }
-// 有自訂 shader 時，送出後超過「2 秒或平常一格的 4 倍」還沒做完就當成卡住
+// 注意：有自訂 shader 時，送出後超過「2 秒或平常一格的 4 倍」還沒做完就當成卡住
 let watching = false, frameMs = 0;
 function watchdog() {
   if (watching) return; watching = true;
@@ -50,7 +50,7 @@ async function newRenderer() {
 }
 function sceneToRenderer(rr) {
   const m = meta(), pal = resolvedPal();
-  rr.setScene({ look: m.look, textures: m.textures, pal, palKeys: Object.keys(m.palette), params: Object.values(paramsNow()) });
+  rr.setScene({ look: m.look, textures: m.textures, pal, palOrder: Object.keys(m.palette), params: Object.values(paramsNow()) });
 }
 let recoverLog = [];
 async function recoverGPU(reason, blameShader) {
@@ -86,14 +86,14 @@ async function probeShader(pipeline) {
   const pts = [];
   for (const [w, h] of [[32, 18], [120, 68], [480, 270]]) {
     const ms = await r.timeShader(pipeline, w, h, 2, TIMEOUT.shaderProbe); pts.push([w * h, ms]);
-    if (ms * (480 * 270) / (w * h) > 700 && w < 480) { const nx = w === 32 ? 120 * 68 : 480 * 270; if (ms * nx / (w * h) > 700) break; }
+    if (ms * (480 * 270) / (w * h) > SHADER_TOO_SLOW_MS && w < 480) { const nx = w === 32 ? 120 * 68 : 480 * 270; if (ms * nx / (w * h) > SHADER_TOO_SLOW_MS) break; }
   }
   const A = W * H, [a1, m1] = pts[pts.length - 1];
   let est = m1 * A / a1;
   if (pts.length > 1) { const [a0, m0] = pts[pts.length - 2]; const slope = Math.max((m1 - m0) / (a1 - a0), m1 / a1 * .25); est = m1 + slope * (A - a1); }
-  const base = await measureBaseline(), budget = Math.max(25, base * 30);
+  const base = await measureBaseline(), budget = Math.max(SHADER_BUDGET_MIN_MS, base * SHADER_BUDGET_PER_BASELINE);
   if (est <= budget) return { mode: 'full', est, budget };
-  if (est / 4 <= budget && est / 4 < 1500) return { mode: 'half', est: est / 4, budget };
+  if (est / 4 <= budget && est / 4 < SHADER_HALF_MAX_MS) return { mode: 'half', est: est / 4, budget };
   throw errAt(`自訂 shader 太重：估計一格要 ${Math.round(est)} ms，半解析度也要 ${Math.round(est / 4)} ms（這台電腦的上限約 ${Math.round(budget)} ms）。請減少迴圈次數或雜訊呼叫。`);
 }
 async function checkShader(code, line0) {

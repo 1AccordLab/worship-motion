@@ -1,11 +1,9 @@
 let uidN = 0;
 const newUid = () => 's' + Date.now().toString(36) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 6);
-// 內部與暫存用 P／custom；檔案（worship-motion-book/1）用 project／scene，只在邊界轉換
 const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, custom: x.custom && x.custom.code ? { id: String(x.custom.id || 'custom').toLowerCase(), code: x.custom.code } : null, fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
 const songFromFile = e => mkSong({ P: e.project, custom: e.scene });
 function stash() { const s = SONGS[ACT]; if (s && P && !SWITCHING) { s.P = P; s.cur = cur; s.clipIdx = clipIdx; s.custom = CUSTOM; } }
 function persist() { stash(); store.set('book', JSON.stringify({ v: 1, active: ACT, songs: SONGS.map(s => ({ uid: s.uid, P: s.P, custom: s.custom, fresh: s.fresh, orig: s.orig })) })); }
-// 同一個合併鍵、4 秒內的連續改動併成歷史的一步
 function save(label = '調整設定', key = null) { persist(); commit(label, key); renderSaveState(); renderSongName(); }
 const snap = () => { stash(); return fnv(JSON.stringify(SONGS.map(s => [s.P, s.custom ? s.custom.code : '']))); };
 const isSaved = () => !!P && store.get('saved') === snap();
@@ -54,7 +52,7 @@ async function switchSong(i) {
   ['#cfgStatus', '#copyMsg', '#secMsg', '#lyrMsg', '#selfMsg'].forEach(s => say(s, ''));
   return true;
 }
-// 一次只切一個分頁：連點兩個分頁時排隊，不會互相寫錯歌
+// 注意：一次只切一個分頁；連點兩個分頁時排隊，不會互相寫錯歌
 let actQ = Promise.resolve();
 function activate(i, o) { const run = () => activate0(i, o); const pr = actQ.then(run, run); actQ = pr.catch(() => { }); return pr; }
 async function activate0(i, { first = false, noStash = false } = {}) {
@@ -129,7 +127,6 @@ async function newSong({ quiet = false, track = true } = {}) {
   $('#openCard').scrollIntoView({ block: 'nearest' }); $('#copyOpen').focus({ preventScroll: true });
   return true;
 }
-// 貼上失敗時丟掉剛開的分頁：不進「最近關閉」、不留還原紀錄
 async function discardSong(uid, backTo) {
   SONGS.splice(SONGS.findIndex(s => s.uid === uid), 1);
   BOOKOPS = BOOKOPS.filter(o => o.uid !== uid);
