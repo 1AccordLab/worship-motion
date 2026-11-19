@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>詩歌影片編輯器</title>
 <style id="wm-css">
-:root{--page:#1f1e1b;--surface:#282723;--sunk:#302f2a;--ink:#ddd7ca;--muted:#a39d91;--line:#3d3b35;--accent:#86b497;--accent-soft:#253229;--on-accent:#1f1e1b;--warn:#d8b46a;--warn-soft:#3a3119;--bad:#e5907f;--bad-soft:#3d2622;--wobble-sm:255px 15px 225px 15px/15px 225px 15px 255px;--wobble-lg:18px 6px 22px 5px/5px 22px 6px 18px;--sans:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root{--page:#1f1e1b;--surface:#282723;--sunk:#302f2a;--ink:#ddd7ca;--muted:#a39d91;--line:#3d3b35;--accent:#86b497;--accent-soft:#253229;--on-accent:#1f1e1b;--accent-hover:#9cc4aa;--accent-soft-hover:#2e3d33;--canvas:#2b2a27;--warn:#d8b46a;--warn-soft:#3a3119;--bad:#e5907f;--bad-soft:#3d2622;--wobble-sm:255px 15px 225px 15px/15px 225px 15px 255px;--wobble-lg:18px 6px 22px 5px/5px 22px 6px 18px;--sans:"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font:15px/26px var(--sans)}
 .wrap{max-width:1440px;margin:0 auto;padding:16px 28px 48px}
@@ -14,9 +14,6 @@ h2{margin:0 0 8px;font-size:16px;line-height:24px;font-weight:700;display:flex;a
 h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
 /* 頂端 */
 .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.titlebox{flex:1;min-width:240px}
-.top input.title{display:block;width:100%;font:900 24px/34px var(--sans);color:var(--ink);background:transparent;border:1.5px dashed transparent;border-radius:4px;padding:0 6px;margin-left:-6px}
-.top input.title:hover{border-color:var(--line)}
 .topact{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border:1.5px solid var(--warn);background:var(--warn-soft);border-radius:999px;font-size:13px;line-height:20px}
 .pill i{width:9px;height:9px;border-radius:50%;background:var(--warn);flex:none}
@@ -27,18 +24,19 @@ h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
 .steps{display:flex;align-items:stretch;gap:6px;margin-top:4px;position:sticky;top:0;z-index:10;background:var(--page);padding:8px 0}
 .card,.frame{scroll-margin-top:92px}
 .steps>button{flex:1;display:flex;align-items:center;gap:10px;text-align:left;padding:8px 12px;border-color:var(--line);background:var(--surface);border-radius:var(--wobble-lg)}
-.steps>button b,.num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--muted);font:700 13px/1 var(--mono);flex:none;color:var(--muted)}
+.steps>button b,.num{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1.5px solid;font-family:var(--mono);font-weight:700;line-height:1;flex:none}
+.steps>button b{width:26px;height:26px;font-size:13px;border-color:var(--muted);color:var(--muted)}
 .steps>button span{display:flex;flex-direction:column;line-height:20px}
 .steps>button small{color:var(--muted);font-size:12.5px}
 .steps>button[aria-current=step]{border-color:var(--accent);background:var(--accent-soft)}
 .steps>button[aria-current=step] b{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.steps .arr{align-self:center;color:var(--muted)}
+.steps .arr{align-self:center}
 .num{width:24px;height:24px;font-size:12px;border-color:var(--accent);color:var(--accent)}
 /* 版面 */
 .grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(360px,1fr);gap:22px;margin-top:14px;align-items:start}
 .left{display:flex;flex-direction:column;gap:12px;min-width:0}
 .frame{padding:10px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--wobble-lg)}
-canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:#2b2a27}
+canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:var(--canvas)}
 .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bar input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
 .time{font:13px/21px var(--mono);color:var(--muted);min-width:110px;text-align:right}
@@ -53,8 +51,7 @@ canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:#
 .sectabs .lab{font-size:12.5px;color:var(--muted);margin-right:6px;align-self:center}
 /* 影片清單 */
 .clips{display:flex;flex-direction:column;gap:6px}
-.clip{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:var(--line);border-radius:6px;padding:6px 10px;min-height:38px}
-.clip{border-left-width:4px}
+.clip{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:var(--line);border-left-width:4px;border-radius:6px;padding:6px 10px;min-height:38px}
 .clip.bgc{border-left-color:var(--accent)}
 .clip .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .clip .cm{font-size:12.5px;color:var(--muted);flex:none}
@@ -91,9 +88,9 @@ button{font:500 14px/20px var(--sans);color:var(--ink);background:var(--sunk);bo
 button:hover{background:var(--line)}
 button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent)}
 button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
-button.primary:hover{background:#9cc4aa}
+button.primary:hover{background:var(--accent-hover)}
 button.strong{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
-button.strong:hover{background:#2e3d33}
+button.strong:hover{background:var(--accent-soft-hover)}
 button.small{padding:4px 10px;min-height:32px;font-size:13px}
 button.link{border:none;background:none;color:var(--accent);padding:2px 4px;min-height:0;text-decoration:underline}
 button:disabled{opacity:.45;cursor:not-allowed}
@@ -122,10 +119,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .status{font-size:13px;line-height:21px;color:var(--muted);white-space:pre-wrap;margin-top:6px}
 .status:empty{display:none}
 .status.ok{color:var(--ink);padding:8px 10px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:4px}
-.status.err{color:var(--bad);font-size:13px;padding:8px 10px;background:var(--bad-soft);border-left:3px solid var(--bad);border-radius:4px}
+.status.err{color:var(--bad);font-size:13px;padding:8px 10px;margin-top:14px;background:var(--bad-soft);border:1.5px solid var(--bad);border-left-width:3px;border-radius:4px}
 .aifix{margin-top:6px}
 .callout{padding:10px 12px;background:var(--warn-soft);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:21px;margin-top:8px}
-.err{padding:16px;background:var(--bad-soft);border:1.5px solid var(--bad);border-radius:var(--wobble-lg);margin-top:14px}
+#err{padding:16px;background:var(--bad-soft);border:1.5px solid var(--bad);border-radius:var(--wobble-lg);margin-top:14px}
 /* 貼上 */
 .flow{display:grid;grid-template-columns:auto auto 1fr;gap:4px 8px;align-items:center;font-size:12.5px;line-height:20px;padding:8px 10px;background:var(--sunk);border-radius:var(--wobble-lg);margin-bottom:8px}
 .flow code{font:12px/18px var(--mono);color:var(--ink)}
@@ -226,7 +223,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
     <button type="button" data-step="3"><b>3</b><span><strong>匯出放進簡報軟體</strong><small>下載 MP4；記得存成單檔 HTML</small></span></button>
   </nav>
 
-  <div class="err" id="err" hidden></div>
+  <div id="err" hidden></div>
   <div id="guard" role="status" hidden></div>
 
   <div class="grid" id="main">
