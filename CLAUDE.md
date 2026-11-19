@@ -45,6 +45,7 @@
 - 場景檔（`src/scenes/`、`examples/`）會被整份拿去給 AI 當範例：檔頭一行說明風格，不寫歷史、不寫「不是…」這類否定句，會誤導 AI。
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。
+- 質感表在 `gpu.js`（`T`／`ON`）和 `runtime.js`（`TEX_TYPES`／`TEX_ON`）各一份，要一起改；`tests/check_repo.py`（k）會比對。
 - `x.under(f, 預設)` 的底跟著段落選的背景走，改字幕時一起看背景。
 - 截圖與抽格給人看；判斷對錯用 `window.__app` 讀實際的值。
 - 改了 `src/` 沒重新打包，測試跑的是上一次打包的 `dist/`。
