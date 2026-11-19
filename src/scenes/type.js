@@ -170,6 +170,7 @@ function gentle2(f, x) {
 
 defineScene({
   id: 'type', name: '大字排版',
+  description: '大字當背景紋理，像口號海報。',
   palette: TY, labels: { bg: '底色', tone: '大字色', org: '重點色', crm: '字色' },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, draw: calm },

@@ -7,7 +7,7 @@ ROOT = pathlib.Path(__file__).parent
 SRC = ROOT / "src"
 OUT = ROOT / "dist" / "詩歌影片編輯器.html"
 S2T = SRC / "engine" / "s2t.txt"
-ENGINE = ["engine/gpu.js"]
+ENGINE = ["engine/gpu.js", "engine/shader_guard.js", "engine/mp4.js", "engine/zip.js", "engine/download.js"]
 EDITOR = ["editor/core.js", "editor/guard.js", "editor/hosts.js", "editor/project.js", "editor/lyrics.js",
           "editor/preview.js", "editor/history.js", "editor/songs.js", "editor/paste.js", "editor/ui.js",
           "editor/bind.js", "editor/export.js", "editor/single.js", "editor/main.js"]

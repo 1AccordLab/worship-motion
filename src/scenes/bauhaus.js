@@ -136,6 +136,7 @@ function gentle2(f, x) {
 
 defineScene({
   id: 'bauhaus', name: '包浩斯幾何',
+  description: '圓、三角、原色，活潑像兒童繪本。',
   palette: BH, labels: { bg: '底色', red: '紅', yel: '黃', blu: '藍', crm: '米白' },
   look: { paper: .09 },
   backgrounds: {

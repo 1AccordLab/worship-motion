@@ -1,14 +1,22 @@
 'use strict';
-/* 引擎：WebGPU 繪製、質感庫、Canvas 圖層、自訂 WGSL（含防護）、H.264 MP4 匯出、ZIP。不依賴任何外部檔案。 */
 const W = 1920, H = 1080, FPS = 30, AW = 4096, AH = 2048;
+const U_HEAD_FLOATS = 24, U_FLOATS = 88;
+const ITEM_FLOATS = 24;
+const CU_BYTES = 192;
+const LOOK_DEFAULT = { grain: .035, vignette: .22, lift: .025, cap: .93, paper: .05 };
 const hexToRgb = h => { const n = parseInt(String(h).slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
+const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16).padStart(8, '0'); };
 
-const WGSL_NOISE = `
-fn hash(p: vec2f) -> f32 { var p3 = fract(vec3f(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
-fn vnoise(p: vec2f) -> f32 {
+const WGSL_HASH = `fn hash(p: vec2f) -> f32 { var p3 = fract(vec3f(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }`;
+const wgslNoise = name => `fn ${name}(p: vec2f) -> f32 {
   let i = floor(p); let f = fract(p); let w = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2f(1.0, 0.0)), w.x), mix(hash(i + vec2f(0.0, 1.0)), hash(i + vec2f(1.0, 1.0)), w.x), w.y);
 }`;
+const wgslFullscreen = name => `@vertex fn ${name}(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
+  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0)); return vec4f(p[i], 0.0, 1.0);
+}`;
+const WGSL_NOISE = WGSL_HASH + '\n' + wgslNoise('vnoise');
+
 const WGSL_U = `
 struct U { res: vec2f, time: f32, frame: f32, grid: vec4f, bg: vec4f, gridCol: vec4f, post: vec4f, post2: vec4f, tex: array<vec4f, 16> };
 @group(0) @binding(0) var<uniform> u: U;`;
@@ -21,7 +29,7 @@ struct It { a: vec4f, c: vec4f, p: vec4f, q: vec4f, e: vec4f, b: vec4f };
 @group(0) @binding(4) var smp: sampler;
 ${WGSL_NOISE}
 fn ndc(p: vec2f) -> vec4f { return vec4f(p.x / u.res.x * 2.0 - 1.0, 1.0 - p.y / u.res.y * 2.0, 0.0, 1.0); }
-/* ---- 質感庫：slot = [種類, 作用圖層, 參數1, 參數2] [參數3, 參數4] ---- */
+/* 質感 slot = [種類, 作用圖層, 參數1, 參數2][參數3, 參數4]；種類與作用圖層的編號對應 setScene 的 T、ON */
 fn slotOn(i: u32, mask: u32, cls: u32) -> u32 {
   let s = u.tex[i * 2u];
   if ((mask & (1u << i)) == 0u || (u32(s.y) & cls) == 0u) { return 0u; }
@@ -47,14 +55,14 @@ fn texShift(px: vec2f, ink: vec3f, mask: u32, cls: u32) -> vec2f {
   return px + o;
 }
 fn texEdge(px: vec2f, sd0: f32, mask: u32, cls: u32, seed: f32) -> vec2f {
-  var sd = sd0; var soft = 1.0;
+  var sd = sd0; var fade = 1.0;
   for (var i = 0u; i < u32(u.post2.w); i++) {
     let ty = slotOn(i, mask, cls); if (ty == 0u) { continue; }
     let s = u.tex[i * 2u];
     if (ty == 6u) { sd += ((vnoise(px * 0.3 + seed) - 0.5) + (vnoise(px * 1.1 + seed * 1.3) - 0.5) * 0.5) * s.z; }
-    else if (ty == 5u) { sd += (vnoise(px * 0.025 + seed) * 0.65 + vnoise(px * 0.09 + seed) * 0.35 - 0.5) * s.z; soft += s.z * 0.35; }
+    else if (ty == 5u) { sd += (vnoise(px * 0.025 + seed) * 0.65 + vnoise(px * 0.09 + seed) * 0.35 - 0.5) * s.z; fade += s.z * 0.35; }
   }
-  return vec2f(sd, soft);
+  return vec2f(sd, fade);
 }
 fn texInk(px: vec2f, col: vec3f, cov: f32, a: f32, sd: f32, mask: u32, cls: u32, seed: f32) -> vec4f {
   var c = col; var al = cov * a;
@@ -75,7 +83,7 @@ fn texInk(px: vec2f, col: vec3f, cov: f32, a: f32, sd: f32, mask: u32, cls: u32,
   }
   return vec4f(c, al);
 }
-/* ---- 形狀：0 旋轉矩形、1 圓弧、2 圓、3 扇形、4 三角形；q = 手撕邊、亂數、紙影、纖維 ---- */
+/* 形狀種類 0 旋轉矩形、1 圓弧、2 圓、3 扇形、4 三角形；q = 手撕邊、亂數、紙影、纖維（和 runtime.js 的 frame() 一致） */
 fn sdShape(px: vec2f, s: It) -> f32 {
   let k = s.p.y; let d = px - s.a.xy; var sd = 0.0;
   if (k > 3.5) {
@@ -110,9 +118,7 @@ fn sdShape(px: vec2f, s: It) -> f32 {
 }
 struct SO { @builtin(position) pos: vec4f, @location(0) @interpolate(flat) id: u32 };
 const QUAD = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));
-@vertex fn vs_full(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
-  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0)); return vec4f(p[i], 0.0, 1.0);
-}
+${wgslFullscreen('vs_full')}
 @fragment fn fs_bg(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let px = fc.xy; var col = u.bg.rgb;
   let gx = px.x % u.grid.x; let gy = px.y % u.grid.y;
@@ -156,14 +162,13 @@ const QUAD = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.
   let inb = select(0.0, 1.0, all(l >= vec2f(0.0)) && all(l <= vec2f(1.0)));
   let uv = mix(g.p.xy, g.p.zw, clamp(l, vec2f(0.0), vec2f(1.0)));
   let a = textureSampleLevel(texA, smp, uv, 0.0).r; let b = textureSampleLevel(texB, smp, uv, 0.0).r;
-  var cov = select(a, b, g.q.y > 0.5) * inb;
-  if (g.q.w > 0.0) { cov *= clamp((g.q.z - i.pos.x) / g.q.w, 0.0, 1.0); }
+  let cov = select(a, b, g.q.y > 0.5) * inb;
   let ink = texInk(px, g.c.rgb, cov, g.c.a, 0.5 - cov, mask, 2u, 0.0);
   return vec4f(ink.rgb * ink.a, ink.a);
 }
 @vertex fn vs_seg(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> SO {
   var cs = QUAD; let s = its[ii]; let c = cs[vi] * vec2f(0.5, 1.0) + vec2f(0.5, 0.0);
-  let pad = s.p.x + max(s.p.y * 2.6, 0.0) + 1.5 + s.q.x * 0.6 + u.post2.z;
+  let pad = s.p.x + 1.5 + s.q.x * 0.6 + u.post2.z;
   let a = s.a.xy; let b = s.a.zw; let d = b - a; let len = length(d);
   let dir = select(vec2f(1.0, 0.0), d / max(len, 1e-4), len > 1e-4); let nrm = vec2f(-dir.y, dir.x);
   var o: SO; o.pos = ndc(a - dir * pad + dir * (len + 2.0 * pad) * c.x + nrm * pad * c.y); o.id = ii; return o;
@@ -178,9 +183,7 @@ const QUAD = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.
   if (s.q.x > 0.0) { sd += (vnoise(px * 0.21 + s.q.y) - 0.5) * s.q.x; }
   let ed = texEdge(px, sd, mask, 4u, s.q.y);
   let core = clamp(0.5 - ed.x / ed.y, 0.0, 1.0);
-  var glow = 0.0;
-  if (s.p.y > 0.0) { let q = max(d - s.p.x, 0.0) / s.p.y; glow = s.p.z * exp(-q * q); }
-  let ink = texInk(px, s.c.rgb, max(core, glow), s.c.a, ed.x, mask, 4u, s.q.y);
+  let ink = texInk(px, s.c.rgb, core, s.c.a, ed.x, mask, 4u, s.q.y);
   return vec4f(ink.rgb * ink.a, ink.a);
 }
 `;
@@ -189,10 +192,8 @@ const WGSL_LAYER = WGSL_U + `
 @group(0) @binding(2) var lay2: texture_2d<f32>;
 @group(0) @binding(3) var smp: sampler;
 ${WGSL_NOISE}
-@vertex fn vs_full(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
-  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0)); return vec4f(p[i], 0.0, 1.0);
-}
-/* Canvas 圖層：getImageData 是未預乘的 RGBA */
+${wgslFullscreen('vs_full')}
+/* getImageData 是未預乘的 RGBA，合成前要先預乘 */
 @fragment fn fs_canvas(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let c = textureSampleLevel(lay, smp, fc.xy / vec2f(${W}.0, ${H}.0), 0.0); return vec4f(c.rgb * c.a, c.a);
 }
@@ -216,6 +217,7 @@ ${WGSL_NOISE}
   c = min(c, vec3f(u.post.w));
   return vec4f(c, 1.0);
 }`;
+/* YUV 為 BT.709 limited range，要和 readFrame 的 colorSpace、MP4 的 colr 一致 */
 const WGSL_YUV = `
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var<storage, read_write> outb: array<u32>;
@@ -243,68 +245,6 @@ fn yv(c: vec3f) -> u32 { return u32(round(16.0 + 219.0 * dot(c, vec3f(0.2126, 0.
   outb[(W * H + CW * CH) / 4u + id.y * row + id.x] = v;
 }`;
 
-/* ================= 自訂 WGSL：包裝、靜態檢查、編譯 ================= */
-const SH_PRE = `struct CU { res: vec2f, time: f32, beat: f32, pal: array<vec4f, 8>, prm: array<vec4f, 2> };
-@group(0) @binding(0) var<uniform> cu: CU;
-@group(0) @binding(1) var wm_src: texture_2d<f32>;
-@group(0) @binding(2) var wm_smp: sampler;
-const RES = vec2f(${W}.0, ${H}.0);
-fn scene(uv: vec2f) -> vec4f { return textureSampleLevel(wm_src, wm_smp, uv, 0.0); }
-fn pal(i: i32) -> vec3f { return cu.pal[clamp(i, 0, 7)].rgb; }
-fn param(i: i32) -> f32 { let k = clamp(i, 0, 7); return cu.prm[k / 4][k % 4]; }
-fn hash(p: vec2f) -> f32 { var p3 = fract(vec3f(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
-fn noise(p: vec2f) -> f32 { let i = floor(p); let f = fract(p); let w = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2f(1.0, 0.0)), w.x), mix(hash(i + vec2f(0.0, 1.0)), hash(i + vec2f(1.0, 1.0)), w.x), w.y); }
-`;
-const SH_POST = `
-@vertex fn wm_vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
-  var p = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0)); return vec4f(p[i], 0.0, 1.0);
-}
-@fragment fn wm_fs(@builtin(position) fc: vec4f) -> @location(0) vec4f {
-  let uv = fc.xy / cu.res;
-  let o = shade(uv, cu.time, cu.beat, scene(uv));
-  return vec4f(clamp(o.rgb, vec3f(0.0), vec3f(1.0)), 1.0);
-}`;
-const SH_PRE_LINES = SH_PRE.split('\n').length - 1;
-const SH_MAX_LEN = 6000, SH_MAX_ITER = 64, SH_MAX_NEST = 4096;
-/* 靜態檢查：回傳錯誤陣列（含使用者程式的行號） */
-function shaderStaticCheck(code) {
-  const errs = [], src = String(code || '');
-  const lineAt = i => src.slice(0, i).split('\n').length;
-  const err = (i, m) => errs.push({ line: i < 0 ? 0 : lineAt(i), msg: m });
-  if (src.length > SH_MAX_LEN) err(-1, `程式太長（${src.length} 字，上限 ${SH_MAX_LEN}）。`);
-  // 註解換成空白（保留換行，行號不變）
-  const s = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' ')).replace(/\/\/[^\n]*/g, m => ' '.repeat(m.length));
-  if (!/\bfn\s+shade\s*\(/.test(s)) err(-1, '找不到 fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f。');
-  const ban = [[/\bloop\b/g, '不能用 loop（可能跑不完）。請改用 for，上限 64 次。'], [/\bwhile\b/g, '不能用 while。請改用 for，上限 64 次。'],
-    [/@/g, '不能寫 @ 屬性（綁定、進入點由引擎處理）。'], [/\bvar\s*</g, '不能宣告 var<…> 全域資源（storage、workgroup、uniform 都不行）。'],
-    [/\btextureStore\b|\batomic\w*\b|\bptr\s*</g, '不能寫入資源或用指標。'], [/\b(enable|requires|diagnostic)\b/g, '不能用 enable／requires／diagnostic 指令。'],
-    [/\bwm_\w+/g, 'wm_ 開頭的名稱保留給引擎。']];
-  for (const [re, m] of ban) { const x = re.exec(s); if (x) err(x.index, m); }
-  // for：只允許 for (var i = 常數; i < 常數; i++)，次數 ≤ 64；迴圈變數不能在別處被改
-  const FOR = /\bfor\s*\(\s*var\s+([A-Za-z_]\w*)\s*(?::\s*(?:i32|u32)\s*)?=\s*(\d+)[iu]?\s*;\s*\1\s*(<=?)\s*(\d+)[iu]?\s*;\s*(?:\1\s*\+\+|\+\+\s*\1|\1\s*\+=\s*1[iu]?)\s*\)\s*\{/g;
-  const loops = []; let m;
-  const anyFor = /\bfor\s*\(/g;
-  while ((m = anyFor.exec(s))) {
-    FOR.lastIndex = m.index; const f = FOR.exec(s);
-    if (!f || f.index !== m.index) { err(m.index, 'for 的寫法只能是 for (var i = 0; i < 常數; i++) { … }。'); continue; }
-    const n = Number(f[4]) - Number(f[2]) + (f[3] === '<=' ? 1 : 0);
-    if (n > SH_MAX_ITER) err(m.index, `for 迴圈 ${n} 次，超過上限 ${SH_MAX_ITER}。`);
-    // 找迴圈本體的範圍
-    let depth = 1, j = FOR.lastIndex; while (j < s.length && depth) { if (s[j] === '{') depth++; else if (s[j] === '}') depth--; j++; }
-    loops.push({ start: m.index, end: j, n: Math.max(0, n), v: f[1], head: [m.index, FOR.lastIndex] });
-  }
-  let rest = s; for (const l of loops) rest = rest.slice(0, l.head[0]) + ' '.repeat(l.head[1] - l.head[0]) + rest.slice(l.head[1]);
-  for (const l of loops) {
-    const re = new RegExp('\\b' + l.v + '\\s*(\\+\\+|--|[-+*/%&|^]?=(?!=))', 'g'); const x = re.exec(rest);
-    if (x) err(x.index, `迴圈變數 ${l.v} 不能在迴圈裡被改（也不要在別處重複用這個名稱）。`);
-    let prod = l.n; for (const o of loops) if (o !== l && o.start < l.start && o.end >= l.end) prod *= o.n;
-    if (prod > SH_MAX_NEST) err(l.start, `巢狀迴圈總次數 ${prod}，超過上限 ${SH_MAX_NEST}（每個像素都要跑這麼多次）。`);
-  }
-  return errs;
-}
-const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16).padStart(8, '0'); };
-
-/* ================= 渲染器 ================= */
 class Renderer {
   async init(canvas) {
     if (!navigator.gpu) throw new Error('NO_WEBGPU');
@@ -316,8 +256,8 @@ class Renderer {
     this.canvas = canvas; this.format = 'rgba8unorm';
     if (canvas) { canvas.width = W; canvas.height = H; this.ctx = canvas.getContext('webgpu'); this.format = navigator.gpu.getPreferredCanvasFormat(); this.ctx.configure({ device: d, format: this.format, alphaMode: 'opaque' }); }
     const B = GPUBufferUsage, T = GPUTextureUsage, SS = GPUShaderStage;
-    this.ubuf = d.createBuffer({ size: 352, usage: B.UNIFORM | B.COPY_DST });
-    this.cubuf = d.createBuffer({ size: 192, usage: B.UNIFORM | B.COPY_DST });
+    this.ubuf = d.createBuffer({ size: U_FLOATS * 4, usage: B.UNIFORM | B.COPY_DST });
+    this.cubuf = d.createBuffer({ size: CU_BYTES, usage: B.UNIFORM | B.COPY_DST });
     this.itemCap = 0; this.ensureItems(4096);
     const r8 = () => d.createTexture({ size: [AW, AH], format: 'r8unorm', usage: T.TEXTURE_BINDING | T.COPY_DST });
     this.texA = r8(); this.texB = r8();
@@ -326,7 +266,6 @@ class Renderer {
     this.outTex = d.createTexture({ size: [W, H], format: 'rgba8unorm', usage: T.RENDER_ATTACHMENT | T.TEXTURE_BINDING });
     this.smp = d.createSampler({ magFilter: 'linear', minFilter: 'linear' });
     this.canvasTex = null;
-    // YUV（BT.709 limited）
     const YUV = W * H * 3 / 2;
     this.yuvBuf = d.createBuffer({ size: YUV, usage: B.STORAGE | B.COPY_SRC });
     this.readBuf = d.createBuffer({ size: YUV, usage: B.COPY_DST | B.MAP_READ });
@@ -335,7 +274,6 @@ class Renderer {
     this.pUV = d.createComputePipeline({ layout: 'auto', compute: { module: cmod, entryPoint: 'cs_uv' } });
     this.yuvBind = [this.pY, this.pUV].map(p => d.createBindGroup({ layout: p.getBindGroupLayout(0), entries: [
       { binding: 0, resource: this.outTex.createView() }, { binding: 1, resource: { buffer: this.yuvBuf } }] }));
-    // 主要圖層
     const mod = d.createShaderModule({ code: WGSL_MAIN });
     this.ibgl = d.createBindGroupLayout({ entries: [
       { binding: 0, visibility: SS.VERTEX | SS.FRAGMENT, buffer: { type: 'uniform' } },
@@ -345,13 +283,11 @@ class Renderer {
     const pl = d.createPipelineLayout({ bindGroupLayouts: [this.ibgl] });
     const BL = [
       { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } },
-      { color: { srcFactor: 'dst', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } },
-      { color: { operation: 'max', srcFactor: 'one', dstFactor: 'one' }, alpha: { operation: 'max', srcFactor: 'one', dstFactor: 'one' } }];
+      { color: { srcFactor: 'dst', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } }];
     const mk = (vs, fs, blend) => d.createRenderPipeline({ layout: pl, vertex: { module: mod, entryPoint: vs },
       fragment: { module: mod, entryPoint: fs, targets: [blend ? { format: 'rgba16float', blend } : { format: 'rgba16float' }] }, primitive: { topology: 'triangle-list' } });
     this.pBg = mk('vs_full', 'fs_bg', null);
     this.pItem = [['vs_shape', 'fs_shape'], ['vs_glyph', 'fs_glyph'], ['vs_seg', 'fs_seg']].map(([v, f]) => BL.map(b => mk(v, f, b)));
-    // 圖層合成、後製
     const lmod = d.createShaderModule({ code: WGSL_LAYER });
     this.lbgl = d.createBindGroupLayout({ entries: [
       { binding: 0, visibility: SS.FRAGMENT, buffer: { type: 'uniform' } },
@@ -366,16 +302,14 @@ class Renderer {
     this.pPostView = canvas ? lmk('fs_post', this.format, null) : null;
     this.postBind = this.scn.map(t => this.lbind(t, t));
     this.halfBind = this.scn.map(t => this.lbind(t, this.half));
-    // 自訂 shader 的綁定
     this.cbgl = d.createBindGroupLayout({ entries: [
       { binding: 0, visibility: SS.FRAGMENT, buffer: { type: 'uniform' } },
       { binding: 1, visibility: SS.FRAGMENT, texture: {} }, { binding: 2, visibility: SS.FRAGMENT, sampler: {} }] });
     this.cpl = d.createPipelineLayout({ bindGroupLayouts: [this.cbgl] });
     this.cBind = this.scn.map(t => d.createBindGroup({ layout: this.cbgl, entries: [
       { binding: 0, resource: { buffer: this.cubuf } }, { binding: 1, resource: t.createView() }, { binding: 2, resource: this.smp }] }));
-    this.look = { grain: .035, vignette: .22, lift: .025, cap: .93, paper: .05 };
-    this.tex = new Float32Array(64); this.texPad = 0; this.texN = 0; this.pal8 = new Float32Array(32); this.prm8 = new Float32Array(8);
-    this.shader = null;   // { pipeline, half, code, hash }
+    this.setScene({});
+    this.shader = null;
   }
   lbind(a, b) {
     return this.device.createBindGroup({ layout: this.lbgl, entries: [
@@ -385,7 +319,7 @@ class Renderer {
     if (n <= this.itemCap) return;
     this.itemCap = Math.max(n, this.itemCap * 2);
     if (this.itemBuf) this.itemBuf.destroy();
-    this.itemBuf = this.device.createBuffer({ size: this.itemCap * 96, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    this.itemBuf = this.device.createBuffer({ size: this.itemCap * ITEM_FLOATS * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     this.ibind = null;
   }
   itemBind() {
@@ -393,11 +327,11 @@ class Renderer {
       { binding: 0, resource: { buffer: this.ubuf } }, { binding: 1, resource: { buffer: this.itemBuf } },
       { binding: 2, resource: this.texA.createView() }, { binding: 3, resource: this.texB.createView() }, { binding: 4, resource: this.smp }] }));
   }
-  /* 場景的後製、質感庫、配色與參數（給自訂 shader） */
   setScene({ look = {}, textures = [], pal = {}, palKeys = [], params = [] }) {
-    const L = this.look = { grain: .035, vignette: .22, lift: .025, cap: .93, paper: .05 };
+    const L = this.look = { ...LOOK_DEFAULT };
     for (const k of Object.keys(L)) if (typeof look[k] === 'number') L[k] = look[k];
-    L.lift = Math.max(.015, L.lift); L.cap = Math.min(.95, L.cap);       // 固定：不要純黑純白
+    L.lift = Math.max(.015, L.lift); L.cap = Math.min(.95, L.cap);   // 產品規則：不要純黑純白
+    /* T、ON 要和 runtime.js 的 TEX_TYPES、TEX_ON 一致 */
     const T = { fiber: 1, grain: 2, halftone: 3, misreg: 4, bleed: 5, rough: 6, wobble: 7 }, ON = { shapes: 1, text: 2, lines: 4, bg: 8 };
     const t = this.tex = new Float32Array(64); let pad = 0;
     textures.slice(0, 8).forEach((x, i) => {
@@ -428,15 +362,15 @@ class Renderer {
     this.device.queue.writeTexture({ texture: this.canvasTex }, px, { bytesPerRow: w * 4 }, [w, h]);
     this.canvasOn = true;
   }
-  /* 畫一格。fr = 場景 Worker 給的 { buf, n, runs, bg, grid }；target：'out'（匯出／抽格）或 'canvas'（預覽） */
+  /* fr = 場景 Worker 給的 { buf, n, runs, bg, grid }；target：'out'（匯出／抽格）或 'canvas'（預覽） */
   render(fr, idx, target, time, beat) {
     const d = this.device, L = this.look, q = d.queue;
-    const U = new Float32Array(88);
+    const U = new Float32Array(U_FLOATS);
     U.set([W, H, time, idx, fr.grid[0], fr.grid[1], fr.grid[2], fr.grid[3], fr.bg[0], fr.bg[1], fr.bg[2], 1, fr.grid[4], fr.grid[5], fr.grid[6], 1,
       L.grain, L.vignette, L.lift, L.cap, L.paper, beat, this.texPad, this.texN]);
-    U.set(this.tex, 24);
+    U.set(this.tex, U_HEAD_FLOATS);
     q.writeBuffer(this.ubuf, 0, U);
-    if (fr.n) { this.ensureItems(fr.n); q.writeBuffer(this.itemBuf, 0, fr.buf, 0, fr.n * 24); }
+    if (fr.n) { this.ensureItems(fr.n); q.writeBuffer(this.itemBuf, 0, fr.buf, 0, fr.n * ITEM_FLOATS); }
     const enc = d.createCommandEncoder(); let cur = 0;
     const begin = (load) => enc.beginRenderPass({ colorAttachments: [{ view: this.scn[cur].createView(), loadOp: load ? 'load' : 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
     let p = begin(false); p.setBindGroup(0, this.itemBind()); p.setPipeline(this.pBg); p.draw(3);
@@ -478,7 +412,6 @@ class Renderer {
     return new VideoFrame(data, { format: 'I420', codedWidth: W, codedHeight: H, timestamp, duration: Math.round(1e6 / FPS),
       colorSpace: { primaries: 'bt709', transfer: 'bt709', matrix: 'bt709', fullRange: false } });
   }
-  /* ---- 自訂 shader：編譯（行號）→ 建 pipeline ---- */
   async compileShader(user) {
     const d = this.device, code = SH_PRE + user + SH_POST;
     d.pushErrorScope('validation');
@@ -496,7 +429,7 @@ class Renderer {
     if (ve && !errs.length) errs.push({ line: 0, msg: ve.message });
     return { pipeline, errs };
   }
-  /* ---- 試跑測速：極小解析度開始，用 onSubmittedWorkDone 量時間，逾時視為卡住 ---- */
+  /* WebGPU 沒有取消機制：用 onSubmittedWorkDone 加逾時判斷卡住 */
   async timeShader(pipeline, w, h, reps, timeout) {
     const d = this.device;
     const tex = d.createTexture({ size: [w, h], format: 'rgba16float', usage: GPUTextureUsage.RENDER_ATTACHMENT });
@@ -513,117 +446,4 @@ class Renderer {
     if (!ok) throw new Error('HANG');
     return (performance.now() - t0) / reps;
   }
-}
-
-/* ================= MP4（H.264）封裝 ================= */
-const MP4 = (() => {
-  const u8 = (...v) => new Uint8Array(v), u16 = v => u8(v >> 8 & 255, v & 255), u32 = v => u8(v >>> 24 & 255, v >>> 16 & 255, v >>> 8 & 255, v & 255);
-  const str = s => new Uint8Array([...s].map(c => c.charCodeAt(0))), zeros = n => new Uint8Array(n);
-  function box(type, ...parts) {
-    let len = 8; for (const p of parts) len += p.length;
-    const b = new Uint8Array(len); new DataView(b.buffer).setUint32(0, len); b.set(str(type), 4);
-    let o = 8; for (const p of parts) { b.set(p, o); o += p.length; } return b;
-  }
-  const full = (type, v, f, ...parts) => box(type, u8(v, f >> 16 & 255, f >> 8 & 255, f & 255), ...parts);
-  const MATRIX = [0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000];
-  function build({ width, height, fps, samples, avcC }) {
-    const n = samples.length, ts = fps * 1000, delta = 1000, dur = n * delta;
-    let cto = samples.map((s, i) => Math.round(s.ts / 1e6 * ts) - i * delta);
-    const shift = -Math.min(0, ...cto); cto = cto.map(c => c + shift);
-    const needCtts = cto.some(c => c !== 0);
-    const ftyp = box('ftyp', str('isom'), u32(512), str('isomiso2avc1mp41'));
-    let size = 0; for (const s of samples) size += s.data.length;
-    const mdatHead = new Uint8Array(8); new DataView(mdatHead.buffer).setUint32(0, size + 8); mdatHead.set(str('mdat'), 4);
-    const offset = ftyp.length + 8;
-    const mvhd = full('mvhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u32(0x00010000), u16(0x0100), zeros(10), ...MATRIX.map(u32), zeros(24), u32(2));
-    const tkhd = full('tkhd', 0, 3, u32(0), u32(0), u32(1), u32(0), u32(dur), zeros(8), u16(0), u16(0), u16(0), u16(0), ...MATRIX.map(u32), u32(width * 65536), u32(height * 65536));
-    const mdhd = full('mdhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u16(0x55c4), u16(0));
-    const hdlr = full('hdlr', 0, 0, u32(0), str('vide'), zeros(12), str('VideoHandler'), u8(0));
-    const dinf = box('dinf', full('dref', 0, 0, u32(1), full('url ', 0, 1)));
-    const colr = box('colr', str('nclx'), u16(1), u16(1), u16(1), u8(0));
-    const avc1 = box('avc1', zeros(6), u16(1), zeros(16), u16(width), u16(height), u32(0x00480000), u32(0x00480000), u32(0), u16(1), zeros(32), u16(0x18), u16(0xffff), box('avcC', avcC), colr);
-    const keys = []; samples.forEach((s, i) => { if (s.key) keys.push(i + 1); });
-    const stbl = box('stbl', full('stsd', 0, 0, u32(1), avc1), full('stts', 0, 0, u32(1), u32(n), u32(delta)),
-      ...(needCtts ? [full('ctts', 0, 0, u32(n), ...cto.flatMap(c => [u32(1), u32(c)]))] : []),
-      full('stss', 0, 0, u32(keys.length), ...keys.map(u32)), full('stsc', 0, 0, u32(1), u32(1), u32(n), u32(1)),
-      full('stsz', 0, 0, u32(0), u32(n), ...samples.map(s => u32(s.data.length))), full('stco', 0, 0, u32(1), u32(offset)));
-    const edts = needCtts ? [box('edts', full('elst', 0, 0, u32(1), u32(dur), u32(shift), u32(0x00010000)))] : [];
-    const trak = box('trak', tkhd, ...edts, box('mdia', mdhd, hdlr, box('minf', full('vmhd', 0, 1, zeros(8)), dinf, stbl)));
-    return new Blob([ftyp, mdatHead, ...samples.map(s => s.data), box('moov', mvhd, trak)], { type: 'video/mp4' });
-  }
-  return { build };
-})();
-async function pickCodec() {
-  for (const codec of ['avc1.640028', 'avc1.4d0028', 'avc1.42e028']) {
-    const cfg = { codec, width: W, height: H, bitrate: 12_000_000, framerate: FPS, avc: { format: 'avc' } };
-    try { const s = await VideoEncoder.isConfigSupported(cfg); if (s.supported) return cfg; } catch (e) { }
-  }
-  throw new Error('NO_H264');
-}
-/* 逐格算出來並編成 MP4；renderOut(i) 要把第 i 格畫到 'out' */
-async function encodeFrames(r, frames, renderOut, onProgress, isCancelled) {
-  if (typeof VideoEncoder === 'undefined') throw new Error('NO_H264');
-  const cfg = await pickCodec(), samples = []; let avcC = null, err = null;
-  const enc = new VideoEncoder({
-    output: (chunk, meta) => {
-      const data = new Uint8Array(chunk.byteLength); chunk.copyTo(data);
-      samples.push({ data, key: chunk.type === 'key', ts: chunk.timestamp });
-      const desc = meta && meta.decoderConfig && meta.decoderConfig.description;
-      if (desc && !avcC) avcC = new Uint8Array(desc instanceof ArrayBuffer ? desc : desc.buffer.slice(desc.byteOffset, desc.byteOffset + desc.byteLength));
-    },
-    error: e => { err = e; },
-  });
-  enc.configure(cfg);
-  try {
-    for (let i = 0; i < frames; i++) {
-      if (err) throw err;
-      if (isCancelled && isCancelled()) throw new Error('CANCELLED');
-      await renderOut(i);
-      const vf = await r().readFrame(Math.round(i * 1e6 / FPS));
-      enc.encode(vf, { keyFrame: i % (FPS * 2) === 0 }); vf.close();
-      while (enc.encodeQueueSize > 4) await new Promise(res => setTimeout(res, 2));
-      if (onProgress && (i % 5 === 0 || i === frames - 1)) onProgress((i + 1) / frames);
-    }
-    await enc.flush();
-  } finally { if (enc.state !== 'closed') enc.close(); }
-  if (err) throw err;
-  if (!avcC) throw new Error('NO_H264');
-  return MP4.build({ width: W, height: H, fps: FPS, samples, avcC });
-}
-/* ================= ZIP（不壓縮） ================= */
-const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
-function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-async function makeZip(files) {
-  const parts = [], central = []; let offset = 0;
-  for (const f of files) {
-    const data = new Uint8Array(await f.blob.arrayBuffer()), name = new TextEncoder().encode(f.name), crc = crc32(data);
-    const lh = new DataView(new ArrayBuffer(30));
-    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(12, 0x21, true);
-    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true);
-    parts.push(new Uint8Array(lh.buffer), name, data);
-    const ch = new DataView(new ArrayBuffer(46));
-    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(14, 0x21, true);
-    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
-    central.push(new Uint8Array(ch.buffer), name);
-    offset += 30 + name.length + data.length;
-  }
-  let cd = 0; for (const c of central) cd += c.length;
-  const end = new DataView(new ArrayBuffer(22));
-  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cd, true); end.setUint32(16, offset, true);
-  return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
-}
-// 在 claude.ai 的 artifact 裡，下載要透過平台的 downloads（會先請使用者確認）；本機打開則用一般下載。
-let __dlCap = null;
-try { if (typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function') __dlCap = window.claude.use('downloads').catch(() => null); } catch (e) { __dlCap = null; }
-async function download(blob, name) {
-  const cap = __dlCap ? await __dlCap : null;
-  if (cap) {
-    try { await cap.save({ filename: name, data: blob }); return; }
-    catch (e) { if (e && (e.code === 'declined' || e.code === 'rate_limited' || e.code === 'bad_request')) return; }
-  }
-  __plainDownload(blob, name);
-}
-function __plainDownload(blob, name) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 120000);
 }

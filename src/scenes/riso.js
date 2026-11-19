@@ -121,6 +121,7 @@ function gentle2(f, x) {
 
 defineScene({
   id: 'riso', name: '網點印刷',
+  description: '復古印刷、顏色稍微錯位，像獨立樂團海報。',
   palette: RS, labels: { bg: '紙色', pink: '粉紅墨', blue: '藍墨', yel: '黃墨', teal: '青墨', ink: '字墨' },
   look: { grain: .03, vignette: .12, paper: .07, cap: .9 },
   textures: [

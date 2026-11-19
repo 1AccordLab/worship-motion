@@ -131,6 +131,7 @@ function gentle2(f, x) {
 
 defineScene({
   id: 'paper', name: '剪紙拼貼',
+  description: '溫暖手作、紙片有影子，像手作卡片。',
   palette: PC, labels: { bg: '底色', red: '紅', yel: '黃', crm: '米白', pnk: '粉' },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, draw: calm },
