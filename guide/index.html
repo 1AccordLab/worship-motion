@@ -175,7 +175,7 @@
         <div class="dont"><h3><span class="mark-no">✗</span>用滑鼠拖曳選取</h3><span>框線會不見。只有設定時還能用；有新風格時會失敗。</span></div>
       </div>
       <div class="two">
-        <figure class="plain"><img src="img/paste_detect.jpg" alt="貼上後顯示「找到：設定 ✔ 新風格 ✔」"><figcaption>① 貼上後，先告訴你找到什麼</figcaption></figure>
+        <figure class="plain"><img src="img/paste_detect.jpg" alt="貼上後顯示「找到：」，後面列出設定、新風格各有沒有找到"><figcaption>① 貼上後，先告訴你找到什麼</figcaption></figure>
         <figure class="plain"><img src="img/paste_applied.jpg" alt="按套用後列出改了哪些"><figcaption>② 按「套用」後，列出改了哪些</figcaption></figure>
       </div>
       <div class="two">
@@ -246,7 +246,7 @@
       </div>
       <h3>自己調：「自己調」分頁，改了預覽馬上變</h3>
       <div class="two">
-        <figure class="plain"><img src="img/self_section.jpg" alt="「自己調」分頁的「這一段」：背景、色塊換位、動態字幕、歌詞、第二語言歌詞、每支長度、進場速度"><figcaption>歌詞框下方會告訴你「會做成幾支字幕影片」</figcaption></figure>
+        <figure class="plain"><img src="img/self_section.jpg" alt="「自己調」分頁的「這一段」：背景、色塊換位、動態字幕、歌詞、第二語言歌詞、每支長度、進場速度"><figcaption>歌詞框下方會告訴你要做成幾支字幕影片</figcaption></figure>
         <div style="display:grid; gap:12px;">
           <p class="small muted"><b>背景</b>：同一個風格，從安靜到熱鬧。字幕影片底下也是這段選的背景。</p>
           <div class="strip">
@@ -337,12 +337,12 @@
     <h2>內建都不像？跟 AI 描述，它會做一個新的</h2>
     <p>例如「想要海面」「像木刻版畫」。拿到之後跟一般回覆一樣，整則貼回來。</p>
   </div>
-  <div class="flow wrap2" role="img" aria-label="新風格流程：描述感覺，AI 給新風格，整則貼回套用，編輯器試跑，風格選單出現自訂">
+  <div class="flow wrap2" role="img" aria-label="新風格流程：描述感覺，AI 給新風格，整則貼回套用，編輯器試跑，風格選單多一個「AI 新風格」">
     <div class="node node-start"><span class="where">AI 對話</span>描述想要的感覺</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
     <div class="node"><span class="where">AI 對話</span>AI 給新風格<small>回覆裡有 ```js 框</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
     <div class="node node-key"><span class="where">編輯器</span>整則貼回、套用</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
     <div class="node"><span class="where">編輯器</span>先試跑幾秒<small>有問題會擋下</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
-    <div class="node node-end"><span class="where">編輯器</span>風格選單多「自訂：…」</div>
+    <div class="node node-end"><span class="where">編輯器</span>風格選單多「AI 新風格：」</div>
   </div>
   <div class="callout"><span class="callout-icon">!</span><div><b>新風格跟著那一首歌（分頁）。</b>存成單檔 HTML 時會一起存進去，帶到別台電腦也能用。試跑失敗的原因會顯示在貼上框下方，複製給 AI 修。</div></div>
 </section>
@@ -374,7 +374,7 @@
 <figure><img src="img/swiss_gentle.jpg" alt="瑞士網格收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>剪紙拼貼</h3><span class="badge">溫暖、手作、紙片有影子</span><span class="small muted">青年、見證、溫馨</span></div><div class="frames">
 <figure><img src="img/paper_peak.jpg" alt="剪紙拼貼高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
 <figure><img src="img/paper_flashy.jpg" alt="剪紙拼貼華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
-<figure><img src="img/paper_gentle.jpg" alt="剪紙拼貼收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>大字排版</h3><span class="badge">大字當背景紋理</span><span class="small muted">宣告、口號型歌詞。背景大字是「光、火、愛」，想換字請 AI 改</span></div><div class="frames">
+<figure><img src="img/paper_gentle.jpg" alt="剪紙拼貼收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>大字排版</h3><span class="badge">大字當背景紋理</span><span class="small muted">宣告、口號型歌詞。背景大字是光、火、愛，想換字請 AI 改</span></div><div class="frames">
 <figure><img src="img/type_peak.jpg" alt="大字排版高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
 <figure><img src="img/type_flashy.jpg" alt="大字排版華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
 <figure><img src="img/type_gentle.jpg" alt="大字排版收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>包浩斯幾何</h3><span class="badge">圓、三角、原色</span><span class="small muted">兒童、歡慶</span></div><div class="frames">
@@ -386,10 +386,10 @@
 <figure><img src="img/riso_gentle.jpg" alt="網點印刷收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>墨染</h3><span class="badge">宣紙上墨慢慢暈開、淡去，像呼吸</span><span class="small muted">安靜敬拜</span></div><div class="frames">
 <figure><img src="img/ink_peak.jpg" alt="墨染高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
 <figure><img src="img/ink_flashy.jpg" alt="墨染華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
-<figure><img src="img/ink_gentle.jpg" alt="墨染收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>光柱</h3><span class="badge">深藍綠底，高窗落下幾道光</span><span class="small muted">安靜敬拜、感恩</span></div><div class="frames">
+<figure><img src="img/ink_gentle.jpg" alt="墨染收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>光柱</h3><span class="badge">深藍綠底，高窗落下幾道光</span><span class="small muted">敬拜、安靜的歌</span></div><div class="frames">
 <figure><img src="img/nave_peak.jpg" alt="光柱高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
 <figure><img src="img/nave_flashy.jpg" alt="光柱華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
-<figure><img src="img/nave_gentle.jpg" alt="光柱收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>天空</h3><span class="badge">雲層慢慢飄，高潮雲開、光束落下</span><span class="small muted">敬拜、高舉</span></div><div class="frames">
+<figure><img src="img/nave_gentle.jpg" alt="光柱收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>天空</h3><span class="badge">雲層慢慢飄，高潮雲開、光束落下</span><span class="small muted">敬拜、宣告、高舉</span></div><div class="frames">
 <figure><img src="img/sky_peak.jpg" alt="天空高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
 <figure><img src="img/sky_flashy.jpg" alt="天空華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
 <figure><img src="img/sky_gentle.jpg" alt="天空收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div>
@@ -432,7 +432,7 @@
   </div>
   <div class="faq">
     <div class="qa"><h3>出現「這個瀏覽器沒有開啟 WebGPU」或「初始化失敗」？</h3><p>改用最新版 Chrome 或 Edge 打開。換了還不行，就換一台電腦試，最好是要播放的那台。</p></div>
-    <div class="qa"><h3>出現「不允許背景執行緒」的黃色提示？</h3><p>代表是在某個預覽視窗裡看（例如聊天畫面裡的預覽）。可以看、可以改；要匯出或試新風格，請用 Chrome 打開<a href="../">編輯器</a>，或打開存好的單檔 HTML。</p></div>
+    <div class="qa"><h3>出現「這個環境（例如 AI 對話裡的預覽）限制比較多」的黃色提示？</h3><p>代表是在某個預覽視窗裡看（例如聊天畫面裡的預覽）。可以看、可以改；要匯出或試新風格，請用 Chrome 打開<a href="../">編輯器</a>，或打開存好的單檔 HTML。</p></div>
     <div class="qa"><h3>貼上後「找到」都是空的？</h3><p>多半是用滑鼠選取，漏了 ``` 框線。改用 AI 回覆下方的「複製」按鈕再貼一次。</p></div>
     <div class="qa"><h3>剛才那首歌不見了？</h3><p>先看上面的歌曲分頁；關掉的分頁從「最近關閉」叫回來；改壞了用「↶ 還原」或歷史紀錄。換了電腦或清過瀏覽器資料，就打開存好的單檔 HTML。</p></div>
     <div class="qa"><h3>匯出要等很久？</h3><p>正常，每一格都要算。整首歌匯出時，不要切走、不要關分頁。</p></div>

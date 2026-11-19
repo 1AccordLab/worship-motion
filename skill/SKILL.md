@@ -73,7 +73,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 
 每次給完設定，最後加一行 **「下次可以這樣說：」**，把這次的答案組成一句完整的話，例如：
 
-> 下次可以這樣說：「All the Lights，熱血宣告，網點印刷風格，導歌和副歌要動態字幕，顏色用教會的墨綠。歌詞如下：…」
+> 下次可以這樣說：「示意歌名，熱血宣告，網點印刷風格，導歌和副歌要動態字幕，顏色用教會的墨綠。歌詞如下：…」
 
 同工問「我該怎麼說」時，給這兩個範本和詞庫：
 
@@ -102,16 +102,16 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 | 高潮、宣告、副歌、大合唱 | `peak` | `gentle`（字少、好跟唱）；宣告句用 `flashy` |
 | 間奏、結尾、只要背景 | 依情緒 | `none` |
 
-| 風格 `style` | 個性 | 適合 |
+| 風格 `style` | 說明（和編輯器顯示的一致） | 適合 |
 |---|---|---|
-| `swiss` 瑞士網格 | 俐落、色塊跳格 | 快歌、現代 |
-| `paper` 剪紙拼貼 | 溫暖、手作、紙影 | 青年、見證、溫馨 |
-| `type` 大字排版 | 大字當背景紋理 | 宣告、口號型歌詞 |
-| `bauhaus` 包浩斯幾何 | 活潑幾何、原色 | 兒童、歡慶 |
-| `riso` 網點印刷 | 復古印刷、套色錯位 | 年輕、潮、活力 |
-| `ink` 墨染 | 宣紙上墨慢慢暈開、淡去，像呼吸 | 適合敬拜、安靜的歌 |
-| `nave` 光柱 | 深藍到墨綠底，高窗落下平塗光柱 | 適合敬拜、安靜的歌 |
-| `sky` 天空 | 切紙雲層慢慢飄，高潮雲開、平塗光束 | 敬拜、宣告、高舉 |
+| `swiss` 瑞士網格 | 俐落色塊、跟著節拍跳格，像設計展海報 | 快歌、現代 |
+| `paper` 剪紙拼貼 | 溫暖手作、紙片有影子，像手作卡片 | 青年、見證、溫馨 |
+| `type` 大字排版 | 大字當背景紋理，像口號海報 | 宣告、口號型歌詞 |
+| `bauhaus` 包浩斯幾何 | 圓、三角、原色，活潑像兒童繪本 | 兒童、歡慶 |
+| `riso` 網點印刷 | 復古印刷、顏色稍微錯位，像獨立樂團海報 | 年輕、潮、活力 |
+| `ink` 墨染 | 暖色宣紙上，墨慢慢暈開、淡去、再暈開，像呼吸 | 敬拜、安靜的歌 |
+| `nave` 光柱 | 深藍到墨綠的底，高窗落下幾道平塗光柱，慢慢淡入淡出 | 敬拜、安靜的歌 |
+| `sky` 天空 | 切紙雲層慢慢飄，高潮時雲開、平塗光束落下 | 敬拜、宣告、高舉的歌 |
 
 使用者說的感覺內建沒有（例如「木刻版畫」「拼布」「海面」），才寫新場景（第二節）。內建都有 `calm` `build` `peak` 三種背景與 `flashy` `gentle` 兩種字幕；`ink` `nave` `sky` 的 `flashy` 是克制版（字重、顏色、慢慢淡入）。
 
@@ -121,7 +121,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 
 ```json
 {
-  "format": "worship-motion/1", "title": "All the Lights", "style": "riso", "bpm": 120,
+  "format": "worship-motion/1", "title": "示意歌名", "style": "riso", "bpm": 120,
   "palette": { "pink": "#e2536e" }, "params": {},
   "sections": [
     { "name": "主歌", "background": "calm", "jumpBeats": 4, "loopBeats": 32, "subtitle": "none" },
@@ -133,12 +133,16 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 
 | 欄位 | 值 | 預設 | 說明 |
 |---|---|---|---|
-| `style` | 內建 `swiss` `paper` `type` `bauhaus` `riso` `ink` `nave` `sky`，或自訂場景的 `id` | 第一個 | 自訂場景要先貼上場景程式 |
+| `format` | `"worship-motion/1"` | — | 固定這個值 |
+| `title` | 文字（80 字內） | 目前的歌名 | 歌名，分頁上顯示 |
+| `note` | 文字（400 字內） | 空 | 備註，不影響畫面 |
+| `style` | 內建 `swiss` `paper` `type` `bauhaus` `riso` `ink` `nave` `sky`，或自訂場景的 `id` | 沿用目前的風格（新歌是 `swiss`） | 自訂場景要先貼上場景程式 |
 | `bpm` | 40–220 | 120 | 會微調到循環格數為整數 |
 | `palette` | `{ 鍵: "#rrggbb" }` | 場景原色 | 只填想改的；換風格會清空 |
 | `params` | `{ 鍵: 數字 }` | 場景預設 | 場景有定義才有 |
-| `sections[].background` | 場景提供的背景名稱 | 第一種 | 內建場景都有 `calm` `build` `peak`（平靜／累積／高潮） |
-| `jumpBeats` | 1 2 4 8 | 場景設定 | 色塊每幾拍跳一次位置 |
+| `sections[].name` | 文字（30 字內） | 「段落 N」 | 段落名稱，例如主歌、副歌 |
+| `background` | 場景提供的背景名稱 | 第一種 | 內建場景都有 `calm` `build` `peak`（平靜／累積／高潮） |
+| `jumpBeats` | 1 2 4 8 | 場景設定 | 色塊換位：每幾拍跳一次位置 |
 | `loopBeats` | 32 64 128 | 32 | 背景循環長度 |
 | `subtitle` | `none` 或場景提供的字幕名稱 | `none` | 內建：`flashy` 華麗（一行一支，`[ ]` 標關鍵字）、`gentle` 收斂（空一行分一支，最多 3 行） |
 | `clipSeconds` | 2–60 | 場景設定 | 每支字幕長度 |
@@ -183,7 +187,8 @@ defineScene({
 
 | 欄位 | 必填 | 內容 |
 |---|---|---|
-| `id` `name` | name 必填 | id：英文名稱（寫進 JSON 的 style，規則見下）；name：中文風格名 |
+| `id` `name` | name 必填 | id：英文名稱（寫進 JSON 的 style，規則見下；省略＝`custom`）；name：中文風格名（30 字內） |
+| `description` | | 一句話、80 字內，顯示在編輯器的風格說明；新風格建議填 |
 | `palette` | ✔ | `{ 鍵: "#RRGGBB" }`，一定要有 `bg`。繪圖時從這個物件讀，編輯器會把使用者改的顏色填進來 |
 | `labels` | | 面板可調的顏色 `{ 鍵: "名稱" }`（省略＝全部） |
 | `backgrounds` | ✔ | `{ 名稱: { label, jumpBeats, draw(f, x) } }`。可以做通用的 `calm` `build` `peak`，也可以每一段各設計一種背景（例如 `verse1`、`chorus1`、`bridge`）；`label` 寫中文，面板上會顯示 |
@@ -200,23 +205,24 @@ defineScene({
 |---|---|
 | `t` | 秒。**永遠當 120 BPM 寫**（1 拍＝0.5 秒），編輯器依實際 BPM 伸縮 |
 | `beat` | 拍數（`t × 2`） |
-| `step(陣列, 每幾秒, t?)` | 依時間輪流取陣列的下一個：位置用「跳」的。會跟面板的「換位間隔」連動 |
+| `step(陣列, 每幾秒, t?)` | 依時間輪流取陣列的下一個：位置用「跳」的。會跟面板的「色塊換位」連動 |
 | `jt(t)` | 換位用時間（自己算跳位時用） |
 | `pal` `params` | 目前配色、參數 |
 | `text` `lines` `chars` `kw` `dur` | 字幕：原文、各行（去掉 `[ ]`）、大字那一行的字陣列、`[ ]` 那個字的位置、影片長度 |
 | `text2` `lines2` | 第二語言：原文、各行（和 `lines` 逐行配對） |
 | `big` `small` | 依 `swapLang` 對調好的兩組行：`big` 畫大字、`small` 畫小字（沒有第二語言時 `small` 是空陣列，畫面要和單語一樣） |
 | `swap` | 這段有沒有大小對調 |
-| `bg` `under(f, 預設, 選項)` | 字幕用：段落選的背景名稱；`x.under(f, calm)` 畫段落選的那種背景當字幕的底（沒指定時畫「預設」）。背景的 `draw(f, x, o)` 會收到 `o.sub`（`'line'`＝華麗、`'block'`＝收斂），可以在字幕底下讓出放大字的位置 |
+| `bg` `under(f, 預設, 選項)` | 字幕用。`x.bg`：段落選的背景名稱（沒選或這個風格沒有就是 `null`）。`x.under(f, calm)`：畫段落選的那種背景當字幕的底；`x.bg` 是 `null` 時畫第二個參數那個背景函式（省略則用第一種背景）。背景的 `draw(f, x, o)` 會收到 `o.sub`（`'line'`＝華麗、`'block'`＝收斂），可以在字幕底下讓出放大字的位置 |
 
 | `f.` | 用法（z：大的在上） |
 |---|---|
 | `f.add(形狀…)` | 形狀，z 0（可傳陣列） |
 | `f.top(形狀…)` | 蓋在字上面，z 2（開場掃屏用） |
-| `f.text(字, x, y, { px, weight, col, a, scale, rot, align, spacing, stroke, blur, shadow, z })` | 字，z 1，(x, y) 是中心；`align:'left'` 時 x 是左緣；`shadow:true` 用 blur 過的版本 |
+| `f.text(字, x, y, { px, weight, col, a, scale, rot, align, spacing, stroke, blur, shadow, z })` | 字，z 1，(x, y) 是中心；`align:'left'`／`'right'` 時 x 是左／右緣；`shadow:true` 用 blur 過的版本 |
 | `f.measure(字, 同上)` | `{ tw }` 字寬，排版用 |
+| `f.fit(字, 最大寬, 同上)` | 縮放倍率（≤ 1），讓這行字不超過最大寬；傳給 `scale` |
 | `f.line(x0, y0, x1, y1, 粗細, 色, a)`、`f.poly(點陣列, 粗細, 色, a)` | 線，z 0 |
-| `f.bg`、`f.grid = { alpha, col, w, h }` | 底色（預設 palette.bg）、網格線 |
+| `f.bg`、`f.grid = { alpha, flash, col, w, h, line }` | 底色（預設 palette.bg）、網格線（`flash` 疊加亮度、`line` 線寬） |
 
 | 形狀 | 參數 |
 |---|---|
@@ -297,7 +303,7 @@ fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {
 | shader 太慢 | 先在極小畫面試跑測速；太慢自動改半解析度；還太慢就拒絕並說明 |
 | 顯示卡卡住／斷線 | 自動重建、停用自訂 shader、專案不變 |
 | 試跑時整頁當掉 | 下次打開會發現，預設停用那段程式並提示 |
-| 在 AI 對話的預覽視窗裡打開（不允許背景執行緒） | 自動改在頁面裡執行：能看、能改，但沒有無窮迴圈保護；匯出與試新場景請下載後用 Chrome／Edge |
+| 在 AI 對話的預覽視窗裡打開（編輯器提示「這個環境（例如 AI 對話裡的預覽）限制比較多」） | 自動改在頁面裡執行：能看、能改，但沒有無窮迴圈保護；匯出與試新場景請下載後用 Chrome／Edge |
 
 ### 固定規則（只有兩條）
 
@@ -336,20 +342,4 @@ fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {
 | 歌詞 | 「自己調 → 貼上整首歌詞」：認得段落標題、濾掉版權行、中英交錯可選怎麼放、可轉繁體；全在瀏覽器裡處理 |
 | 改錯了 | 頂端「↶ 還原」「↷ 重做」（Ctrl／⌘＋Z）；「進階 → 歷史紀錄」可回到最近 50 步的任一個狀態；關掉的分頁從「最近關閉」叫回 |
 | 字型 | 用電腦內建字型，**在要播放的那台電腦上匯出**，字形才一致 |
-
----
-
-## 四、維護（改引擎才需要）
-
-| 部分 | 位置 |
-|---|---|
-| 場景執行環境（Worker） | `src/engine/runtime.js`：defineScene、形狀、文字圖集、逐格打包 |
-| 引擎（主執行緒） | `src/engine/gpu.js`：WebGPU 繪製、質感庫、Canvas 圖層、自訂 WGSL 檢查與試跑、MP4／ZIP |
-| 編輯器 | `src/app.js`、`src/editor.html`：設定檢查、Worker 與逾時、試跑標記、存成單檔 |
-| 內建風格 | `src/scenes/*.js`（用的就是上面的場景 API）；範例 `examples/*.js` |
-| 打包 | `python3 build_simple.py` → `dist/simple/詩歌影片編輯器.html`（加 `--s2t` 重新產生簡轉繁對照表 `src/engine/s2t.txt`，來源 OpenCC） |
-| 測試 | `python3 tests/test_guard.py`（防護與新功能）、`tests/test_workermode.py`（不允許 Worker 的環境）、`tests/test_ux.py`（介面流程）、`tests/test_lyrics.py`（雙語、整首貼上、簡轉繁、歌曲檔）、`tests/test_tabs.py`（歌曲分頁）、`tests/test_history.py`（還原／重做、歷史紀錄）、`tests/shots_ux.py`（介面截圖）、`tests/shots_songs.py`（風格截圖）、`tests/capture.py`＋`tests/compare.py`（抽格比對） |
-
-- 只用 WebGPU、不連網、不用外部函式庫；1920×1080、30fps、H.264（BT.709 limited）、自寫 MP4 muxer、stored ZIP。
-- 文字：Canvas2D → `getImageData` 取 alpha → `writeTexture`；不要用 `copyExternalImageToTexture`（無頭會失敗）。
-- 無頭測試：Chrome 旗標 `--enable-unsafe-webgpu --enable-features=Vulkan --use-vulkan=swiftshader --use-webgpu-adapter=swiftshader --disable-vulkan-surface`，網址加 `?nopreview`；`__app.grab(秒)` 回 PNG bytes。只抽幾格、不要在測試裡匯出整支 MP4。
+| 規格 | 1920×1080、30fps、H.264 的 MP4；只用 WebGPU、不連網、不用外部函式庫 |
