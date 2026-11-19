@@ -95,6 +95,7 @@ function flashy(f, x) {
 
 defineScene({
   id: 'nave', name: '光柱',
+  description: '深藍到墨綠的底，高窗落下幾道平塗光柱，慢慢淡入淡出。適合敬拜、安靜的歌。',
   palette: NV, labels: { bg: '上方深藍', green: '下方墨綠', win: '窗', light: '光', gold: '暖金' },
   look: { grain: .035, vignette: .14 },
   textures: [{ type: 'grain', on: 'bg,shapes', amount: .035 }],

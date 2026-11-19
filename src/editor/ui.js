@@ -1,6 +1,3 @@
-const STYLE_DESC = { swiss: '俐落色塊、跟著節拍跳格，像設計展海報。', paper: '溫暖手作、紙片有影子，像手作卡片。', type: '大字當背景紋理，像口號海報。', bauhaus: '圓、三角、原色，活潑像兒童繪本。', riso: '復古印刷、顏色稍微錯位，像獨立樂團海報。',
-  ink: '暖色宣紙上，墨慢慢暈開、淡去、再暈開，像呼吸。適合敬拜、安靜的歌。', nave: '深藍到墨綠的底，高窗落下幾道平塗光柱，慢慢淡入淡出。適合敬拜、安靜的歌。',
-  sky: '切紙雲層慢慢飄，高潮時雲開、平塗光束落下。適合敬拜、宣告、高舉的歌。', };
 const fixText = err => `我把你的回覆貼進「詩歌影片編輯器」，出現這個錯誤：\n\n${err}\n\n請修正後再給我一次完整的內容（設定放在 \`\`\`json 框、新風格放在 \`\`\`js 框）。`;
 function say(sel, text, kind) {
   const el = $(sel), bad = kind === true;
@@ -101,7 +98,7 @@ function renderGlobal() {
   $('#bpm').value = P.bpm;
   const eb = effBpm();
   $('#bpmNote').textContent = Math.abs(eb - P.bpm) > 0.005 ? `為了讓背景頭尾接得起來，實際用 ${eb.toFixed(2)}。` : '';
-  $('#styleDesc').textContent = STYLE_DESC[m.id] || (isCustomNow() ? 'AI 做的新風格。想改它的長相：「請 AI 改」勾選「連同新風格的程式」。' : '');
+  $('#styleDesc').textContent = isCustomNow() ? `${m.description || 'AI 做的新風格。'}想改它的長相：「請 AI 改」勾選「連同新風格的程式」。` : m.description;
   const box = $('#swatches'); box.innerHTML = '';
   for (const k of palKeys(m)) {
     const l = document.createElement('label'), i = document.createElement('input');

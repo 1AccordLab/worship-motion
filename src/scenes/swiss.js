@@ -178,6 +178,7 @@ function gentle2(f, x) {
 
 defineScene({
   id: 'swiss', name: '瑞士網格',
+  description: '俐落色塊、跟著節拍跳格，像設計展海報。',
   palette: SW, labels: { bg: '底色', org: '主色', crm: '亮色', dim: '暗色塊' },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, draw: calm },

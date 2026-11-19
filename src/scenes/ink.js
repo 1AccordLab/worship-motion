@@ -143,6 +143,7 @@ function flashy(f, x) {
 
 defineScene({
   id: 'ink', name: '墨染',
+  description: '暖色宣紙上，墨慢慢暈開、淡去、再暈開，像呼吸。適合敬拜、安靜的歌。',
   palette: INK, labels: { bg: '紙色', ink: '墨色', wash: '淡墨', warm: '暖色', seal: '印泥', shade: '紙影' },
   look: { grain: .02, vignette: .1, paper: .06 },
   textures: [

@@ -101,6 +101,7 @@ function flashy(f, x) {
 
 defineScene({
   id: 'sky', name: '天空',
+  description: '切紙雲層慢慢飄，高潮時雲開、平塗光束落下。適合敬拜、宣告、高舉的歌。',
   palette: SK, labels: { bg: '天色', blue: '藍', warm: '暖金', far: '遠雲', mid: '中雲', near: '近雲', hill: '山稜', light: '光' },
   look: { grain: .025, vignette: .14, paper: .06 },
   textures: [{ type: 'fiber', on: 'shapes,bg', amount: .08 }],
