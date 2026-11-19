@@ -1,5 +1,5 @@
 # 部署到 GitHub Pages：main → 網站根目錄（正式版）、develop → /dev/（開發版）；教學頁在各自的 guide/
-# 任一分支有新的 commit 就把兩邊都重新打包，一起部署
+# 任一分支有新的 commit 就把兩邊都重新打包，一起部署。develop 打包或檢查失敗時沿用正式版產物，不擋正式版
 name: 部署
 
 on:
@@ -27,15 +27,27 @@ jobs:
         continue-on-error: true
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - name: 檢查 repo 規則
+        run: cd prod && python3 tests/check_repo.py
       - name: 打包
         run: |
+          OUT="詩歌影片編輯器.html"
           mkdir -p site/dev
-          build() {
-            (cd "$1" && python3 build_simple.py) && cp "$1/dist/simple/詩歌影片編輯器.html" "$2/index.html"
-            if [ -d "$1/guide" ]; then cp -r "$1/guide" "$2/guide"; fi   # 教學頁：/guide/
+          check() {
+            grep -q 'id="wm-app"' "$1" && grep -q 'id="wm-skill"' "$1" \
+              && [ "$(grep -o 'class="wm-scene"' "$1" | wc -l)" -eq 8 ] && ! grep -q '{{' "$1"
           }
-          build prod site
-          if [ -f dev/build_simple.py ]; then build dev site/dev; else cp site/index.html site/dev/index.html; fi
+          build() {
+            (cd "$1" && python3 build.py) && check "$1/dist/$OUT" && cp "$1/dist/$OUT" "$2/index.html"
+          }
+          build prod site || { echo "::error::正式版打包或產物檢查失敗"; exit 1; }
+          cp -r prod/guide site/guide
+          if [ -f dev/build.py ] && (cd dev && python3 tests/check_repo.py) && build dev site/dev; then
+            cp -r dev/guide site/dev/guide
+          else
+            echo "::warning::develop 打包或檢查失敗，/dev/ 沿用正式版"
+            cp site/index.html site/dev/index.html; cp -r prod/guide site/dev/guide
+          fi
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }

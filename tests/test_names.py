@@ -4,8 +4,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
 MIN = (ROOT / "examples" / "minimal.js").read_text()
 CODE = MIN.replace("id: 'bars'", "id: 'InkWash'").replace("subtitles: { gentle:", "subtitles: { verse1Text:")
-res = []
-def rec(n, ok, d=""): res.append(bool(ok)); print(("✔" if ok else "✘"), n, "｜", str(d)[:160], flush=True)
 async def main():
     async with async_playwright() as pw:
         b, ctx, p = await open_page(pw)
@@ -23,4 +21,4 @@ async def main():
         rec("數字開頭的名稱仍擋下並說明", (not ok2) and "英文字母開頭" in await p.ev("__app.sceneStatus()"), await p.ev("__app.sceneStatus()"))
         rec("沒有頁面錯誤", not [l for l in p.log if "pageerror" in l], p.log[:2])
         await b.close()
-asyncio.run(main()); print("通過", sum(res), "/", len(res))
+asyncio.run(main()); finish()

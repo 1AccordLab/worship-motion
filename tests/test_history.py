@@ -4,10 +4,8 @@
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
-OUT = ROOT / "q" / "history"; OUT.mkdir(parents=True, exist_ok=True)
+OUT = OUT / "history"; OUT.mkdir(parents=True, exist_ok=True)
 MIN = (ROOT / "examples" / "minimal.js").read_text()
-res = []
-def rec(n, ok, d=""): res.append(bool(ok)); print(("✔" if ok else "✘"), n, "｜", str(d).replace("\n", " ")[:200], flush=True)
 async def main():
     async with async_playwright() as pw:
         b, ctx, p = await open_page(pw); pg = p.pg
@@ -24,16 +22,15 @@ async def main():
         rec("連續打字（改歌名）合併成一步", h["labels"][-1] == "改歌名" and h["labels"].count("改歌名") == 1, h["labels"])
         # 快捷鍵：文字框內 → 瀏覽器原生；文字框外 → 編輯器還原
         n0 = (await p.ev("__app.history()"))["pos"]
-        await pg.keyboard.press("Control+z"); await pg.wait_for_timeout(300)
+        await pg.keyboard.press("Control+z"); await pg.wait_for_timeout(300)   # 要確認「沒有發生」，只能等一小段
         rec("游標在文字框裡按 Ctrl+Z：不走編輯器還原（瀏覽器自己的文字還原）", (await p.ev("__app.history()"))["pos"] == n0)
-        await pg.click("#secCard h2"); await pg.keyboard.press("Control+z"); await pg.wait_for_function(f"__app.history().pos === {n0 - 1}", timeout=10000)
+        await pg.click("#secCard h2"); await pg.keyboard.press("Control+z"); await p.wait(f"__app.history().pos === {n0 - 1}")
         rec("離開文字框按 Ctrl+Z：編輯器還原（歌名回去）", (await pj())["title"] == "示意歌", (await pj())["title"])
-        await pg.keyboard.press("Control+Shift+z"); await pg.wait_for_function(f"__app.history().pos === {n0}", timeout=10000)
-        await pg.wait_for_timeout(800)
+        await pg.keyboard.press("Control+Shift+z"); await p.wait(f"__app.history().pos === {n0}")
         rec("Ctrl+Shift+Z 重做", (await pj())["title"].startswith("示意歌") and (await pj())["title"] != "示意歌", (await pj())["title"])
         # 各動作可還原／重做
         async def act(label, js, check):
-            before = await pj(); await p.ev(js); await pg.wait_for_timeout(100); after = await pj()
+            before = await pj(); await p.ev(js); await p.wait(f"JSON.stringify(__app.project)!=={json.dumps(json.dumps(before))}"); after = await pj()
             info = await p.ev("__app.undoInfo()"); await U(); u = await pj(); await R(); r = await pj()
             rec(f"{label}：可還原、可重做", check(before, after) and u == before and r == after, info["undo"])
         await act("換背景", "document.querySelector('#sBg button:nth-child(3)').click()", lambda a, b: a["sections"][0]["background"] != b["sections"][0]["background"])
@@ -43,7 +40,7 @@ async def main():
         await act("段落排序", "document.querySelector('#secList button[aria-label^=\"把「副歌」往上移\"]').click()", lambda a, b: b["sections"][0]["name"] == "副歌")
         await act("配色", "(()=>{const i=document.querySelector('#swatches input');i.value='#225588';i.dispatchEvent(new Event('input'))})()", lambda a, b: b["palette"] != a["palette"])
         await act("換風格", "(async()=>{const s=document.querySelector('#style');s.value='paper';await s.onchange()})()", lambda a, b: b["style"] == "paper")
-        await p.ev("(()=>{const t=document.querySelector('#sLyrics');t.value='这是第一行示意文字';t.dispatchEvent(new Event('input'))})()"); await pg.wait_for_timeout(400)
+        await p.ev("(()=>{const t=document.querySelector('#sLyrics');t.value='这是第一行示意文字';t.dispatchEvent(new Event('input'))})()"); await p.wait("__app.project.sections[0].lyrics==='这是第一行示意文字'")
         await act("簡轉繁", "document.querySelector('#s2tBtn').click()", lambda a, b: b["sections"][0]["lyrics"] == "這是第一行示意文字")
         await act("貼上整首歌詞", "__app.applySplitText('[Verse 1]\\n這是第一行示意文字\\n\\n[Chorus]\\n這是第二行示意文字')", lambda a, b: "第二行" in json.dumps(b, ensure_ascii=False))
         await act("套用 AI 的回覆", "__app.paste('```json\\n" + json.dumps(proj("swiss", title=(await pj())["title"], bpm=90), ensure_ascii=False).replace("\\", "\\\\").replace("'", "\\'") + "\\n```')", lambda a, b: b["bpm"] == 90)
@@ -65,13 +62,13 @@ async def main():
         await pg.click(f"#histList .hrow[data-k='{target}']")
         prev = await pg.inner_text("#histPrevT")
         await pg.screenshot(path=str(OUT / "歷史紀錄面板.png"))
-        await pg.click("#histGo"); await pg.wait_for_timeout(300)
+        await pg.click("#histGo"); await p.wait("__app.history().labels.at(-1).startsWith('回到 ')")
         h2 = await p.ev("__app.history()")
         rec("點一列 → 預覽差異 →「回到這個狀態」（新增一個紀錄點）", "和現在比" in prev or "就是現在" in prev, prev[:80])
         rec("回到之後還能「還原」", h2["labels"][-1].startswith("回到 ") and (await p.ev("__app.undoInfo()"))["undo"].startswith("回到"), h2["labels"][-1])
         # 跨重新整理
         await p.ev("__app.flushHist()"); hb = await p.ev("__app.history()")
-        await pg.reload(); await pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        await p.reload()
         ha = await p.ev("__app.history()")
         rec("重新整理後歷史還在（同一個位置）", ha == hb, f"{len(ha['labels'])} 步")
         await U(); rec("重新整理後仍可還原", (await p.ev("__app.history()"))["pos"] == hb["pos"] - 1)
@@ -85,18 +82,17 @@ async def main():
         cl = await p.ev("__app.closed()")
         rec("「最近關閉」保留最近 5 首", len(cl) == 5 and cl[0]["title"] == "示意甲", [c["title"] for c in cl])
         await pg.click("#closedBtn"); await pg.screenshot(path=str(OUT / "最近關閉選單.png"))
-        await pg.click("#closedMenu button >> nth=2"); await pg.wait_for_timeout(500)
+        await pg.click("#closedMenu button >> nth=2"); await p.wait("__app.songs().some(s=>s.title==='示意丙')")
         rec("從「最近關閉」叫回任一首", "示意丙" in [s["title"] for s in await p.ev("__app.songs()")] and len(await p.ev("__app.closed()")) == 4)
         m = len(await p.ev("__app.songs()"))
-        await p.ev("()=>{window.__r=__app.closeSong(0)}"); await pg.wait_for_function("__app.dialog().open"); await p.ev("__app.answer('close')"); await p.ev("window.__r")
+        await p.ev("()=>{window.__r=__app.closeSong(0)}"); await p.wait_dialog(); await p.ev("__app.answer('close')"); await p.ev("window.__r")
         rec("關閉分頁 → 還原會叫回來", (await p.ev("__app.undoInfo()"))["undo"].startswith("關閉"))
         await U(); rec("（還原後）分頁回來", len(await p.ev("__app.songs()")) == m)
-        await p.ev("__app.flushHist()"); await pg.reload(); await pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        await p.ev("__app.flushHist()"); await p.reload()
         rec("重新整理後「最近關閉」還在", len(await p.ev("__app.closed()")) >= 4)
         # 每首歌各自一條歷史
         await p.ev("__app.switchSong(0)"); a = await p.ev("__app.history()"); await p.ev("__app.switchSong(1)"); bb = await p.ev("__app.history()")
         rec("每首歌各自一條歷史", a != bb, (len(a["labels"]), len(bb["labels"])))
         rec("沒有頁面錯誤", not [l for l in p.log if "pageerror" in l], p.log[:3])
         await b.close()
-    print(f"\n通過 {sum(res)} / {len(res)}")
-asyncio.run(main())
+asyncio.run(main()); finish()

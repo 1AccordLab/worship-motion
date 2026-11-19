@@ -7,13 +7,10 @@ from wm import *
 EX = ROOT / "examples"
 MIN = (EX / "minimal.js").read_text()
 SKILL = (ROOT / "skill" / "SKILL.md").read_text()
-OUT = ROOT / "q" / "ux"; OUT.mkdir(parents=True, exist_ok=True)
-results = []
-def rec(name, ok, detail=""):
-    ok = bool(ok); results.append((name, ok, str(detail)[:300])); print(("✔" if ok else "✘"), name, "｜", str(detail).replace("\n", " ")[:200], flush=True)
+OUT = OUT / "ux"; OUT.mkdir(parents=True, exist_ok=True)
 def fence(lang, body): return f"```{lang}\n{body}\n```"
-SONG = proj("riso", title="All the Lights")
-OTHER = proj("riso", title="奇異恩典")
+SONG = proj("riso", title="示意歌名")
+OTHER = proj("riso", title="示意歌乙")
 
 async def main():
     async with async_playwright() as pw:
@@ -23,11 +20,9 @@ async def main():
         await p.pg.set_viewport_size({"width": 1440, "height": 900})
         pg = p.pg
         async def dlg(): return await p.ev("__app.dialog()")
-        async def settle_copy():   # 剪貼簿被擋時會跳出「請手動複製」對話框
-            d = await dlg()
-            if d["open"] and "手動複製" in d["title"]: await p.ev("__app.answer('ok')")
+        settle_copy = p.settle_copy
         async def wait_dialog():
-            await pg.wait_for_function("__app.dialog().open", timeout=10000); return await dlg()
+            await p.wait("__app.dialog().open"); return await dlg()
         async def visible(sel): return await pg.is_visible(sel)
 
         # ---------- 第一次打開 ----------
@@ -119,21 +114,21 @@ async def main():
         n0 = len(await p.ev("__app.songs()"))
         await p.ev("t=>{window.__r=__app.applyPaste(t);}", other)
         d = await wait_dialog()
-        rec("貼上另一首歌 → 頁內對話框：開新分頁（推薦）／取代／取消", "另一首歌" in d["title"] and "奇異恩典" in d["title"] and d["buttons"] == ["new", "replace", "cancel"], d)
+        rec("貼上另一首歌 → 頁內對話框：開新分頁（推薦）／取代／取消", "另一首歌" in d["title"] and "示意歌乙" in d["title"] and d["buttons"] == ["new", "replace", "cancel"], d)
         await p.ev("__app.answer('cancel')"); r = await p.ev("window.__r")
-        rec("按「取消」→ 不套用、還是原本那首", r is False and (await p.ev("__app.project"))["title"] == "All the Lights" and len(await p.ev("__app.songs()")) == n0)
+        rec("按「取消」→ 不套用、還是原本那首", r is False and (await p.ev("__app.project"))["title"] == "示意歌名" and len(await p.ev("__app.songs()")) == n0)
         await p.ev("t=>{window.__r=__app.applyPaste(t);}", other); await wait_dialog(); await p.ev("__app.answer('new')")
         r = await p.ev("window.__r"); sg = await p.ev("__app.songs()")
-        rec("按「開新分頁」→ 新分頁放新歌、原本那首還在", r is True and len(sg) == n0 + 1 and (await p.ev("__app.project"))["title"] == "奇異恩典" and any(x["title"] == "All the Lights" for x in sg), [x["title"] for x in sg])
-        await p.ev("__app.switchSong(__app.songs().findIndex(s=>s.title==='All the Lights'))")
+        rec("按「開新分頁」→ 新分頁放新歌、原本那首還在", r is True and len(sg) == n0 + 1 and (await p.ev("__app.project"))["title"] == "示意歌乙" and any(x["title"] == "示意歌名" for x in sg), [x["title"] for x in sg])
+        await p.ev("__app.switchSong(__app.songs().findIndex(s=>s.title==='示意歌名'))")
         await p.ev("t=>{window.__r=__app.applyPaste(t);}", other); await wait_dialog(); await p.ev("__app.answer('replace')")
         r = await p.ev("window.__r")
-        rec("按「取代目前這首」→ 目前分頁換成新歌", r is True and (await p.ev("__app.project"))["title"] == "奇異恩典" and len(await p.ev("__app.songs()")) == n0 + 1)
+        rec("按「取代目前這首」→ 目前分頁換成新歌", r is True and (await p.ev("__app.project"))["title"] == "示意歌乙" and len(await p.ev("__app.songs()")) == n0 + 1)
 
         # ---------- 存檔狀態膠囊 ----------
         await p.ev("__app.tab('self')"); await p.ev("__app.markSaved()")
         s1 = await p.ev("__app.saveState()")
-        await pg.fill("#title", "奇異恩典（改）")
+        await pg.fill("#title", "示意歌乙（改）")
         s2 = await p.ev("__app.saveState()")
         rec("存檔狀態：存了→「已存成檔案」，再改→變回未存", s1["saved"] and "已存成檔案" in s1["text"] and not s2["saved"] and "還沒存成檔案" in s2["text"], f"{s1} → {s2}")
         async with pg.expect_download() as dl:
@@ -143,7 +138,8 @@ async def main():
 
         # ---------- 做新的一首 = 開新分頁 ----------
         n0 = len(await p.ev("__app.songs()")); t0 = (await p.ev("__app.project"))["title"]
-        await pg.click("#newSong"); await pg.wait_for_function("__app.project.title === '新的詩歌'", timeout=10000)
+        await p.ev("document.querySelector('#openMsg').textContent=''")
+        await pg.click("#newSong"); await p.wait("document.querySelector('#openMsg').textContent.includes('開場白')")
         pj = await p.ev("__app.project"); st = await p.ev("__app.saveState()"); sg = await p.ev("__app.songs()")
         rec("做新的一首 → 開新分頁（原本那首還在）、回到「請 AI 改」、提示複製開場白", len(sg) == n0 + 1 and any(x["title"] == t0 for x in sg) and len(pj["sections"]) == 2 and st["fresh"] and await p.ev("__app.currentTab()") == "ai" and "開場白" in await pg.inner_text("#openMsg"), [x["title"] for x in sg])
         rec("做新的一首不跳對話框", not (await dlg())["open"])
@@ -181,7 +177,7 @@ async def main():
         rec("歌詞框下方：會做成 N 支字幕影片＋切法", "會做成 1 支字幕影片" in hint and "一行" in hint, hint)
         await pg.fill("#sLyrics", "這是第[一]行示意文字\n這是第[二]行示意文字\n這是第[三]行示意文字")
         rec("改歌詞 → 支數即時更新", "會做成 3 支" in await pg.inner_text("#lyricHint"))
-        await pg.wait_for_timeout(450)
+        await p.wait("document.querySelector('#clips').innerText.includes('字幕 1：這是第一行示意文字（播一次停住）') && document.querySelector('#exSecD').innerText.includes('3 支字幕')")
         clips = await pg.inner_text("#clips")
         rec("影片清單寫清楚：背景（會循環）、字幕 1：…（播一次停住）", "背景（會循環）" in clips and "字幕 1：這是第一行示意文字（播一次停住）" in clips, clips.replace("\n", " ")[:160])
         rec("匯出說明跟著這一段：背景＋3 支字幕", "3 支字幕" in await pg.inner_text("#exSecD"))
@@ -201,17 +197,13 @@ async def main():
         # ---------- 單檔帶著新介面與 SKILL.md ----------
         html = await p.ev("__app.singleHTML()")
         f = OUT / "單檔_新介面.html"; f.write_text(html)
-        p2 = Page(await ctx.new_page(), [])
-        await p2.pg.goto(f.as_uri() + "?nopreview"); await p2.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        p2 = await open_url(ctx, f.as_uri())
         rec("存成單檔：新介面、SKILL.md 都在；打開是「已存成檔案」", await p2.pg.is_visible("#tab-ai") and await p2.ev("__app.skill()") == SKILL and (await p2.ev("__app.saveState()"))["saved"], f"{len(html.encode())/1024:.1f} KB")
 
         # ---------- 說明卡關掉後不再出現 ----------
         await pg.click("#introClose")
-        await pg.reload(); await pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        await p.reload()
         rec("說明卡「知道了」→ 重開不再顯示", not await visible("#intro"))
         rec("沒有頁面錯誤", not [l for l in p.log if "pageerror" in l], p.log[:3])
         await b.close()
-    bad = [r for r in results if not r[1]]
-    print(f"\n通過 {len(results) - len(bad)} / {len(results)}")
-    (OUT / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1))
-asyncio.run(main())
+asyncio.run(main()); finish()
