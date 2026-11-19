@@ -6,3 +6,4 @@ __pycache__/
 # 歌詞不進版控（受版權保護）：自己的歌詞檔放這裡
 lyrics/
 .work/
+tests/out/

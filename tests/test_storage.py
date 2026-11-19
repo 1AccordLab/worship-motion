@@ -2,11 +2,7 @@
 import asyncio, sys, pathlib, shutil, tempfile, threading, functools, http.server
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
-res = []
-def rec(n, ok, d=""): res.append(bool(ok)); print(("✔" if ok else "✘"), n, "｜", str(d)[:200], flush=True)
-READY = "window.__app&&__app.ready"
-async def reopen(p):
-    await p.pg.reload(); await p.pg.wait_for_function(READY, timeout=120000)
+async def reopen(p): await p.reload()
 titles = lambda p: p.ev("__app.songs().map(s=>s.title)")
 async def main():
     tmp = pathlib.Path(tempfile.mkdtemp())
@@ -43,5 +39,4 @@ async def main():
             await b.close()
     finally:
         srv.shutdown(); shutil.rmtree(tmp, ignore_errors=True)
-    n = sum(res); print(f"\n通過 {n} / {len(res)}"); sys.exit(0 if n == len(res) else 1)
-asyncio.run(main())
+asyncio.run(main()); finish()
