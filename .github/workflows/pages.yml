@@ -1,5 +1,6 @@
 # 部署到 GitHub Pages：main → 網站根目錄（正式版）、develop → /dev/（開發版）；教學頁在各自的 guide/
-# 任一分支有新的 commit 就把兩邊都重新打包，一起部署。develop 打包或檢查失敗時沿用正式版產物，不擋正式版
+# 每個分支只負責自己那一份：打包或檢查失敗時，保留網站上目前已上線的那一份，另一邊照常更新
+# 正式版失敗：部署照常（保留已上線的正式版），最後由 report job 標成失敗；開發版失敗：只標警告
 name: 部署
 
 on:
@@ -16,9 +17,15 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  LIVE_URL: https://1accordlab.github.io/worship-motion/
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      prod_ok: ${{ steps.pack.outputs.prod_ok }}
+      dev_ok: ${{ steps.pack.outputs.dev_ok }}
     steps:
       - uses: actions/checkout@v4
         with: { ref: main, path: prod }
@@ -27,27 +34,55 @@ jobs:
         continue-on-error: true
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - name: 檢查 repo 規則
-        run: cd prod && python3 tests/check_repo.py
       - name: 打包
+        id: pack
         run: |
           OUT="詩歌影片編輯器.html"
           mkdir -p site/dev
-          check() {
-            grep -q 'id="wm-app"' "$1" && grep -q 'id="wm-skill"' "$1" \
-              && [ "$(grep -o 'class="wm-scene"' "$1" | wc -l)" -eq 8 ] && ! grep -q '{{' "$1"
+
+          check_product() {
+            local scenes
+            scenes=$(ls "$1"/src/scenes/*.js | wc -l)
+            grep -q 'id="wm-app"' "$1/dist/$OUT" && grep -q 'id="wm-skill"' "$1/dist/$OUT" \
+              && [ "$(grep -o 'class="wm-scene"' "$1/dist/$OUT" | wc -l)" -eq "$scenes" ] \
+              && ! grep -q '{{' "$1/dist/$OUT"
           }
-          build() {
-            (cd "$1" && python3 build.py) && check "$1/dist/$OUT" && cp "$1/dist/$OUT" "$2/index.html"
+
+          # $1 分支資料夾、$2 輸出資料夾
+          build_fresh() {
+            [ -f "$1/build.py" ] || return 1
+            (cd "$1" && python3 tests/check_repo.py && python3 build.py) || return 1
+            check_product "$1" || return 1
+            mkdir -p "$2"
+            cp "$1/dist/$OUT" "$2/index.html"
+            cp -r "$1/guide" "$2/guide"
           }
-          build prod site || { echo "::error::正式版打包或產物檢查失敗"; exit 1; }
-          cp -r prod/guide site/guide
-          if [ -f dev/build.py ] && (cd dev && python3 tests/check_repo.py) && build dev site/dev; then
-            cp -r dev/guide site/dev/guide
+
+          # $1 網址、$2 輸出資料夾、$3 wget 要略過的目錄層數、$4 要排除的路徑（可空）
+          fetch_live() {
+            rm -rf "$2"; mkdir -p "$2"
+            wget -q -r -np -p -nH --cut-dirs="$3" ${4:+-X "$4"} -P "$2" "$1" || return 1
+            [ -s "$2/index.html" ] && [ -d "$2/guide" ]
+          }
+
+          if build_fresh prod site; then
+            echo "prod_ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::develop 打包或檢查失敗，/dev/ 沿用正式版"
-            cp site/index.html site/dev/index.html; cp -r prod/guide site/dev/guide
+            echo "::error::正式版打包或檢查失敗，保留網站上已上線的正式版"
+            echo "prod_ok=false" >> "$GITHUB_OUTPUT"
+            fetch_live "$LIVE_URL" site 1 /worship-motion/dev \
+              || { echo "::error::抓不到已上線的正式版，不部署（避免把網站清空）"; exit 1; }
           fi
+
+          if build_fresh dev site/dev; then
+            echo "dev_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::開發版打包或檢查失敗，保留網站上已上線的 /dev/"
+            echo "dev_ok=false" >> "$GITHUB_OUTPUT"
+            fetch_live "${LIVE_URL}dev/" site/dev 2 \
+              || { echo "::error::抓不到已上線的 /dev/，不部署（避免把網站清空）"; exit 1; }
+          fi
+
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
@@ -61,3 +96,10 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  report:
+    needs: [build, deploy]
+    if: needs.build.outputs.prod_ok != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "::error::正式版（main）打包或檢查失敗，網站上仍是上一次成功的版本"; exit 1

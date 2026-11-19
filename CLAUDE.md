@@ -13,16 +13,15 @@
 | 不用 AI 常見效果：發光粒子、鏡頭光暈、霓虹、漸層光球、毛玻璃、無意義 3D 旋轉 | 人工審查 |
 | 對外介面不能改壞：設定格式 `worship-motion/1`、`defineScene({...})`、`x.under(f, 預設)`。要改就連 `skill/SKILL.md`、`examples/`、測試一起改，並說明理由 | `tests/check_repo.py`（h）比對欄位與風格說明；`test_ux`、`test_under`、`test_guard` |
 | 文件、註解、測試名稱只描述現況：不寫歷史沿革、待辦、已不存在的東西 | `tests/check_repo.py`（d）。禁用字清單在 `STALE_TERMS` |
-| 註解只留「注意：」開頭、說明改不了的外部限制或陷阱；其他改用命名、拆函式或測試表達 | `tests/check_repo.py`（g）：數量只准變少 |
+| 程式（`src/engine/`、`src/editor/`、`build.py`、`tests/`、`.claude/hooks/`）的註解每一行都以「注意：」開頭，只說明改不了的外部限制或陷阱；區段標題、重述函式名、說明程式在做什麼的註解一律不寫，改用命名、拆函式或測試表達。場景與範例（`src/scenes/`、`examples/`）例外：檔頭一行說明風格、每個背景／字幕函式最多一行「畫什麼」 | `tests/check_repo.py`（g）機械檢查這兩條 |
 | 教學頁引用的介面文字要和編輯器一致 | `tests/check_repo.py`（i） |
 | 推到 `main`、合併到 `main`、force push 要使用者明確同意 | `.claude/settings.json` 的 `ask`、`/release` |
 
 ## 怎麼跑、怎麼驗證
 
-- 靜態規則（1 秒）：`python3 tests/check_repo.py`。結束前 Stop hook 會自動跑，沒過不能結束。
+- 靜態規則（1 秒）：`python3 tests/check_repo.py`。Stop hook 每次結束前都會跑，沒過不能結束；check_repo 本身崩潰時會連 stderr 一起輸出。
 - 打包：`python3 build.py` → `dist/詩歌影片編輯器.html`。瀏覽器測試讀的是這個檔，改完 `src/` 先打包。`--s2t` 才重產簡轉繁表（需要 opencc、jieba）。
 - 瀏覽器測試：`python3 tests/test_<名稱>.py`，每支印「通過 N / M」，全過 exit 0。無頭 Chrome 用 SwiftShader 跑 WebGPU，旗標在 `tests/wm.py`；`WM_CHROME` 指定 Chrome 路徑，`WM_FORCE_FAIL=1` 驗證 exit code。
-- 測試與項數：`test_guard` 41、`test_history` 32、`test_lyrics` 41、`test_names` 4、`test_reset` 12、`test_storage` 8、`test_tabs` 19、`test_under` 18、`test_ux` 53、`test_workermode` 28、`test_golden` 1。
 - 純重構（不該改畫面）：`python3 tests/test_golden.py [--ref origin/main]` 把 ref 與工作目錄各打包、各拍 204 張抽格比對，**必須 0 張不同**。有意改畫面時用 `--expect 檔名樣式,…` 列出預期不同的圖。
 - 教學截圖：`python3 tests/shots_guide.py`。新風格開發：`tests/shots_scene.py`。
 - 輸出與證據放 `tests/out/`（gitignore）。
@@ -42,14 +41,14 @@
 
 - 編輯器各檔由 `build.py` 的 `ENGINE`、`EDITOR` 清單依序串接成一份腳本，不是模組。新增檔案要加進清單，順序就是載入順序。
 - 頂層 DOM 副作用只在 `src/editor/main.js`；事件綁定在 `bind.js` 的 `bindUI()`。其他檔只定義函式與常數。
-- localStorage 鍵是 `wm:<channel>:book|hist|saved|probe|suspect|intro`。channel 看網址路徑：含 `/dev/` 是 `dev`，否則是 `main`。正式版與開發版同網域，鍵不能混用。
+- localStorage 鍵：`wm:<doc>:book|hist|saved`、`wm:<channel>:probe|suspect|intro`。網頁上 doc＝channel；存成的單檔 doc＝檔案自己的 id。channel 只在 http(s) 網址判斷，路徑含 `/dev/` 這一段是 `dev`，其餘（含 file://）是 `main`。正式版與開發版同網域，鍵不能混用。
 - 場景檔（`src/scenes/`、`examples/`）會被整份拿去給 AI 當範例：檔頭一行說明風格，不寫歷史、不寫「不是…」這類否定句，會誤導 AI。
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。
 - `x.under(f, 預設)` 的底跟著段落選的背景走，改字幕時一起看背景。
 - 截圖與抽格給人看；判斷對錯用 `window.__app` 讀實際的值。
 - 改了 `src/` 沒重新打包，測試跑的是上一次打包的 `dist/`。
-- `test_guard` 對機器負載敏感：「中等運算 16×16」「半解析度」兩項在機器忙時可能因慢而失敗，單獨重跑。`test_ux` 偶爾有一項時序 flaky（「做新的一首 → 開新分頁」），重跑。
+- `test_guard` 有兩項量測效能（「中等運算 16×16」「半解析度」），機器忙時會因慢而失敗；判斷是不是真的壞掉之前，先看機器負載。
 - 教學頁 `guide/` 載入 Google Fonts，離線時退回系統字型；這是唯一的連外例外，編輯器本身不連網。
 
 ## 做事流程
