@@ -9,13 +9,13 @@ function wave(f, t, base, amp, len, laps, w, col, a = 1, ph = 0, x0 = -40, x1 = 
 }
 // 浪頭：沿著波線的小三角（像剪紙），跟著波一起走
 function crests(f, t, base, amp, len, laps, col, size, a = 1, ph = 0) {
-  const start = mod(len * .75 - laps * t / LOOP * len - ph / TAU * len, len) - len;   // sin＝-1 的位置＝浪頂
+  const start = mod(len * .75 - laps * t / LOOP * len - ph / TAU * len, len) - len;
   for (let px = start; px < W + len; px += len) f.add(tri(px, base - amp - size * .35, size, 0, col, a));
 }
 // 邊上的色塊：一組位置，依時間跳
 function blocks(f, x, t, every, list, col, a = 1) { const b = x.step(list, every, t); f.add(rect(b[0], b[1], b[2], b[3], col, a)); }
 
-/* ---------- 平靜水面：水平線、幾條緩波、暖色小方塊在水平線上跳位置 ---------- */
+// 平靜水面：水平線、幾條緩波、暖色小方塊在水平線上跳位置
 function calm(f, x) {
   const t = mod(x.t, LOOP), b = pulse(t, 3, BAR);
   f.add(rect(0, 0, W, 250, C.deep), rect(0, 250, W, 254, C.foam, .35));
@@ -32,7 +32,7 @@ function calm(f, x) {
   for (let i = 0; i < 8; i++) f.add(rect(96 + i * 22, 1040, 108 + i * 22, 1052, i === Math.floor(t / BEAT) % 8 ? C.warm : C.sea2));
 }
 
-/* ---------- 風浪：大浪在上下兩邊翻、斜雨、色塊每 1 秒跳、水平線跟拍傾斜（跳的，不是轉） ---------- */
+// 風浪：大浪在上下兩邊翻、斜雨、色塊每 1 秒跳、水平線跟拍傾斜（用跳的）
 function storm(f, x) {
   const t = mod(x.t, LOOP), b = pulse(t, 5);
   const tilt = x.step([-2.5, 2, -1.5, 3, -3, 1.5, -2, 2.5], 1, t);
@@ -53,7 +53,7 @@ function storm(f, x) {
   wave(f, t, 150, 30, 360, 2, 3, C.foam, .45, 2.2);
 }
 
-/* ---------- 宣告：浪被平息成平的色條、暖色的路從腳下往水平線延伸（向前）、色塊跳 ---------- */
+// 宣告：浪被平息成平的色條、暖色的路從腳下往水平線延伸（向前）、色塊跳
 function peak(f, x) {
   const t = mod(x.t, LOOP), b = pulse(t, 5), bar = pulse(t, 3, BAR);
   f.add(rect(0, 0, W, 250, C.deep));
@@ -73,7 +73,7 @@ function peak(f, x) {
   wave(f, t, 150, 3 + 2 * b, 900, 1, 2, C.foam, .45);
 }
 
-/* ---------- 收斂字幕：平靜水面＋深色水帶托住字；有第二語言時每行下面一行小字 ---------- */
+// 收斂字幕：平靜水面＋深色水帶托住字；有第二語言時每行下面一行小字
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length);
   const two = small.length > 0, gap = two ? 156 : 130, y0 = 510 - gap * (n - 1) / 2;
@@ -92,7 +92,7 @@ function gentle(f, x) {
   if (r > .01) wave(f, t, uy, 4, 160, 1, 3, C.warm, .9, 0, 960 - 150 * r, 960 + 150 * r);
 }
 
-/* ---------- 華麗字幕：浪掃過 → 每個字落在一塊浮在水上的色塊，跟著浪起伏；關鍵字暖色放大 ---------- */
+// 華麗字幕：浪掃過 → 每個字落在一塊浮在水上的色塊，跟著浪起伏；關鍵字暖色放大
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, sub = x.small[0] || '';
   const size = Math.min(170, 1440 / Math.max(1, n)), x0 = 960 - size * (n - 1) / 2, cy = sub ? 470 : 500;

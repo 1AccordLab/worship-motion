@@ -1,8 +1,8 @@
 'use strict';
-/* 場景程式在 Worker 裡跑：卡住（無窮迴圈）時主頁面直接 terminate 這個 Worker。 */
+/* 注意：場景程式在 Worker 裡跑，卡住（無窮迴圈）時主頁面直接 terminate 這個 Worker */
 const W = 1920, H = 1080, BEAT = .5, BAR = 2, LOOP = 16, TAU = Math.PI * 2;
 const AW = 4096, AH = 2048;
-const ITEM_FLOATS = 24;   // 和 gpu.js 的 ITEM_FLOATS 一致
+const ITEM_FLOATS = 24;  // 注意：和 gpu.js 的 ITEM_FLOATS 一致
 const FONT_CJK = '"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei","Heiti TC",sans-serif';
 const clamp01 = x => Math.max(0, Math.min(1, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -71,7 +71,7 @@ class Atlas {
     if (y1 <= y0) return null;
     const hh = y1 - y0, out = { y: y0, h: hh, a: new Uint8Array(AW * hh), b: new Uint8Array(AW * hh) };
     for (const [ctx, arr] of [[this.ca, out.a], [this.cb, out.b]]) {
-      // 用 getImageData 取 alpha：copyExternalImageToTexture 在無頭模式會失敗
+      // 注意：用 getImageData 取 alpha，copyExternalImageToTexture 在無頭模式會失敗
       const src = ctx.getImageData(0, y0, AW, hh).data;
       for (let i = 0, j = 3; i < arr.length; i++, j += 4) arr[i] = src[j];
     }
@@ -80,7 +80,7 @@ class Atlas {
 }
 let atlas = null;
 
-/* 照呼叫順序疊；z 小的在下（形狀與線 0、字 1、top 2） */
+/* 注意：照呼叫順序疊；z 小的在下（形狀與線 0、字 1、top 2） */
 class Frame {
   constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.items = []; }
   _push(t, z, o) { this.items.push({ t, z, i: this.items.length, o }); }
@@ -104,7 +104,7 @@ class Frame {
 }
 
 let SCENE = null;
-/* TEX_TYPES、TEX_ON 要和 gpu.js setScene 的 T、ON 一致 */
+/* 注意：TEX_TYPES、TEX_ON 要和 gpu.js setScene 的 T、ON 一致（check_repo 比對） */
 const TEX_TYPES = { fiber: 1, grain: 2, halftone: 3, misreg: 4, bleed: 5, rough: 6, wobble: 7 };
 const TEX_ON = { shapes: 1, text: 2, lines: 4, bg: 8 };
 const DESC_MAX = 80;
@@ -157,9 +157,9 @@ function parseLine(line) {
 function setClip(c) {
   const sc = SCENE, def = c.kind === 'bg' ? sc.backgrounds[c.type] : sc.subtitles[c.type];
   if (!def) throw new Error('這個風格沒有「' + c.type + '」這種' + (c.kind === 'bg' ? '背景' : '字幕'));
-  Object.assign(sc.palette, sc.defaults, c.pal || {});   // 原地改寫：場景用同一個 palette 物件讀色
+  Object.assign(sc.palette, sc.defaults, c.pal || {});  // 注意：原地改寫，因為場景用同一個 palette 物件讀色
   const params = {}; for (const [k, p] of Object.entries(sc.params)) params[k] = c.params && typeof c.params[k] === 'number' ? c.params[k] : p.value;
-  /* big／small 是依 swap 對調好的兩組行；大字沒有內容時，小字補上當大字 */
+  /* 注意：big／small 是依 swap 對調好的兩組行；大字沒有內容時，小字補上當大字 */
   const rows = v => String(v || '').split('\n').map(s => s.trim()).filter(Boolean), strip = s => s.replace(/[\[\]]/g, '');
   const text = c.text || '', text2 = c.text2 || '', raw1 = rows(text), raw2 = rows(text2);
   const lines = raw1.map(strip), lines2 = raw2.map(strip), swap = !!c.swap && lines2.length > 0;
@@ -176,7 +176,7 @@ function setClip(c) {
 }
 const BLEND = { multiply: 1 };
 const texMask = t => t === false ? 0 : 255;
-/* 圓弧、扇形只畫到實際佔的框，GPU 少算很多 */
+/* 注意：圓弧、扇形只畫到實際佔的框，GPU 少算很多 */
 function bbox(o, buf, at) {
   const R = o.kind === 1 ? o.hx + o.hy : o.hx, r0 = o.kind === 1 ? Math.max(0, o.hx - o.hy) : 0;
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;

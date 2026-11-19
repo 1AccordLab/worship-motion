@@ -12,7 +12,6 @@ body{margin:0;background:var(--page);color:var(--ink);font:15px/26px var(--sans)
 .eyebrow{font:600 11.5px/16px var(--mono);letter-spacing:.08em;color:var(--muted)}
 h2{margin:0 0 8px;font-size:16px;line-height:24px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
-/* 頂端 */
 .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .topact{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border:1.5px solid var(--warn);background:var(--warn-soft);border-radius:999px;font-size:13px;line-height:20px}
@@ -20,7 +19,6 @@ h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
 .pill.saved{border-color:var(--accent);background:var(--accent-soft)}
 .pill.saved i{background:var(--accent)}
 .savemsg{flex-basis:100%;text-align:right;font-size:12.5px;line-height:18px;color:var(--muted);min-height:0;margin:0}
-/* 三步驟 */
 .steps{display:flex;align-items:stretch;gap:6px;margin-top:4px;position:sticky;top:0;z-index:10;background:var(--page);padding:8px 0}
 .card,.frame{scroll-margin-top:92px}
 .steps>button{flex:1;display:flex;align-items:center;gap:10px;text-align:left;padding:8px 12px;border-color:var(--line);background:var(--surface);border-radius:var(--wobble-lg)}
@@ -32,7 +30,6 @@ h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
 .steps>button[aria-current=step] b{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .steps .arr{align-self:center}
 .num{width:24px;height:24px;font-size:12px;border-color:var(--accent);color:var(--accent)}
-/* 版面 */
 .grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(360px,1fr);gap:22px;margin-top:14px;align-items:start}
 .left{display:flex;flex-direction:column;gap:12px;min-width:0}
 .frame{padding:10px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--wobble-lg)}
@@ -44,19 +41,16 @@ canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:v
 .card.soft{border-style:dashed;border-color:var(--muted)}
 .panel{display:flex;flex-direction:column;gap:12px;min-width:0}
 .pane{display:flex;flex-direction:column;gap:12px}
-/* 段落分頁 */
 .sectabs{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-end;border-bottom:1.5px solid var(--line);padding-bottom:0;margin-bottom:-6px}
 .sectabs button{border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;min-height:36px;padding:6px 16px;background:var(--surface);color:var(--muted)}
 .sectabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft);font-weight:700}
 .sectabs .lab{font-size:12.5px;color:var(--muted);margin-right:6px;align-self:center}
-/* 影片清單 */
 .clips{display:flex;flex-direction:column;gap:6px}
 .clip{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:var(--line);border-left-width:4px;border-radius:6px;padding:6px 10px;min-height:38px}
 .clip.bgc{border-left-color:var(--accent)}
 .clip .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .clip .cm{font-size:12.5px;color:var(--muted);flex:none}
 .clip[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
-/* 匯出 */
 .exgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
 .exopt{display:flex;align-items:center;gap:10px;margin:6px 0}
 .exopt button{min-width:176px;text-align:left}
@@ -67,12 +61,10 @@ canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:v
 .chip{display:inline-block;padding:1px 9px;border:1.5px solid var(--ink);border-radius:var(--wobble-sm);font-size:12.5px;line-height:20px;white-space:nowrap}
 .chip.g{border-color:var(--accent);color:var(--accent)}
 .arr{color:var(--muted)}
-/* 右邊分頁 */
 .tabs{display:flex;gap:4px;border-bottom:1.5px solid var(--line)}
 .tabs button{flex:1;border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;color:var(--muted);background:var(--surface)}
 .tabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft);font-weight:700}
 .tabs button .badge{font-size:11px;color:var(--accent);margin-left:4px}
-/* 欄位 */
 .field{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
 .field>.lab,.field>label:first-child{min-width:76px;color:var(--muted);font-size:14px;display:inline-flex;align-items:center;gap:4px}
 .field .grow{flex:1;min-width:0}
@@ -123,7 +115,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .aifix{margin-top:6px}
 .callout{padding:10px 12px;background:var(--warn-soft);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:21px;margin-top:8px}
 #err{padding:16px;background:var(--bad-soft);border:1.5px solid var(--bad);border-radius:var(--wobble-lg);margin-top:14px}
-/* 貼上 */
 .flow{display:grid;grid-template-columns:auto auto 1fr;gap:4px 8px;align-items:center;font-size:12.5px;line-height:20px;padding:8px 10px;background:var(--sunk);border-radius:var(--wobble-lg);margin-bottom:8px}
 .flow code{font:12px/18px var(--mono);color:var(--ink)}
 .flow .dim,.dim{color:var(--muted)}
@@ -133,24 +124,20 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .found.yes{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .warnline{flex-basis:100%;color:var(--warn)}
 .badline{flex-basis:100%;color:var(--bad)}
-/* 第一次說明 */
 .intro{border-color:var(--accent)}
 .intro .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;list-style:none;margin:6px 0 0;padding:0}
 .flow3 li{position:relative;display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:20px;color:var(--muted)}
 .flow3 li strong{color:var(--ink);font-size:14px;display:flex;align-items:center;gap:6px}
 .flow3 li:not(:last-child)::after{content:"→";position:absolute;right:-17px;top:2px;color:var(--accent);font-size:16px}
-/* ? 說明 */
 .q{min-height:22px;width:22px;height:22px;padding:0;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font:700 12px/1 var(--mono);background:transparent;flex:none}
 .q:hover,.q[aria-expanded=true]{border-color:var(--accent);color:var(--accent);background:transparent}
 .tipbox{position:fixed;z-index:50;width:280px;padding:10px 12px;background:var(--sunk);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:20px;color:var(--ink);font-weight:400;box-shadow:0 6px 20px rgba(10,10,8,.45);display:none}
 .tipbox.show{display:block}
-/* 對話框 */
 dialog{max-width:520px;width:calc(100% - 32px);background:var(--surface);color:var(--ink);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);padding:18px 20px}
 dialog::backdrop{background:rgba(20,19,17,.66)}
 dialog p{margin:0 0 12px;font-size:14px;line-height:22px;color:var(--muted);white-space:pre-wrap}
 dialog textarea{min-height:160px;margin-bottom:12px}
-/* 歌曲分頁 */
 .songbar{flex:1;min-width:240px}
 .songrow{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;overflow-y:hidden;padding:6px 2px 0;scrollbar-width:thin}
 .songtabs{display:flex;gap:4px;flex-wrap:nowrap;align-items:flex-end}
@@ -175,7 +162,6 @@ dialog textarea{min-height:160px;margin-bottom:12px}
 .hprev{border-top:1.5px dashed var(--line);padding-top:8px;margin-top:4px}.hprev p{white-space:pre-line;margin:0 0 8px;font-size:14px}
 .menu hr{border:none;border-top:1.5px solid var(--line);margin:4px 2px}
 .songnote{margin:0;padding:8px 12px;background:var(--accent-soft);border-left:3px solid var(--accent);border-radius:4px;font-size:13.5px;line-height:21px}
-/* 整首歌詞 */
 textarea.big{min-height:180px}
 .lyrlist{margin:6px 0 10px;padding-left:18px;font-size:13.5px;line-height:24px}
 .lyrlist li{margin:2px 0}
@@ -227,7 +213,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
   <div id="guard" role="status" hidden></div>
 
   <div class="grid" id="main">
-    <!-- ================= 左：預覽 ================= -->
     <section class="left" aria-label="預覽">
       <div class="card intro" id="intro" hidden>
         <div class="head"><h2>第一次用？三步驟做完一首歌</h2><button class="small" id="introClose">知道了，不再顯示</button></div>
@@ -276,7 +261,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
       </div>
     </section>
 
-    <!-- ================= 右：調整 ================= -->
     <section class="panel" aria-label="調整">
       <div class="tabs" role="tablist" aria-label="調整方式">
         <button role="tab" id="tab-ai" aria-controls="pane-ai" aria-selected="true">請 AI 改<span class="badge">建議</span></button>
@@ -284,7 +268,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
         <button role="tab" id="tab-adv" aria-controls="pane-adv" aria-selected="false" tabindex="-1">進階</button>
       </div>
 
-      <!-- 請 AI 改 -->
       <div class="pane" role="tabpanel" id="pane-ai" aria-labelledby="tab-ai">
         <div class="card" id="askCard">
           <h2><span class="num">1</span>告訴 AI 想改什麼</h2>
@@ -318,7 +301,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
         </div>
       </div>
 
-      <!-- 自己調 -->
       <div class="pane" role="tabpanel" id="pane-self" aria-labelledby="tab-self" hidden>
         <div class="card">
           <h2>整首歌</h2>
@@ -367,7 +349,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
         </div>
       </div>
 
-      <!-- 進階 -->
       <div class="pane" role="tabpanel" id="pane-adv" aria-labelledby="tab-adv" hidden>
         <div class="card">
           <h2>這一段的背景循環長度<button type="button" class="q" data-tip="背景影片多長之後從頭接回去（頭尾接得起來）。越長越不容易看出重複，但檔案越大。通常用最短的就好。">?</button></h2>

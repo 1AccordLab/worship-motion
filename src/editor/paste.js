@@ -26,9 +26,9 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   if (prep) await commitScene(prep);
   const chg = changes(before, n.project, mOld, m);
   P = n.project; cur = 0; clipIdx = 0; t = 0;
-  save(chg.length && /^換成另一首歌/.test(chg[0]) ? chg[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : '載入' + source);
+  save(chg.otherSong ? chg.lines[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : '載入' + source);
   renderStyle(); await refresh();
-  out(doneText(prefix, changes(before, P, mOld, meta()), n.warnings), 'ok');
+  out(doneText(prefix, changes(before, P, mOld, meta()).lines, n.warnings), 'ok');
   return true;
 }
 async function pasteScene(code) {
@@ -57,7 +57,7 @@ async function pasteAny(text, where = '#cfgStatus') {
     prefix = `新風格「${meta().name}」\n`;
   }
   if (p.json) return applyRaw(p.json, 'AI 的設定', where, { before, mOld, prefix });
-  say(where, doneText(prefix, changes(before, P, mOld, meta())), 'ok'); return true;
+  say(where, doneText(prefix, changes(before, P, mOld, meta()).lines), 'ok'); return true;
 }
 function exportText() { return JSON.stringify(P, null, 2); }
 const CHIPS = [

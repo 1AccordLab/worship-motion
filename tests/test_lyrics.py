@@ -47,7 +47,6 @@ NOT_HEAD = ["這是第一行示意文字", "Sample line one", "I", "Verse of the
 async def main():
     async with async_playwright() as pw:
         b, ctx, p = await open_page(pw)
-        # ---------- 雙語有／大小對調 ----------
         for st in STYLES:
             await p.ev("x=>__app.load(x)", proj(st)); a = await p.shot(2, 1, 4.0)
             await p.ev("x=>__app.load(x)", bi(st)); bb = await p.shot(2, 1, 4.0, OUT / "lyrics" / f"{st}_gentle_bi.png")
@@ -62,7 +61,6 @@ async def main():
         await p.ev("x=>__app.load(x)", p2); await p.ev("__app.select(2,0)")
         rec("第二語言行數不同不報錯：多出來的照樣做成一支", "2 支" in await p.pg.inner_text("#clipCount") or "共 3 支" in await p.pg.inner_text("#clipCount"), await p.pg.inner_text("#clipCount"))
 
-        # ---------- 後三種內建風格：防護試跑（當成新風格貼上，每種背景與字幕都試跑）、背景 16 秒循環 ----------
         await p.ev("__app.clearSuspects()")
         for st in STYLES[5:]:
             code = await p.ev(f"[...document.querySelectorAll('script.wm-scene')].find(s=>s.dataset.id==='{st}').textContent")
@@ -70,12 +68,10 @@ async def main():
             info = await p.ev("__app.sceneInfo()")
             rec(f"內建「{st}」通過新風格試跑（防護）", ok and info["id"] == st + "x" and (not code.count("shader:") or info["shader"]), (await p.ev("__app.sceneStatus()"))[:80] + f"｜{info}")
             if info.get("shader"): rec(f"「{st}」shader 測速", True, f"估計一格 {info['est']:.0f} ms（SwiftShader）、{'半解析度' if info['half'] else '全解析度'}")
-            # 背景在 16 秒頭尾接得起來
             await p.ev("x=>__app.load(x)", proj(st + "x"))
             a0 = await p.shot(0, 0, 0.0); a1 = await p.shot(0, 0, 16.0); an = await p.shot(0, 0, 1 / 30)
             rec(f"「{st}」背景 16 秒頭尾接得起來（和相鄰一格的差差不多）", diff(a0, a1) <= 1.5 * diff(a0, an) + 20000, f"0↔16 秒 {diff(a0, a1)}、0↔1 格 {diff(a0, an)}")
 
-        # ---------- 整首貼上：標題 ----------
         got = {h: await p.ev("h=>__app.headerOf(h)", h) for h in HEADERS}
         okh = all(got[h] and got[h]["kind"] == k and (n is None or got[h]["n"] == n) for h, (k, n) in HEADERS.items())
         rec("段落標題：方括號、角括號、冒號、全形、中文、拼錯（chrous）都認得", okh, {h: got[h] for h in HEADERS if not (got[h] and got[h]["kind"] == HEADERS[h][0])})
@@ -93,7 +89,6 @@ async def main():
         await p.ev("x=>__app.load(x)", {"format": "worship-motion/1", "title": "無標題", "style": "swiss", "sections": [{"name": "A", "background": "calm", "subtitle": "gentle"}, {"name": "B", "background": "peak", "subtitle": "gentle"}]})
         pl = await p.ev("t=>__app.planSplit(t)", NOHEAD)
         rec("沒有標題：依空行分段、依序填，多的新增", pl["mode"] == "blocks" and [e["isNew"] for e in pl["plan"]] == [False, False, True], [(e["name"], e["isNew"]) for e in pl["plan"]])
-        # 中英交錯
         await p.ev("x=>__app.load(x)", {"format": "worship-motion/1", "title": "雙語", "style": "swiss", "sections": [{"name": "主歌一（中）", "background": "calm", "subtitle": "gentle"}, {"name": "主歌一（英）", "background": "calm", "subtitle": "gentle", "swapLang": True}, {"name": "副歌", "background": "peak", "subtitle": "gentle"}]})
         r = {}
         for lang in ["zh", "en", "both", "bothEn"]: r[lang] = await p.ev("([t,l])=>__app.planSplit(t,{lang:l})", [BILING, lang])
@@ -102,7 +97,6 @@ async def main():
         rec("只留中文／只留英文", "Sample" not in e0["zh"][0] and not e0["zh"][1] and e0["en"][0].startswith("Sample") and "這是" not in e0["en"][0], e0)
         rec("中文主要＋英文第二語言／英文主要＋中文第二語言", e0["both"][0].startswith("這是") and e0["both"][1].startswith("Sample") and e0["bothEn"][0].startswith("Sample") and e0["bothEn"][1].startswith("這是"), e0)
         rec("「主歌一（中）」「主歌一（英）」都對上 [Verse 1]", r["both"]["plan"][0]["targets"] == [0, 1], r["both"]["plan"][0]["targets"])
-        # 對話框（頁內）
         await p.ev("__app.tab('self')"); await p.pg.fill("#lyrAll", BILING); await p.pg.click("#lyrSplit")
         d = await p.ev("__app.lyricsDialog()")
         rec("「分到各段」→ 頁內對話框預覽、有中英三種以上選項", d["open"] and await p.pg.is_visible("#lyrLangRow") and await p.pg.locator("input[name=lyrLang]").count() == 4, d["text"][:100])
@@ -110,7 +104,6 @@ async def main():
         rec("套用：中文進歌詞、英文進第二語言", pj["sections"][0]["lyrics"].startswith("這是") and pj["sections"][0]["lyrics2"].startswith("Sample") and pj["sections"][1]["lyrics2"].startswith("Sample"))
         rec("「請 AI 改」貼上框旁有「貼上整首歌詞」入口", await p.pg.locator("#lyrFromAI").count() == 1)
 
-        # ---------- 簡轉繁 ----------
         tt = await p.ev("__app.toTrad('头发 简体中文 后来 干净 里面 这里')")
         rec("簡轉繁：詞組優先（头发→頭髮、干净→乾淨）、台灣字形（里→裡）", tt == "頭髮 簡體中文 後來 乾淨 裡面 這裡", tt)
         await p.ev("__app.select(0,0)"); await p.pg.fill("#sLyrics", "这是第一行示意文字"); await p.pg.fill("#sLyrics2", "Sample line one")
@@ -122,7 +115,6 @@ async def main():
         s2t = (ROOT / "src" / "engine" / "s2t.txt").stat().st_size
         rec("簡轉繁對照表 ≤ 40 KB", s2t <= 40 * 1024, f"{s2t/1024:.1f} KB")
 
-        # ---------- 打開設定檔：四首歌（只有設定、沒有歌詞） ----------
         WAVES = (ROOT / "examples" / "waves.js").read_text()
         def sec(name, bg, sub="gentle", **kw): return {"name": name, "background": bg, "subtitle": sub, "lyrics": "", "lyrics2": "", **kw}
         def song(title, style, bpm, secs): return {"format": "worship-motion/1", "title": title, "style": style, "bpm": bpm, "sections": secs}

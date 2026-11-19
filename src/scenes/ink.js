@@ -18,7 +18,7 @@ function spot(f, t, s) {
   const p = mod(t * (s.laps || 1) / LOOP + (s.ph || 0), 1);
   blot(f, s.x, s.y, s.r, s.col, s.a * breath(p), s.seed || 1, lerp(s.g0 ?? .7, 1, E.out(p)));
 }
-// 印章：位置每「色塊換位」換一次，但不是跳：在每一格裡淡入、停住、淡去
+// 印章：位置每「色塊換位」換一次，在每一格裡淡入、停住、淡去
 function seal(f, x, t, list, every, size, a = .8) {
   const j = x.jt(t) / every, k = Math.floor(j), fr = j - k, v = list[mod(k, list.length)];
   const al = a * E.io(seg(fr, 0, .35)) * (1 - E.io(seg(fr, .7, 1)));
@@ -40,7 +40,7 @@ function hills(f, t, list, col, a, ph = 0) {
   });
 }
 
-/* ---------- 平靜：留白多；角落兩三團墨輪流暈開、淡去 ---------- */
+// 平靜：留白多；角落兩三團墨輪流暈開、淡去
 const CALM = [
   { x: 150, y: 960, r: 190, col: INK.wash, a: .3, ph: 0, seed: 1 },
   { x: 250, y: 1030, r: 120, col: INK.ink, a: .5, ph: .5, seed: 2 },
@@ -56,7 +56,7 @@ function calm(f, x) {
   seal(f, x, t, SEALS, 2, 44, .75);
 }
 
-/* ---------- 累積：墨量與層次增加：遠山、更多墨團、一筆飛白 ---------- */
+// 累積：墨量與層次增加：遠山、更多墨團、一筆飛白
 const BUILD = [
   { x: 1840, y: 560, r: 150, col: INK.wash, a: .28, ph: .1, seed: 6 },
   { x: 90, y: 330, r: 130, col: INK.wash, a: .3, ph: .6, seed: 7 },
@@ -73,7 +73,7 @@ function build(f, x) {
   brush(f, 120, 860, 260, .5 * breath(t / LOOP + .8), 9);
 }
 
-/* ---------- 高潮：大面積溫暖墨色（上緣、下緣、兩側），歌詞區保持乾淨 ---------- */
+// 高潮：大面積溫暖墨色（上緣、下緣、兩側），歌詞區保持乾淨
 function peak(f, x) {
   const t = mod(x.t, LOOP);
   [[180, -230, 430], [700, -300, 470], [1240, -290, 470], [1760, -220, 430]].forEach(([cx, cy, r], i) =>
@@ -86,7 +86,7 @@ function peak(f, x) {
   brush(f, 1500, 210, 330, .6 * breath(t / LOOP + .2), 5);
 }
 
-/* ---------- 字幕共用：一行字（逐字慢慢淡入；關鍵字加粗、暖色、最後才出來） ---------- */
+// 字幕共用：一行字（逐字慢慢淡入；關鍵字加粗、暖色、最後才出來）
 function rowText(f, x, chars, kw, cy, t0, o) {
   const n = chars.length, gapX = o.spacing ?? 6;
   const ws = chars.map((c, i) => f.measure(c, i === kw ? o.kwStyle : o.style).tw);
@@ -102,7 +102,7 @@ function rowText(f, x, chars, kw, cy, t0, o) {
 }
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 
-/* ---------- 收斂字幕：平靜的紙＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字 ---------- */
+// 收斂字幕：平靜的紙＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
@@ -121,13 +121,13 @@ function brushMark(f, cx, y, len, a) {
   f.add(band(cx, y, len, 9, -1.5, INK.warm, a, { blend: 'multiply', rough: 3, seed: 51 }), band(cx + 18, y + 7, len * .7, 4, -1, INK.warm, a * .6, { blend: 'multiply', rough: 2, seed: 52 }));
 }
 
-/* ---------- 華麗字幕（克制）：逐字慢慢淡入，關鍵字用字重與暖色加強，背後一團暖墨慢慢暈開 ---------- */
+// 華麗字幕（克制）：逐字慢慢淡入，關鍵字用字重與暖色加強，背後一團暖墨慢慢暈開
 function flashy(f, x) {
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
   x.under(f, build);
   const ST = { style: { px: 100, weight: 500 }, kwStyle: { px: 100, weight: 900 }, col: INK.ink, kwCol: INK.seal, spacing: 6 };
   const kt = .3 + x.chars.length * .08 + .35;
-  if (kw >= 0 && x.chars.length) {                                   // 先算位置（不畫字），把暖墨放在字下面
+  if (kw >= 0 && x.chars.length) {
     let total = 0; const ws = x.chars.map((c, i) => f.measure(c, i === kw ? ST.kwStyle : ST.style).tw);
     total = ws.reduce((a, b) => a + b, 0) + 6 * (ws.length - 1); const sc = Math.min(1, 1500 / Math.max(1, total));
     const kx = 960 - total * sc / 2 + (ws.slice(0, kw).reduce((a, b) => a + b, 0) + 6 * kw + ws[kw] / 2) * sc, g = E.out(seg(t, kt, kt + 3));

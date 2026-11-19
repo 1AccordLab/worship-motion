@@ -15,7 +15,7 @@ OVERLAY = """(b64)=>{document.querySelectorAll('#ovl').forEach(x=>x.remove()); c
 const i=document.createElement('img'); i.id='ovl'; i.src='data:image/png;base64,'+b64;
 Object.assign(i.style,{position:'absolute',left:(r.left+scrollX)+'px',top:(r.top+scrollY)+'px',width:r.width+'px',height:r.height+'px',borderRadius:'4px',zIndex:5});
 document.body.appendChild(i); return new Promise(res=>i.complete?res(1):i.onload=()=>res(1));}"""
-LS_PROBE = os.environ.get("WM_LS_PROBE", "wm:main:probe")
+LS_PROBE = "wm:main:probe"
 READY = "window.__app&&__app.ready"
 
 _results = []

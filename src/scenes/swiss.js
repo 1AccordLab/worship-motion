@@ -31,7 +31,7 @@ function rings(f, t, L, cx, cy, list) {
 }
 const scan = (f, t, period, col, a, w = 2) => { const x = W * mod(t, period) / period; f.add(rect(x - w / 2, 0, x + w / 2, H, col, a)); };
 
-/* ---------- 平靜：每 2 秒換位，中間留給歌詞 ---------- */
+// 平靜：每 2 秒換位，中間留給歌詞
 function calm(f, x) {
   const tt = mod(x.t, 16);
   f.grid.alpha = .09; f.grid.flash = .05 * pulse(tt, 4, BAR);
@@ -53,7 +53,7 @@ function calm(f, x) {
   sequencer(f, tt, CW, 5.5 * RH - 8, 8);
 }
 
-/* ---------- 累積：共用元素＋每 1 秒跳一格 ---------- */
+// 累積：共用元素＋每 1 秒跳一格
 function buildLayers(f, t, { avoid = null } = {}) {
   f.grid.alpha = .1; f.grid.flash = .07 * pulse(t, 5);
   rings(f, t, 16, 0, 0, [
@@ -68,7 +68,7 @@ function buildLayers(f, t, { avoid = null } = {}) {
   sequencer(f, t, CW, 5.5 * RH - 8, 16);
 }
 function build(f, x, o) {
-  if (o && o.sub === 'line') return buildLayers(f, x.t, { avoid: [6, 0, 11, 6] });   // 華麗字幕底下：避開放大的字
+  if (o && o.sub === 'line') return buildLayers(f, x.t, { avoid: [6, 0, 11, 6] });
   const tt = mod(x.t, 16);
   const A = [[0, 0, 2, 2], [0, 0, 1, 6], [10, 0, 12, 2], [11, 0, 12, 6], [10, 4, 12, 6], [0, 4, 2, 6], [0, 0, 3, 1], [9, 5, 12, 6]];
   const B = [[11, 5, 12, 6], [2, 0, 3, 1], [0, 5, 1, 6], [9, 0, 10, 1], [2, 5, 3, 6], [11, 0, 12, 1], [4, 5, 5, 6], [0, 2, 1, 3]];
@@ -79,7 +79,7 @@ function build(f, x, o) {
   scan(f, tt, BEAT * 2, SW.crm, .18);
 }
 
-/* ---------- 高潮：斜帶劃開，速度線、圓弧、跑馬燈 ---------- */
+// 高潮：斜帶劃開，速度線、圓弧、跑馬燈
 function peak(f, x) {
   const tt = mod(x.t, 16), beat = pulse(tt, 5), ANG = -24, rad = ANG * Math.PI / 180;
   const dir = [Math.cos(rad), Math.sin(rad)], nrm = [-Math.sin(rad), Math.cos(rad)];
@@ -107,7 +107,7 @@ function peak(f, x) {
   sequencer(f, tt, CW, RH * .5 + 56, 16, 12, 6);
 }
 
-/* ---------- 華麗字幕：雙層掃屏、關鍵字巨大落下帶殘影、直欄逐字跳出 ---------- */
+// 華麗字幕：雙層掃屏、關鍵字巨大落下帶殘影、直欄逐字跳出
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, kwCh = chars[kw], sub = x.small[0] || '';
   const span = sub ? 520 : 640, cy = sub ? 470 : 540;
@@ -141,7 +141,7 @@ function flashy(f, x) {
   if (w2 < 1) { const x1 = lerp(W + 200, -400, E.io(w2)); f.top(rect(x1, 0, x1 + 60, H, SW.crm)); }
 }
 
-/* ---------- 收斂字幕：高潮背景＋深色橫條托住字，切下一句只有字在換 ---------- */
+// 收斂字幕：高潮背景＋深色橫條托住字，切下一句只有字在換
 function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 132, y0 = 515 - gap * (n - 1) / 2;
@@ -158,7 +158,7 @@ function gentle(f, x) {
   if (uw > 1) f.add(rect(960 - uw / 2, uy - 2.5, 960 + uw / 2, uy + 2.5, SW.org));
 }
 
-/* ---------- 收斂字幕（雙語）：每一行大字下面一行小字（約 0.46 倍、同色較淡） ---------- */
+// 收斂字幕（雙語）：每一行大字下面一行小字（約 0.46 倍、同色較淡）
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 158, y0 = 510 - gap * (n - 1) / 2;
   x.under(f, peak);

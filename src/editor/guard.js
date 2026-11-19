@@ -1,6 +1,6 @@
 let suspects = [], lastProbe = null;
 const saveSuspects = () => shared.set('suspect', JSON.stringify(suspects.slice(-SUSPECT_MAX)));
-// 試跑前先留標記、試跑完才清：下次打開還看得到標記，就表示上次試跑時頁面當掉了
+// 注意：試跑前先留標記、試跑完才清；下次打開還看得到標記，就表示上次試跑時頁面當掉了
 function loadGuard() {
   try { suspects = JSON.parse(shared.get('suspect') || '[]'); } catch (e) { }
   try { lastProbe = JSON.parse(shared.get('probe')); } catch (e) { }

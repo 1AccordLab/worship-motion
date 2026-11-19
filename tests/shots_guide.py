@@ -29,7 +29,6 @@ async def main():
         async def frame(si, ci, tt):
             await p.ev(f"__app.select({si},{ci})"); png = await pg.evaluate(GRAB, tt); await p.ev(f"__app.select({si},{ci})"); return png
 
-        # ---------- 多首分頁的整體畫面 ----------
         await p.ev("()=>localStorage.clear()"); await p.reload()
         await pg.set_viewport_size({"width": 1440, "height": 900})
         for i, (t, st) in enumerate([("範例詩歌一", "riso"), ("範例詩歌二", "nave"), ("範例詩歌三", "sky")]):
@@ -46,10 +45,9 @@ async def main():
                        ("view", "#view"), ("clips", "#clipCard"), ("panes", "#tab-ai"), ("ask", "#askCard"), ("paste", "#pasteCard")]:
             r = await p.ev(f"(()=>{{const r=document.querySelector('{sel}').getBoundingClientRect();return [r.left,r.top,r.width,r.height]}})()")
             pins[k] = [round(100 * r[0] / 1440, 1), round(100 * r[1] / 900, 1), round(100 * r[2] / 1440, 1), round(100 * r[3] / 900, 1)]
-        (TMP / "pins.json").write_text(json.dumps(pins, ensure_ascii=False))   # 教學頁「編輯器長怎樣」圖釘位置的參考
+        (TMP / "pins.json").write_text(json.dumps(pins, ensure_ascii=False))
         await pg.evaluate("document.querySelectorAll('#ovl').forEach(x=>x.remove())")
 
-        # ---------- 請 AI 改 ----------
         await el("#openCard", "open.jpg", 1000)
         await pg.click("#chips button >> nth=0"); await el("#askCard", "ask.jpg", 1000)
         def reply_of(secs):
@@ -60,16 +58,15 @@ async def main():
             await pg.fill("#pasteText", text); await p.ev("document.querySelector('#pasteText').scrollTop=0")
             await p.wait("document.querySelector('#detect').innerText.trim().length>0")
         async def apply():
-            done = "document.querySelector('#cfgStatus').textContent.trim().length>0"
-            await pg.click("#pasteApply"); await p.wait(f"__app.dialog().open||{done}", 60000)
-            if (await p.ev("__app.dialog()"))["open"]: await p.ev("__app.answer('ok')"); await p.wait(done, 60000)
+            finished = "(()=>{const s=document.querySelector('#cfgStatus').textContent.trim();return s.length>0&&!s.startsWith('套用中')&&!document.querySelector('#pasteApply').disabled})()"
+            await pg.click("#pasteApply"); await p.wait(f"__app.dialog().open||{finished}", 60000)
+            if (await p.ev("__app.dialog()"))["open"]: await p.ev("__app.answer('ok')"); await p.wait(finished, 60000)
         await paste(reply_of(song("x", "riso")["sections"])); await apply(); await el("#pasteCard", "paste_error.jpg", 1000)
         good = [{"name": "主歌", "background": "calm", "subtitle": "none"}, {"name": "副歌", "background": "calm", "subtitle": "gentle", "lyrics": G4}]
         await paste(reply_of(good)); await el("#pasteCard", "paste_detect.jpg", 1000)
         await apply(); await el("#pasteCard", "paste_applied.jpg", 1000)
         await p.ev("__app.undo()")
 
-        # ---------- 自己調：整首歌詞、這一段 ----------
         await p.ev("__app.tab('self')")
         await pg.fill("#lyrAll", "[Verse]\n這是第一行示意文字\nThis is sample line one\n這是第二行示意文字\nThis is sample line two\n\n[Chorus]\n這是第三行示意文字\nThis is sample line three\n\n詞曲：示意")
         await pg.click("#lyrSplit"); await p.wait("__app.lyricsDialog().open")
@@ -77,12 +74,10 @@ async def main():
         await pg.click("#lyrCancel")
         await p.ev("__app.select(2,0)"); await el("#secCard", "self_section.jpg", 1000)
 
-        # ---------- 匯出 ----------
         await p.ev("__app.tab('ai')"); png = await frame(2, 0, 3.0)
         await el("#clipCard", "clips.jpg", 1000)
         await pg.click("#exportCard h2"); await el("#exportCard", "export.jpg", 1000)
 
-        # ---------- 改錯了：歷史紀錄、分頁選單 ----------
         await p.ev("__app.tab('self')"); await pg.fill("#title", "範例詩歌一（改）"); await pg.click("#secCard h2")
         await pg.click("#sBg button:nth-child(1)")
         await pg.click("#tab-adv"); await p.wait("document.querySelectorAll('#histList .hrow').length>2"); await p.ev("scrollTo(0,0)")
@@ -94,7 +89,6 @@ async def main():
         await pg.screenshot(path=str(TMP / "songmenu.png"), clip={"x": box[0], "y": max(0, box[1]), "width": min(1440, box[2]) - box[0], "height": box[3] - max(0, box[1])})
         jpg(TMP / "songmenu.png", "songmenu.jpg", 1000); await pg.keyboard.press("Escape")
 
-        # ---------- 風格圖鑑：8 種 × 高潮背景、華麗、收斂 ----------
         for st in STYLES:
             await p.ev("x=>__app.load(x)", song("風格圖鑑", st))
             for si, ci, tt, nm in [(2, 0, 4.0, "peak"), (1, 1, 2.6, "flashy"), (2, 1, 4.0, "gentle")]:
@@ -102,7 +96,6 @@ async def main():
         await p.ev("x=>__app.load(x)", song("風格圖鑑", "paper"))
         for si, nm in [(0, "calm"), (1, "build"), (2, "peak")]:
             t = TMP / f"bg_{nm}.png"; await p.shot(si, 0, 4.0, t); jpg(t, f"bg_{nm}.jpg", 480)
-        # ---------- 配色：剪紙拼貼，原本配色 vs 換成墨綠底 ----------
         PAL_AFTER = {"bg": "#22372e", "red": "#b69432", "pnk": "#7fb9a5"}
         for nm, pal in [("before", {}), ("after", PAL_AFTER)]:
             await p.ev("x=>__app.load(x)", {**song("配色", "paper"), "palette": pal})

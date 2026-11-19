@@ -2,7 +2,7 @@
 把引擎（ENGINE）、編輯器（EDITOR）、內建風格（src/scenes/*.js）和 skill/SKILL.md 打包成
 dist/詩歌影片編輯器.html（單檔、無依賴）。ENGINE、EDITOR 是依序串接的明確清單，缺檔就失敗。
 """
-import pathlib, re, json, sys, html
+import pathlib, re, json, shutil, subprocess, sys, tempfile, html
 ROOT = pathlib.Path(__file__).parent
 SRC = ROOT / "src"
 OUT = ROOT / "dist" / "詩歌影片編輯器.html"
@@ -13,7 +13,6 @@ EDITOR = ["editor/core.js", "editor/guard.js", "editor/hosts.js", "editor/projec
           "editor/bind.js", "editor/export.js", "editor/single.js", "editor/main.js"]
 SHELL = "editor/shell.html"
 RUNTIME = "engine/runtime.js"
-# 下拉選單的順序（第一個是預設風格）；清單裡的檔案缺了就失敗，清單外的場景接在後面
 SCENE_ORDER = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky"]
 
 def read(rel):
@@ -57,12 +56,20 @@ def make_s2t():
     S2T.write_text("".join(k + v for k, v in sorted(chars.items())) + "\n" + ",".join(sorted(out)) + "\n")
     print("s2t", len(chars), "字", len(out), "詞", f"{S2T.stat().st_size/1024:.1f} KB")
 
-def esc(s):  # 放進 <script> 裡不能出現 </script
+def esc(s):  # 注意：</script 出現在 <script> 內會提早結束標籤，所以要跳脫
     return re.sub(r"</(script)", r"<\\/\1", s, flags=re.I)
 
-# 只去縮排與空行，註解原樣保留：逐行刪註解會誤傷模板字串（WGSL、CANVAS_WORKER、BOOT）
+# 注意：只去縮排與空行，不逐行刪註解；逐行刪會誤傷模板字串（WGSL、CANVAS_WORKER、BOOT）
 def slim(js):
     return "\n".join(s for s in (line.strip() for line in js.split("\n")) if s)
+
+def check_syntax(name, js):
+    node = shutil.which("node")
+    if not node: return
+    with tempfile.TemporaryDirectory() as tmp:
+        f = pathlib.Path(tmp) / (name + ".js"); f.write_text(js)
+        r = subprocess.run([node, "--check", str(f)], capture_output=True, text=True)
+    if r.returncode: sys.exit(f"{name} 語法錯誤（node --check）：\n{r.stderr}")
 
 def scene_files():
     found = {p.stem: p for p in sorted((SRC / "scenes").glob("*.js"))}
@@ -74,6 +81,7 @@ def build():
     tpl = read(SHELL)
     runtime = slim(read(RUNTIME))
     app = "\n".join(slim(read(f)) for f in ENGINE + EDITOR)
+    check_syntax("wm-app", app)
     body = [f'<script type="text/plain" id="wm-runtime">{esc(runtime)}</script>']
     for p in scene_files():
         code = p.read_text()

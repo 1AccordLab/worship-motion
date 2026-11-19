@@ -10,7 +10,7 @@ const MP4 = (() => {
   const MATRIX = [0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000];
   function build({ width, height, fps, samples, avcC }) {
     const n = samples.length, ts = fps * 1000, delta = 1000, dur = n * delta;
-    // 有 B-frame 時顯示時間早於解碼時間：ctts 補差、elst 位移 shift 讓時間戳從 0 開始
+    // 注意：有 B-frame 時顯示時間早於解碼時間，用 ctts 補差、elst 位移 shift 讓時間戳從 0 開始
     let cto = samples.map((s, i) => Math.round(s.ts / 1e6 * ts) - i * delta);
     const shift = -Math.min(0, ...cto); cto = cto.map(c => c + shift);
     const needCtts = cto.some(c => c !== 0);
@@ -20,10 +20,10 @@ const MP4 = (() => {
     const offset = ftyp.length + 8;
     const mvhd = full('mvhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u32(0x00010000), u16(0x0100), zeros(10), ...MATRIX.map(u32), zeros(24), u32(2));
     const tkhd = full('tkhd', 0, 3, u32(0), u32(0), u32(1), u32(0), u32(dur), zeros(8), u16(0), u16(0), u16(0), u16(0), ...MATRIX.map(u32), u32(width * 65536), u32(height * 65536));
-    const mdhd = full('mdhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u16(0x55c4), u16(0));  // 0x55c4 = 語言 'und'
+    const mdhd = full('mdhd', 0, 0, u32(0), u32(0), u32(ts), u32(dur), u16(0x55c4), u16(0));  // 注意：0x55c4 = 語言 und
     const hdlr = full('hdlr', 0, 0, u32(0), str('vide'), zeros(12), str('VideoHandler'), u8(0));
     const dinf = box('dinf', full('dref', 0, 0, u32(1), full('url ', 0, 1)));
-    const colr = box('colr', str('nclx'), u16(1), u16(1), u16(1), u8(0));  // BT.709；最後的 0 = limited range
+    const colr = box('colr', str('nclx'), u16(1), u16(1), u16(1), u8(0));  // 注意：BT.709；最後的 0 = limited range
     const avc1 = box('avc1', zeros(6), u16(1), zeros(16), u16(width), u16(height), u32(0x00480000), u32(0x00480000), u32(0), u16(1), zeros(32), u16(0x18), u16(0xffff), box('avcC', avcC), colr);
     const keys = []; samples.forEach((s, i) => { if (s.key) keys.push(i + 1); });
     const stbl = box('stbl', full('stsd', 0, 0, u32(1), avc1), full('stts', 0, 0, u32(1), u32(n), u32(delta)),
@@ -43,7 +43,6 @@ async function pickCodec() {
   }
   throw new Error('NO_H264');
 }
-/* renderOut(i) 要把第 i 格畫到 'out' */
 async function encodeFrames(r, frames, renderOut, onProgress, isCancelled) {
   if (typeof VideoEncoder === 'undefined') throw new Error('NO_H264');
   const cfg = await pickCodec(), samples = []; let avcC = null, err = null;

@@ -35,7 +35,12 @@ async def main():
             await main_p.ev("()=>localStorage.setItem('wm:main:probe', JSON.stringify({kind:'scene', hash:'deadbeef', name:'測試風格'}))")
             await reopen(dev_p); await reopen(main_p)
             rec("試跑標記只影響同一個 channel", not any("上次在試跑" in n for n in await dev_p.ev("__app.notices()")) and any("上次在試跑" in n for n in await main_p.ev("__app.notices()")), (await dev_p.ev("__app.notices()"), await main_p.ev("__app.notices()")))
-            rec("沒有頁面錯誤", not main_p.log and not dev_p.log, (main_p.log + dev_p.log)[:3])
+            local = tmp / "x" / "dev" / "index.html"
+            _, _, file_p = await open_page(pw, local.as_uri(), ctx=ctx)
+            await file_p.ev("x=>__app.load(x)", proj("swiss", title="檔案裡的歌"))
+            file_keys = await file_p.ev("Object.keys(localStorage)")
+            rec("file:// 的路徑含 /dev/ 也是 main", file_keys and all(k.startswith("wm:main:") for k in file_keys), file_keys)
+            rec("沒有頁面錯誤", not main_p.log and not dev_p.log and not file_p.log, (main_p.log + dev_p.log + file_p.log)[:3])
             await b.close()
     finally:
         srv.shutdown(); shutil.rmtree(tmp, ignore_errors=True)

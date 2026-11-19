@@ -26,7 +26,7 @@ function writeHist() {
       closed: CLOSED.map(c => ({ id: c.id, i: c.i, at: c.at, title: c.title, song: { uid: c.song.uid, P: c.song.P, custom: c.song.custom, orig: c.song.orig } })) });
   };
   let str = pack(), n = 0;
-  // localStorage 配額有限：超過就從最長的那條歷史丟掉最早的紀錄
+  // 注意：localStorage 配額有限，超過就從最長的那條歷史丟掉最早的紀錄
   while (str.length > HIST_BYTES_MAX && n++ < 400) {
     const big = Object.values(songs).filter(h => h.pos > 0 && h.stack.length > 2).sort((a, b) => b.stack.length - a.stack.length)[0]; if (!big) break;
     big.stack.shift(); big.pos--; str = pack();
@@ -102,7 +102,7 @@ function renderHistory() {
 function previewHist(k) {
   const h = histOf(SONGS[ACT]), e = h.stack[k]; if (!e) return;
   const st = JSON.parse(e.s), box = $('#histPrev'); box.hidden = false;
-  const ch = k === h.pos ? [] : changes(clone(P), st.P, meta(), meta());
+  const ch = k === h.pos ? [] : changes(clone(P), st.P, meta(), meta()).lines;
   $('#histPrevT').textContent = `${hhmm(e.at)}「${e.label}」` + (k === h.pos ? '：就是現在的樣子。' : `：和現在比，${ch.length ? '不一樣的地方：\n・' + ch.slice(0, 8).join('\n・') + (ch.length > 8 ? `\n・…還有 ${ch.length - 8} 項` : '') : '設定一樣（可能是新風格的程式不同）。'}`);
   $('#histGo').disabled = k === h.pos;
 }

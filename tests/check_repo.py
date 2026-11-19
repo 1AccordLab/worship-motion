@@ -2,8 +2,9 @@
 (a) 沒有 \\uXXXX 跳脫碼藏中文  (b) 程式／測試／文件裡 lyrics、lyrics2 的字串值只用示意文字
 (c) 已知真實歌詞的指紋（只存雜湊）  (d) 文件與程式沒有過時用語
 (e) 配色不用純白、純黑  (f) 場景不連網、不碰 DOM；src、examples 不用 WebGL 與遊戲引擎
-(g) 註解數量只准變少，新增的註解要以「注意：」開頭  (h) SKILL.md 的欄位表與風格說明和程式一致
+(g) 程式的註解一律以「注意：」開頭；場景與範例只有檔頭一行與宣告上方一行  (h) SKILL.md 的欄位表與風格說明和程式一致
 (i) 教學頁引用的介面文字都在編輯器裡、圖都存在  (j) CLAUDE.md、README、.claude 提到的路徑都存在
+(k) 質感表 T／ON（gpu.js）與 TEX_TYPES／TEX_ON（runtime.js）一致
 失敗時列出 檔名:行號 並 exit 1；為了不把歌詞印出來，(b)(c) 只印位置。"""
 import hashlib, pathlib, re, subprocess, sys, unicodedata
 
@@ -35,11 +36,12 @@ STALE_ALLOW = [
     ("src/", "行版權說明（詞、曲、©、CCLI 開頭），不會放進歌詞", "給使用者看的提示，描述這一次動作"),
 ]
 
-# (g) 註解行數上限：只准往下調。其他註解要改成命名、拆函式或測試；留下的以「注意：」開頭（外部限制、陷阱、為什麼）
-COMMENT_CEILING = 228
-COMMENT_SCOPE = ("src/", "examples/", "tests/", "build.py")
-COMMENT_JS = re.compile(r"^\s*(?://|/\*|\*(?!/)|<!--)\s*(.*)|\s(?://|/\*)\s(.*)$")
+# (g) 註解：程式（CODE_SCOPE）每一行都以「注意：」開頭，只寫改不了的外部限制或陷阱；場景與範例（SCENE_SCOPE）第一行是檔頭，其餘只有宣告正上方的單行 // 說明畫什麼
+CODE_SCOPE = ("src/engine/", "src/editor/", "build.py", "tests/", ".claude/hooks/")
+SCENE_SCOPE = ("src/scenes/", "examples/")
+COMMENT_JS = re.compile(r"^\s*(?://|/\*|\*(?=\s|$)|<!--)\s*(.*)|\s(?://|/\*)\s(.*)$")
 COMMENT_PY = re.compile(r"^\s*#(?!!)\s*(.*)|\s#\s(.*)$")
+DECLARATION = re.compile(r"^(?:const|let|function)\s")
 # (e) 純白、純黑（src/engine 的文字遮罩用白色，不在範圍內）
 PURE_RE = re.compile(r"#(?:fff|ffffff|000|000000)\b|rgba?\(\s*(?:255\s*,\s*255\s*,\s*255|0\s*,\s*0\s*,\s*0)\b", re.I)
 PURE_SCOPE = ("src/scenes/", "src/editor/", "examples/", "guide/")
@@ -77,13 +79,22 @@ def read(rel):
 def tracked():
     return [n for n, _ in text_files()]
 
-def comment_lines():
+def comment_lines(scope):
     for name, lines in text_files():
-        if name == "tests/check_repo.py" or not name.startswith(COMMENT_SCOPE) or not name.endswith((".js", ".py", ".html", ".css")): continue
+        if name == "tests/check_repo.py" or not name.startswith(scope) or not name.endswith((".js", ".py", ".html", ".css")): continue
         for no, line in enumerate(lines, 1):
             if name.endswith(".py") and no == 1 and line.startswith("#!"): continue
             m = (COMMENT_PY if name.endswith(".py") else COMMENT_JS).search(line)
-            if m: yield name, no, (m.group(1) if m.group(1) is not None else m.group(2)).strip()
+            if m: yield name, no, (m.group(1) if m.group(1) is not None else m.group(2)).strip(), line
+
+def scene_comment_problems():
+    for name, lines in text_files():
+        if not name.startswith(SCENE_SCOPE) or not name.endswith(".js"): continue
+        if not lines or not lines[0].lstrip().startswith(("//", "/*")): yield f"{name}:1: (g) 第一行要是一行檔頭說明"
+        for no, line in enumerate(lines[1:], 2):
+            if not COMMENT_JS.search(line): continue
+            nxt = lines[no] if no < len(lines) else ""
+            if not line.startswith("// ") or not DECLARATION.match(nxt): yield f"{name}:{no}: (g) 場景的註解只能是宣告正上方的單行「// 畫什麼」"
 
 def table_names(md, heading, stop):
     """SKILL.md 某一節裡，表格第一欄用反引號框起來的名稱"""
@@ -108,9 +119,18 @@ def check_files():
             if scene and SCENE_RE.search(line): bad.append(f"{name}:{no}: (f) 場景裡不能連網、碰 DOM 或 import")
             if name.startswith(("src/", "examples/")) and name.endswith((".js", ".html")) and GPU_RE.search(line): bad.append(f"{name}:{no}: (f) 只用 WebGPU，不用 WebGL 或遊戲引擎")
     # (g) 註解
-    loose = [(n, no) for n, no, body in comment_lines() if body and not body.startswith("注意：")]
-    if len(loose) > COMMENT_CEILING: bad.append(f"(g) 不是「注意：」開頭的註解有 {len(loose)} 行，上限 {COMMENT_CEILING}（新增的註解請改成命名、拆函式或測試；真的要留就以「注意：」開頭）：" + "、".join(f"{n}:{no}" for n, no in loose[-3:]))
-    elif len(loose) < COMMENT_CEILING: print(f"提示：註解變少了（{len(loose)} 行），可以把 COMMENT_CEILING 調成 {len(loose)}")
+    for n, no, body, _ in comment_lines(CODE_SCOPE):
+        if body and not body.startswith("注意："): bad.append(f"{n}:{no}: (g) 註解要以「注意：」開頭，只寫改不了的外部限制或陷阱（其他改用命名、拆函式或測試）")
+    bad += scene_comment_problems()
+    # (k) 質感表
+    gpu = read("src/engine/gpu.js")
+    gpu_types = re.search(r"const T = (\{[^}]*\})", gpu).group(1)
+    gpu_on = re.search(r"\bON = (\{[^}]*\})", gpu).group(1)
+    rt_types = re.search(r"TEX_TYPES = (\{[^}]*\})", rt_text := read("src/engine/runtime.js")).group(1)
+    rt_on = re.search(r"TEX_ON = (\{[^}]*\})", rt_text).group(1)
+    squash = lambda t: re.sub(r"\s", "", t)
+    if squash(gpu_types) != squash(rt_types): bad.append("src/engine/gpu.js: (k) 質感種類 T 和 runtime.js 的 TEX_TYPES 不一致")
+    if squash(gpu_on) != squash(rt_on): bad.append("src/engine/gpu.js: (k) 作用圖層 ON 和 runtime.js 的 TEX_ON 不一致")
     # (h) SKILL.md ⇄ 程式
     skill, proj, rt = read("skill/SKILL.md"), read("src/editor/project.js"), read("src/engine/runtime.js")
     norm = proj[proj.index("function normalize"):proj.index("function adapt")]
@@ -143,8 +163,8 @@ def check_files():
         if not (name in ("CLAUDE.md", "README.md") or (name.startswith(".claude/") and name.endswith(".md"))): continue
         for no, line in enumerate(read(name).splitlines(), 1):
             for tok in re.findall(r"`([^`\s]+)`", line):
+                if "/" not in tok or tok.startswith(("/",) + PATH_OK) or tok.rstrip("/") + "/" in PATH_OK or re.search(r"[<>$:{}]|^https?|^\.\.|\.\.\.", tok): continue
                 tok = tok.rstrip("/")
-                if "/" not in tok or tok.startswith(("/",) + PATH_OK) or re.search(r"[<>$:{}]|^https?|^\.\.|\.\.\.", tok): continue
                 if not (re.search(r"\.(py|js|json|md|html|css|yml|txt)$", tok) or (ROOT / tok.split("/")[0]).exists()): continue
                 if not list(ROOT.glob(tok)): bad.append(f"{name}:{no}: (j) 提到的路徑 {tok} 不存在")
     return bad

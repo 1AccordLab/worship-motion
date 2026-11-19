@@ -8,11 +8,11 @@ function clipName(si, ci) {
 async function encodeClip(c, frames, onP) {
   return encodeFrames(() => r, frames ?? c.frames, i => serial(() => drawAt(i / FPS, i, 'out')), onP, () => cancel);
 }
-async function encodeList(list, label, enc = true) {
+async function encodeList(list, label, { encode = true } = {}) {
   const files = [];
   for (let i = 0; i < list.length; i++) {
     const [si, ci] = list[i];
-    if (!enc) { files.push({ name: clipName(si, ci) }); continue; }
+    if (!encode) { files.push({ name: clipName(si, ci) }); continue; }
     clip = await serial(() => makeClip(si, ci));
     const blob = await encodeClip(clip, null, p => { prog((i + p) / list.length); setStatus(`${label}：第 ${i + 1} / ${list.length} 支… ${Math.round(p * 100)}%`); });
     files.push({ name: clipName(si, ci), blob });
@@ -20,13 +20,13 @@ async function encodeList(list, label, enc = true) {
   return files;
 }
 const allOf = si => [...Array(1 + slidesOf(P.sections[si]).length).keys()].map(ci => [si, ci]);
-async function allSongsFiles(enc = true) {
+async function allSongsFiles({ encode = true } = {}) {
   const back = ACT, files = [];
   try {
     for (let k = 0; k < SONGS.length; k++) {
       if (k !== ACT) await activate(k);
       const dir = `${pad2(k + 1)}_${fileSafe(P.title)}/`;
-      const fs = await encodeList(P.sections.flatMap((_, si) => allOf(si)), `第 ${k + 1}／${SONGS.length} 首「${P.title}」`, enc);
+      const fs = await encodeList(P.sections.flatMap((_, si) => allOf(si)), `第 ${k + 1}／${SONGS.length} 首「${P.title}」`, { encode });
       fs.forEach(f => files.push({ name: dir + f.name, blob: f.blob }));
     }
   } finally { if (ACT !== back) await activate(back); }
