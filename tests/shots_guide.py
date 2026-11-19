@@ -58,7 +58,7 @@ async def main():
             await pg.fill("#pasteText", text); await p.ev("document.querySelector('#pasteText').scrollTop=0")
             await p.wait("document.querySelector('#detect').innerText.trim().length>0")
         async def apply():
-            finished = "(()=>{const s=document.querySelector('#cfgStatus').textContent.trim();return s.length>0&&!s.startsWith('套用中')&&!document.querySelector('#pasteApply').disabled})()"
+            finished = "(()=>{const s=document.querySelector('#cfgStatus').textContent.trim();return s.length>0&&!s.startsWith('套用中')})()"
             await pg.click("#pasteApply"); await p.wait(f"__app.dialog().open||{finished}", 60000)
             if (await p.ev("__app.dialog()"))["open"]: await p.ev("__app.answer('ok')"); await p.wait(finished, 60000)
         await paste(reply_of(song("x", "riso")["sections"])); await apply(); await el("#pasteCard", "paste_error.jpg", 1000)
