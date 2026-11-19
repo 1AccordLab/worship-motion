@@ -26,7 +26,7 @@ LYRIC_FINGERPRINTS = {
 
 # (d) 過時用語與掃描範圍（check_repo.py 自己不掃，因為清單寫在裡面）
 STALE_TERMS = ["以前", "舊版", "舊的", "已拿掉", "已移除", "已刪除", "拿掉了", "改之前", "改之後", "不再", "相容舊", "向下相容", "過去的版本", "暫時解", "先這樣", "legacy", "deprecated", "TODO", "FIXME", "HACK"]
-STALE_SCOPE = ("src/", "skill/", "guide/index.html", "README.md", "CLAUDE.md", ".claude/", "examples/", "tests/", "build.py")
+STALE_SCOPE = ("src/", "skill/", "guide/index.html", "README.md", "CLAUDE.md", ".claude/", "docs/", "examples/", "tests/", "build.py")
 # (路徑前綴, 該行要包含的文字, 理由)：誤判才加，越小越好
 STALE_ALLOW = [
     ("src/", "知道了，不再顯示", "按鈕上給使用者看的字，不是歷史說明"),
@@ -160,7 +160,7 @@ def check_files():
         if not (ROOT / "guide" / img).is_file(): bad.append(f"guide/index.html: (i) 圖 {img} 不存在")
     # (j) 文件提到的路徑
     for name in files:
-        if not (name in ("CLAUDE.md", "README.md") or (name.startswith(".claude/") and name.endswith(".md"))): continue
+        if not (name in ("CLAUDE.md", "README.md") or (name.startswith((".claude/", "docs/")) and name.endswith(".md"))): continue
         for no, line in enumerate(read(name).splitlines(), 1):
             for tok in re.findall(r"`([^`\s]+)`", line):
                 if "/" not in tok or tok.startswith(("/",) + PATH_OK) or tok.rstrip("/") + "/" in PATH_OK or re.search(r"[<>$:{}]|^https?|^\.\.|\.\.\.", tok): continue

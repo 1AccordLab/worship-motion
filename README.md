@@ -18,6 +18,7 @@
 | `examples/` | 自訂風格範例 |
 | `skill/SKILL.md` | 給 AI 的說明（任何 AI 都能用，也內嵌在編輯器的「複製開場白」） |
 | `guide/` | 給同工的教學頁 |
+| `docs/architecture.md` | 架構：資料格式、執行時的組成、打包與部署、路線 |
 | `tests/` | 靜態檢查與無頭瀏覽器測試 |
 | `CLAUDE.md`、`.claude/` | 給 AI 開發者的指引、規則與工具 |
 

@@ -36,6 +36,7 @@
 | `src/scenes/` | 8 個內建風格：swiss paper type bauhaus riso ink nave sky（`build.py` 的 `SCENE_ORDER` 決定下拉順序，第一個 swiss 是預設） |
 | `examples/` | 自訂風格範例 |
 | `skill/SKILL.md`、`guide/` | 給 AI 的說明、給同工的教學 |
+| `docs/architecture.md` | 架構與路線：資料格式、執行時的組成、防護、儲存、動手前要先決定的事。改了架構就一起改 |
 
 ## 常見陷阱
 
