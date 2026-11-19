@@ -64,7 +64,7 @@ function buildLayers(f, t, { avoid = null } = {}) {
     { r: 560, w: 2, sweep: 1.2, laps: 4, swing: .25, ph: 2, center: .785, col: SW.crm, a: .35 },
   ]);
   lights(f, t, 16, 8, 7, { avoid });
-  f.add(rect(CW, 5.5 * RH + 18, CW + 384 * mod(t, BAR) / BAR, 5.5 * RH + 22, SW.org));   // 每小節一條進度條
+  f.add(rect(CW, 5.5 * RH + 18, CW + 384 * mod(t, BAR) / BAR, 5.5 * RH + 22, SW.org));
   sequencer(f, t, CW, 5.5 * RH - 8, 16);
 }
 function build(f, x, o) {
@@ -95,13 +95,13 @@ function peak(f, x) {
     { r: 460, w: 3, sweep: 1.0, laps: 6, swing: .35, ph: 4, center: 2.356, col: SW.crm, a: .4, breath: .4 },
     { r: 540, w: 30, sweep: .5, laps: 4, swing: .5, ph: 1, center: 2.356, col: SW.dim2 },
   ]);
-  const SP = 70, travel = mod(tt / 16 * SP * 16, SP);      // 速度線一直往外推
+  const SP = 70, travel = mod(tt / 16 * SP * 16, SP);
   for (let i = 0; i < 9; i++) {
     const off = 200 + i * SP + travel;
     f.add(B(off + drift, i % 3 === 0 ? 6 : 3, i % 4 === 1 ? SW.org : SW.crm, .65 * (1 - (off - 200) / (9 * SP))));
   }
   f.add(B(drift, 132 + 30 * beat, SW.org), B(158 + drift + 10 * beat, 12, SW.crm, .92));
-  const p = mod(tt, 4), grow = E.out5(seg(p, 0, .45)), shrink = E.io(seg(p, 2.2, 2.7));   // 每 4 秒一條細線劃過
+  const p = mod(tt, 4), grow = E.out5(seg(p, 0, .45)), shrink = E.io(seg(p, 2.2, 2.7));
   if (grow > 0 && shrink < 1) f.add(B(-140 + drift, 5, SW.crm, .8, -1600 + 3200 * shrink, -1600 + 3200 * grow));
   lights(f, tt, 16, 6, 3, { avoid: [2, 2, 10, 4] });
   sequencer(f, tt, CW, RH * .5 + 56, 16, 12, 6);
@@ -110,7 +110,7 @@ function peak(f, x) {
 /* ---------- 華麗字幕：雙層掃屏、關鍵字巨大落下帶殘影、直欄逐字跳出 ---------- */
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, kwCh = chars[kw], sub = x.small[0] || '';
-  const span = sub ? 520 : 640, cy = sub ? 470 : 540;      // 有第二語言：直欄往上收，下面留一行小字
+  const span = sub ? 520 : 640, cy = sub ? 470 : 540;
   const step = n > 1 ? Math.min(sub ? 100 : 112, span / (n - 1)) : 0, y0 = cy - step * (n - 1) / 2;
   const BIG = { px: 1150, weight: 900 };
   x.under(f, build);
@@ -131,7 +131,7 @@ function flashy(f, x) {
     const kick = t > 1.2 ? .1 * pulse(t, 7, BEAT, i * BEAT / n) : 0;
     f.text(ch, xx, y0 + i * step + (1 - E.out(si)) * 46, { px: 98, weight: 900, scale: lerp(.3, 1, E.back(si)) * (1 + kick), col: isK ? SW.org : SW.crm });
   });
-  if (sub) {                                                // 第二語言小字：直欄下方、靠右對齊，不碰左邊的大字
+  if (sub) {
     const SM = { px: 44, weight: 500, spacing: 2 }, a = E.io(seg(t, .5 + n * .08, .9 + n * .08)), sc = f.fit(sub, 700, SM);
     f.add(rect(1800 - 120 * a, 776, 1800, 780, SW.org, a));
     f.text(sub, 1800, 820 + (1 - a) * 10, { ...SM, scale: sc, align: 'right', col: SW.crm, a: .7 * a });

@@ -1,6 +1,4 @@
-/* 網點印刷（Risograph）：米色紙、螢光粉、藍、黃、青四色油墨。
-   質感全部用引擎的質感庫：半透明的色塊印成網點、每種墨色套色微微錯位（每 8 拍重新對位）、絹印粗糙邊、紙纖維。
-   墨色互相疊印（blend: 'multiply'），粉＋藍疊出紫，像真的印刷。背景不放字。 */
+/* 網點印刷（Risograph）：米色紙、螢光粉／藍／黃／青油墨，疊印、網點、套色錯位 */
 const RS = { bg: '#d6cab0', pink: '#e2536e', blue: '#3b5ca8', yel: '#e9b23c', teal: '#2c8a86', ink: '#2f2b35', paper: '#e2d6bd' };
 const ink = s => Object.assign(s, { blend: 'multiply' });
 const flat = { tex: false };
@@ -31,7 +29,7 @@ function calm(f, x) {
   f.add(ink(circle(B[0], B[1], 230, RS.pink)));
   const Y = x.step([[1240, 70, 1860, 120], [60, 960, 700, 1010], [1300, 980, 1880, 1030], [80, 60, 760, 110]], 4, tt);
   f.add(ink(rect(...Y, RS.yel)));
-  f.add(ink(arc(W - A[0], H - A[1], 120, 14, 0, 7, RS.teal)));                 // 對角一個青色圓環
+  f.add(ink(arc(W - A[0], H - A[1], 120, 14, 0, 7, RS.teal)));
   ramp(f, 1620, 860, 220, 34, 6, RS.teal);
   marks(f, 90, 90); marks(f, 1830, 990);
   swatches(f, tt, 96, 1000);
@@ -84,12 +82,12 @@ function flashy(f, x) {
     f.text(ch, px, py, { px: 132, weight: 900, scale: sc, col: RS.ink, blend: 'multiply' });
   });
   const sub = x.small[0];
-  if (sub) {                                               // 第二語言小字：印章那一排下方，同一種字墨、淡一點
+  if (sub) {
     const SM = { px: 60, weight: 700, spacing: 2 }, a = E.io(seg(t, .3 + n * .1, .7 + n * .1));
     f.add(ink(rect(960 - 70 * a, 676, 960 + 70 * a, 684, RS.teal, a)));
     f.text(sub, 960, 736 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 1300, SM), col: RS.ink, a: .72 * a, blend: 'multiply' });
   }
-  const w = seg(t, 0, .4);                                  // 開場：一大片粉紅網點掃過
+  const w = seg(t, 0, .4);
   if (w < 1) f.top(ink(band(lerp(W + 800, -800, E.io(w)), 540, 1100, 1500, 8, RS.pink, .6)));
 }
 /* ---------- 收斂字幕：紙色橫條托住字，切下一句只有字在換 ---------- */
@@ -101,7 +99,7 @@ function gentle(f, x) {
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
   lines.forEach((l, i) => {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
-    f.text(l, 964, y + 5, { ...TX, col: RS.pink, a: .55 * a, blend: 'multiply' });     // 粉紅版：套色偏一點
+    f.text(l, 964, y + 5, { ...TX, col: RS.pink, a: .55 * a, blend: 'multiply' });
     f.text(l, 960, y, { ...TX, col: RS.ink, a, blend: 'multiply' });
   });
 }
@@ -126,10 +124,10 @@ defineScene({
   palette: RS, labels: { bg: '紙色', pink: '粉紅墨', blue: '藍墨', yel: '黃墨', teal: '青墨', ink: '字墨' },
   look: { grain: .03, vignette: .12, paper: .07, cap: .9 },
   textures: [
-    { type: 'halftone', on: 'shapes', cell: 9, angle: 22 },          // 半透明 → 網點
-    { type: 'misreg', on: 'shapes,text', amount: 4, every: 8 },      // 每種墨色偏一點，每 8 拍重新對位
-    { type: 'rough', on: 'shapes', amount: 2.5, voids: .1 },         // 絹印粗糙邊＋少許漏墨
-    { type: 'fiber', on: 'bg', amount: .16 },                         // 紙纖維
+    { type: 'halftone', on: 'shapes', cell: 9, angle: 22 },
+    { type: 'misreg', on: 'shapes,text', amount: 4, every: 8 },
+    { type: 'rough', on: 'shapes', amount: 2.5, voids: .1 },
+    { type: 'fiber', on: 'bg', amount: .16 },
   ],
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, draw: calm },

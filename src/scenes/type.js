@@ -1,5 +1,4 @@
-/* 大字排版：深酒紅底、亮橘、奶油色。背景用排版的骨架（色條、色塊、圓點、段落剪影）＋同色系出血大字當紋理（固定規則的例外）
-   字的戲份在字幕影片。120 BPM 寫法，16 秒頭尾相接 */
+/* 大字排版：深酒紅底、亮橘、奶油；色條色塊骨架＋同色系出血大字當背景紋理（不放字規則的例外） */
 const TY = { bg: '#3a1520', tone: '#4b1c29', tone2: '#5a2433', org: '#ff7a33', crm: '#f2e3cf', ink: '#1f0a10', panel: '#2c0f17' };
 const slot = (x, t, L, step) => Math.floor(mod(x.jt(t), L) / step);
 const disc = (cx, cy, R, col, a = 1) => arc(cx, cy, R / 2, R, 0, 7, col, a);
@@ -88,7 +87,7 @@ function peak(f, x, o) {
     let w = 200 + hash(id * 3.7) * 300; if (hash(id * 9.1) < .18) w *= .4;
     f.add(rect(120, y, 120 + w, y + 24, TY.tone2));
   }
-  /* 左邊：左上大橘塊跟拍、高度每 2 秒跳一次（和右下大橘塊對角呼應）；米白圓環跳位、跟反拍輕跳；左下小節進度條。都不進歌詞區 */
+  /* 左邊：都不進歌詞區 */
   const LW = [380, 330, 400, 350, 370, 320, 400, 360], LH = [210, 170, 240, 190, 220, 160, 250, 200], lh = LH[k] + 22 * b;
   f.add(rect(-40, -40, LW[k], lh, TY.org), rect(60, lh + 22, 60 + 140 + 160 * hash(k * 2.7), lh + 34, TY.crm));
   const LD = [[220, 560, 110], [250, 740, 80], [200, 450, 140], [240, 860, 95], [210, 640, 125], [260, 500, 75], [200, 780, 130], [235, 600, 100]], [lx, ly, lr] = LD[k];
@@ -131,7 +130,7 @@ function flashy(f, x) {
   const u = E.out5(seg(tt, .2, .6));
   if (u > 0) f.add(rect(80, 336, 80 + 760 * u, 350, TY.crm));
   const sub = x.small[0];
-  if (sub) {                                               // 第二語言小字：上排字的底線下方，靠左、不碰中間的大字
+  if (sub) {
     const SM = { px: 56, weight: 600, spacing: 2 }, a = E.io(seg(tt, .35, .75));
     f.text(sub, 86, 404 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 560, SM), align: 'left', col: TY.crm, a: .7 * a });
   }

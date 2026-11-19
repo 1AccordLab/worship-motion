@@ -1,5 +1,4 @@
-/* 墨染：暖色宣紙、墨、一個柔和暖色（赭）。墨在紙上慢慢暈開、淡去、再暈開，像呼吸。
-   不滑動：只有淡入淡出與範圍變化。120 BPM 寫法，16 秒（32 拍）頭尾相接。中間 x 420–1500、y 260–820 留給歌詞。 */
+/* 墨染：暖色宣紙、墨、一個赭色；墨慢慢暈開、淡去，不滑動；中間 x 420–1500、y 260–820 留給歌詞 */
 const INK = { bg: '#e0d4bc', ink: '#2f2c28', wash: '#6f695e', warm: '#bd7a50', seal: '#9e4f2e', shade: '#cdbfa3' };
 
 // 呼吸：ph 0→1 一輪；慢慢淡入、淡去。0 和 1 都是 0，頭尾接得起來
@@ -9,7 +8,7 @@ function blot(f, cx, cy, r, col, a, seed, g = 1) {
   if (a <= .004 || r * g < 2) return;
   const R = r * g, d = Math.atan2(cy - 540, cx - 960);
   f.add(circle(cx, cy, R * .82, col, a, { blend: 'multiply', seed }));
-  for (let i = 0; i < 6; i++) {                                                      // 幾個大小不一的瓣，偏向畫面外側長
+  for (let i = 0; i < 6; i++) {
     const an = d + (hash(seed * 7 + i) - .5) * 3.4, off = R * (.35 + .4 * hash(seed * 3 + i)), rr = R * (.28 + .34 * hash(seed * 5 + i));
     f.add(circle(cx + off * Math.cos(an), cy + off * Math.sin(an), rr, col, a * (.45 + .4 * hash(seed + i * 11)), { blend: 'multiply', seed: seed * 10 + i }));
   }
@@ -19,7 +18,7 @@ function spot(f, t, s) {
   const p = mod(t * (s.laps || 1) / LOOP + (s.ph || 0), 1);
   blot(f, s.x, s.y, s.r, s.col, s.a * breath(p), s.seed || 1, lerp(s.g0 ?? .7, 1, E.out(p)));
 }
-// 印章：位置每「換位間隔」換一次，但不是跳：在每一格裡淡入、停住、淡去
+// 印章：位置每「色塊換位」換一次，但不是跳：在每一格裡淡入、停住、淡去
 function seal(f, x, t, list, every, size, a = .8) {
   const j = x.jt(t) / every, k = Math.floor(j), fr = j - k, v = list[mod(k, list.length)];
   const al = a * E.io(seg(fr, 0, .35)) * (1 - E.io(seg(fr, .7, 1)));
@@ -52,7 +51,7 @@ const CALM = [
 const SEALS = [[1790, 930], [130, 150], [1790, 380], [130, 720]];
 function calm(f, x) {
   const t = mod(x.t, LOOP);
-  f.add(circle(-40, -60, 300, INK.shade, .45, { seed: 21 }), circle(1980, 1140, 320, INK.shade, .4, { seed: 22 }));   // 紙上淡淡的水漬
+  f.add(circle(-40, -60, 300, INK.shade, .45, { seed: 21 }), circle(1980, 1140, 320, INK.shade, .4, { seed: 22 }));
   CALM.forEach(s => spot(f, t, s));
   seal(f, x, t, SEALS, 2, 44, .75);
 }
@@ -103,7 +102,7 @@ function rowText(f, x, chars, kw, cy, t0, o) {
 }
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
 
-/* ---------- 收斂字幕：平靜的紙＋逐行慢慢淡入（約 1.5 秒），無彈跳無放大；有第二語言時每行下面一行小字 ---------- */
+/* ---------- 收斂字幕：平靜的紙＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字 ---------- */
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
@@ -147,8 +146,8 @@ defineScene({
   palette: INK, labels: { bg: '紙色', ink: '墨色', wash: '淡墨', warm: '暖色', seal: '印泥', shade: '紙影' },
   look: { grain: .02, vignette: .1, paper: .06 },
   textures: [
-    { type: 'bleed', on: 'shapes,lines', amount: 24 },     // 墨水暈開的邊
-    { type: 'fiber', on: 'bg,shapes', amount: .07 },       // 宣紙纖維
+    { type: 'bleed', on: 'shapes,lines', amount: 24 },
+    { type: 'fiber', on: 'bg,shapes', amount: .07 },
   ],
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 8, draw: calm },

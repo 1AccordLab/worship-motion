@@ -1,12 +1,11 @@
-/* 光柱：深藍到深墨綠的底，教堂高窗落下幾道平塗、半透明的光柱（硬邊、略帶手繪邊）＋細顆粒。
-   不用光暈、發光模糊、粒子。光柱的組合每「換位間隔」換一次，用淡入淡出切換。120 BPM 寫法，16 秒頭尾相接。 */
+/* 光柱：深藍到墨綠底，教堂高窗落下平塗半透明光柱，暖金重點；光柱組合每「色塊換位」淡入淡出切換 */
 const NV = { bg: '#16253a', green: '#15302a', win: '#25394f', light: '#e3d6b8', gold: '#d3a253', ink: '#0f1b24' };
 const rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
 const mixc = (a, b, k) => { const x = rgb(a), y = rgb(b); return [lerp(x[0], y[0], k), lerp(x[1], y[1], k), lerp(x[2], y[2], k)]; };
-const WIN = [130, 330, 1590, 1790];          // 高窗的位置（只在兩側）
-const TILT = 79;                             // 光從左上斜斜落下（度，90＝垂直）
+const WIN = [130, 330, 1590, 1790];
+const TILT = 79;
 
-// 底：藍到墨綠，分 8 階平塗（不是漸層球，是一階一階的色帶）
+// 底：藍到墨綠，分 8 階平塗
 function ground(f) {
   f.bg = NV.bg;
   for (let i = 1; i < 8; i++) f.add(rect(0, i * 135, W, i * 135 + 136, mixc(NV.bg, NV.green, i / 7)));
@@ -16,7 +15,7 @@ function windows(f, rose) {
   for (const x of WIN) { f.add(rect(x - 42, 90, x + 42, 216, NV.win), circle(x, 90, 42, NV.win), rect(x - 3, 52, x + 3, 216, NV.bg, .9), rect(x - 42, 150, x + 42, 155, NV.bg, .9)); }
   if (rose) { f.add(circle(960, 120, 64, NV.win, rose)); f.add(arc(960, 120, 34, 5, 0, TAU, NV.bg, .8 * rose)); }
 }
-// 一道光柱：從窗下緣斜斜落到畫面外；兩層平塗疊出「中間濃、邊緣淡」的硬邊（不是模糊）
+// 一道光柱：從窗下緣斜斜落到畫面外；兩層平塗疊出「中間濃、邊緣淡」
 function beam(f, x0, wid, col, a) {
   if (a <= .004) return;
   const L = 1500, r = TILT * Math.PI / 180, cx = x0 + Math.cos(r) * L / 2, cy = 216 + Math.sin(r) * L / 2;
@@ -64,7 +63,7 @@ function rowText(f, x, chars, kw, cy, t0, o) {
   return { kx, end: t0 + n * .08 + 1.3, kt: t0 + n * .08 + .35 };
 }
 
-/* ---------- 收斂字幕：平靜的光＋逐行慢慢淡入（約 1.5 秒），無彈跳無放大；雙語時每行下面一行小字 ---------- */
+/* ---------- 收斂字幕：平靜的光＋逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字 ---------- */
 function gentle(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 524 - gap * (n - 1) / 2;
@@ -84,7 +83,7 @@ function flashy(f, x) {
   const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
   x.under(f, build);
   const ST = { style: { px: 100, weight: 500 }, kwStyle: { px: 100, weight: 900 }, col: NV.light, kwCol: NV.gold };
-  const row = rowText(f, { t: -99 }, x.chars, kw, cy, .3, ST);                       // 只算關鍵字位置
+  const row = rowText(f, { t: -99 }, x.chars, kw, cy, .3, ST);
   if (kw >= 0) { const a = .14 * E.io(seg(t, row.kt, row.kt + 2)), wd = 120;
     f.add(rect(row.kx - wd / 2, 0, row.kx + wd / 2, H, NV.gold, a * .5), rect(row.kx - wd / 4, 0, row.kx + wd / 4, H, NV.gold, a)); }
   rowText(f, x, x.chars, kw, cy, .3, ST);
@@ -98,7 +97,7 @@ defineScene({
   id: 'nave', name: '光柱',
   palette: NV, labels: { bg: '上方深藍', green: '下方墨綠', win: '窗', light: '光', gold: '暖金' },
   look: { grain: .035, vignette: .14 },
-  textures: [{ type: 'grain', on: 'bg,shapes', amount: .035 }],   // 細顆粒
+  textures: [{ type: 'grain', on: 'bg,shapes', amount: .035 }],
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 8, draw: calm },
     build: { label: '累積', jumpBeats: 4, draw: build },

@@ -1,6 +1,4 @@
-// 海面：深海藍綠＋一個暖色重點。風浪 → 平靜 → 宣告（浪被平息、向前走在水面上）。
-// 設計手法：色塊、波線、網點（半透明的形狀印成網點）、紙纖維。色塊位置用跳的（x.step）；背景 16 秒頭尾相接。
-// 背景不放字；不用光暈、光斑、霓虹、漸層球、玻璃、3D 旋轉。中間 x 420–1500、y 260–820 只放平的色塊，留給歌詞。
+// 海面：深海藍綠＋暖色重點；風浪 → 平靜 → 宣告；中間 x 420–1500、y 260–820 只放平色塊，留給歌詞
 const C = { bg: '#163038', deep: '#0f242a', sea: '#1d4a52', sea2: '#2a6b6f', foam: '#d8d0bb', warm: '#e0884a', sand: '#c7b38d' };
 
 // 一條波線：base 高度、amp 振幅、len 波長、laps＝16 秒走幾圈（整數才接得起來）
@@ -21,9 +19,9 @@ function blocks(f, x, t, every, list, col, a = 1) { const b = x.step(list, every
 function calm(f, x) {
   const t = mod(x.t, LOOP), b = pulse(t, 3, BAR);
   f.add(rect(0, 0, W, 250, C.deep), rect(0, 250, W, 254, C.foam, .35));
-  f.add(rect(0, 860, W, H, C.sea, .55));                                         // 半透明 → 網點
+  f.add(rect(0, 860, W, H, C.sea, .55));
   blocks(f, x, t, 2, [[80, 120, 260, 150], [1600, 90, 1840, 118], [120, 70, 420, 96], [1500, 150, 1700, 176]], C.sand, .8);
-  blocks(f, x, t, 2, [[0, 330, 120, 620], [1800, 420, 1920, 760], [0, 520, 90, 820], [1820, 300, 1920, 560]], C.sea, .9);   // 邊上的水色塊，跳位置
+  blocks(f, x, t, 2, [[0, 330, 120, 620], [1800, 420, 1920, 760], [0, 520, 90, 820], [1820, 300, 1920, 560]], C.sea, .9);
   blocks(f, x, t, 4, [[1560, 800, 1820, 812], [100, 800, 420, 812], [1400, 800, 1760, 812], [180, 800, 520, 812]], C.sand, .6);
   const K = x.step([[300, 238], [1620, 238], [180, 238], [1460, 238]], 2, t);
   f.add(rect(K[0] - 26, K[1] - 26 - 6 * b, K[0] + 26, K[1] + 4, C.warm));
@@ -31,7 +29,7 @@ function calm(f, x) {
   wave(f, t, 960, 8, 520, 2, 2.5, C.sea2, .9, 1.3);
   wave(f, t, 1030, 10, 760, 1, 4, C.foam, .35, 2.4);
   wave(f, t, 180, 4, 900, 1, 2, C.sea2, .8, .7);
-  for (let i = 0; i < 8; i++) f.add(rect(96 + i * 22, 1040, 108 + i * 22, 1052, i === Math.floor(t / BEAT) % 8 ? C.warm : C.sea2));   // 拍點
+  for (let i = 0; i < 8; i++) f.add(rect(96 + i * 22, 1040, 108 + i * 22, 1052, i === Math.floor(t / BEAT) % 8 ? C.warm : C.sea2));
 }
 
 /* ---------- 風浪：大浪在上下兩邊翻、斜雨、色塊每 1 秒跳、水平線跟拍傾斜（跳的，不是轉） ---------- */
@@ -40,7 +38,7 @@ function storm(f, x) {
   const tilt = x.step([-2.5, 2, -1.5, 3, -3, 1.5, -2, 2.5], 1, t);
   f.add(band(960, 115, 2400, 250, tilt, C.deep));
   f.add(band(960, 238, 2400, 5, tilt, C.foam, .4));
-  for (let i = 0; i < 9; i++) {                                                 // 斜雨：只在左右兩側
+  for (let i = 0; i < 9; i++) {
     const px = mod(i * 230 + 2300 * 3 * t / LOOP, 2300) - 190; if (px > 180 && px < 1740) continue;
     f.add(band(px, 540, 1300, 6, 72, C.foam, .22));
   }
@@ -59,13 +57,13 @@ function storm(f, x) {
 function peak(f, x) {
   const t = mod(x.t, LOOP), b = pulse(t, 5), bar = pulse(t, 3, BAR);
   f.add(rect(0, 0, W, 250, C.deep));
-  f.add(circle(960, 250, 110 * (1 + .03 * bar), C.warm));                      // 半個太陽在水平線上（下半被水面蓋住）
+  f.add(circle(960, 250, 110 * (1 + .03 * bar), C.warm));
   f.add(rect(0, 250, W, 420, C.bg), rect(0, 250, W, 254, C.foam, .5));
-  for (let i = 0; i < 7; i++) {                                                 // 平靜的水面條紋，越近越粗
+  for (let i = 0; i < 7; i++) {
     const y = 860 + i * 30 + i * i * 2, a = .35 + .08 * i;
     f.add(rect(0, y, W, y + 4 + i * 1.5, i % 2 ? C.sea2 : C.foam, i % 2 ? .9 : a * .5));
   }
-  const steps = 6;                                                              // 腳下的路：一階一階往前，跟拍子亮一格
+  const steps = 6;
   for (let i = 0; i < steps; i++) {
     const y0 = 1080 - i * 38, w = 360 - i * 52, on = Math.floor(t / BEAT) % steps === i;
     f.add(rect(960 - w / 2, y0 - 26, 960 + w / 2, y0, C.warm, on ? 1 : .55 + .05 * i));
@@ -90,7 +88,7 @@ function gentle(f, x) {
       f.text(big[i], 960, y, { ...TX, scale: sc, col: C.foam, a }); }
     if (small[i]) f.text(small[i], 960, y + 62, { ...SM, scale: f.fit(small[i], 1600, SM), col: C.foam, a: .62 * a });
   }
-  const r = E.out(seg(t, .2, .8)), uy = bot - 26;                               // 字下一條細浪慢慢拉開
+  const r = E.out(seg(t, .2, .8)), uy = bot - 26;
   if (r > .01) wave(f, t, uy, 4, 160, 1, 3, C.warm, .9, 0, 960 - 150 * r, 960 + 150 * r);
 }
 
@@ -108,11 +106,11 @@ function flashy(f, x) {
     f.text(ch, px, py + 4, { px: 118, weight: 900, scale: sc * Math.min(1, size / 150), col: isK ? C.deep : C.foam });
   });
   wave(f, t, cy + size * .62, 6, 300, 2, 3, C.foam, .6 * seg(t, .5, .9));
-  if (sub) {                                                                    // 第二語言小字：浮塊那一排下方
+  if (sub) {
     const SM = { px: 54, weight: 600, spacing: 2 }, a = E.io(seg(t, .5 + n * .09, .9 + n * .09));
     f.text(sub, 960, cy + size * .62 + 70 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 1400, SM), col: C.foam, a: .72 * a });
   }
-  const w = seg(t, 0, .45);                                                     // 開場：一大片海水由右往左掃過，前緣是波線
+  const w = seg(t, 0, .45);
   if (w < 1) {
     const ex = lerp(W + 200, -2300, E.io(w));
     f.top(rect(ex, 0, ex + 2200, H, C.sea));
@@ -126,8 +124,8 @@ defineScene({
   palette: C, labels: { bg: '海色', deep: '深海', sea: '水面', sea2: '淺水', foam: '浪花', warm: '暖色重點', sand: '沙色' },
   look: { grain: .03, vignette: .16, paper: .05 },
   textures: [
-    { type: 'halftone', on: 'shapes', cell: 8, angle: 30 },     // 半透明的色塊印成網點
-    { type: 'fiber', on: 'bg', amount: .12 },                    // 紙纖維
+    { type: 'halftone', on: 'shapes', cell: 8, angle: 30 },
+    { type: 'fiber', on: 'bg', amount: .12 },
   ],
   backgrounds: {
     calm: { label: '平靜水面', jumpBeats: 4, draw: calm },
