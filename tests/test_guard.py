@@ -3,14 +3,10 @@
 import asyncio, sys, time, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
-from PIL import ImageChops
 EX = ROOT / "examples"
-OUT = ROOT / "q" / "guard"; OUT.mkdir(parents=True, exist_ok=True)
+OUT = OUT / "guard"; OUT.mkdir(parents=True, exist_ok=True)
 MIN = (EX / "minimal.js").read_text()
-results = []
-def rec(name, ok, detail=""):
-    results.append((name, ok, detail)); print(("✔" if ok else "✘"), name, "｜", str(detail).replace("\n", " ")[:220], flush=True)
-def diff(a, b): return sum(ImageChops.difference(a, b).convert("L").histogram()[16:])
+def diff16(a, b): return diff(a, b, 16)
 def with_shader(code): return MIN.replace("id: 'bars'", "id: 'bad'").replace("subtitles:", "shader: { code: `\n" + code + "\n` },\n  subtitles:")
 SH_OK = "fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f { return base; }"
 
@@ -85,20 +81,20 @@ async def main():
         await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "late", "style": "bars_late", "sections": [{"background": "calm", "loopBeats": 64}]})
         t0 = time.time(); im = await p.shot(0, 0, 25.0)
         info = await p.ev("__app.sceneInfo()"); nt = await p.ev("__app.notices()")
-        rec("場景執行中卡住 → 停用、退回內建場景", info["id"] in ("swiss", "paper", "type", "bauhaus", "riso") and im.getbbox() is not None, f"{time.time()-t0:.1f}s 目前 {info['id']}；{nt[-1][:90] if nt else ''}")
+        rec("場景執行中卡住 → 停用、退回內建場景", info["id"] in STYLES and im.getbbox() is not None, f"{time.time()-t0:.1f}s 目前 {info['id']}；{nt[-1][:90] if nt else ''}")
 
         # ---------- 重開時偵測殘留的試跑標記 ----------
         await paste(MIN, "（準備）貼上場景", True)
         h = await p.ev("c=>__app.hash(c)", MIN)
-        await p.ev("h=>localStorage.setItem('wm:probe', JSON.stringify({kind:'scene', hash:h, name:'色帶'}))", h)
-        await p.pg.reload(); await p.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        await p.ev("([k,h])=>localStorage.setItem(k, JSON.stringify({kind:'scene', hash:h, name:'色帶'}))", [LS_PROBE, h])
+        await p.reload()
         info = await p.ev("__app.sceneInfo()"); nt = await p.ev("__app.notices()")
         rec("重開：場景試跑標記殘留 → 停用該場景、退回內建", info["id"] != "bars" and any("上次" in n for n in nt), f"目前 {info['id']}；{' / '.join(nt)[:160]}")
         await p.ev("__app.clearSuspects()")
         await paste((EX / "duotone_shader.js").read_text(), "（準備）貼上自訂 shader 場景", True)
         sh = await p.ev("__app.shaderHash()")
-        await p.ev("h=>localStorage.setItem('wm:probe', JSON.stringify({kind:'shader', hash:h, name:'雙色網點'}))", sh)
-        await p.pg.reload(); await p.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        await p.ev("([k,h])=>localStorage.setItem(k, JSON.stringify({kind:'shader', hash:h, name:'雙色網點'}))", [LS_PROBE, sh])
+        await p.reload()
         info = await p.ev("__app.sceneInfo()"); nt = await p.ev("__app.notices()")
         rec("重開：shader 試跑標記殘留 → 場景照常、shader 預設停用", info["id"] == "duotone" and not info["shader"] and any("shader" in n for n in nt), f"{info}；{' / '.join(nt)[:160]}")
         await p.ev("__app.clearSuspects()")
@@ -116,7 +112,7 @@ async def main():
         rec("貼上設定 JSON（含換風格）", ok and (await p.ev("__app.project"))["style"] == "paper")
         ok = await p.ev("t=>__app.paste(t)", '{"style":"neon","sections":[{"background":"wild"}]}')
         rec("壞設定 → 不套用、列出原因", (not ok) and "neon" in await p.ev("__app.status()"), await p.ev("__app.status()"))
-        both = "這是新風格：\n```js\n" + MIN + "\n```\n設定：\n```json\n" + json.dumps({"format": "worship-motion/1", "title": "一次貼兩個", "style": "bars", "sections": [{"background": "calm", "subtitle": "gentle", "lyrics": "一\n二"}]}, ensure_ascii=False) + "\n```"
+        both = "這是新風格：\n```js\n" + MIN + "\n```\n設定：\n```json\n" + json.dumps({"format": "worship-motion/1", "title": "一次貼兩個", "style": "bars", "sections": [{"background": "calm", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字"}]}, ensure_ascii=False) + "\n```"
         ok = await p.ev("t=>__app.paste(t)", both)
         rec("一次貼上場景程式＋設定 JSON", ok and (await p.ev("__app.project"))["title"] == "一次貼兩個")
 
@@ -127,34 +123,29 @@ async def main():
         rec("匯出 1 秒 MP4", r["ftyp"] == "ftyp" and r["size"] > 10000, r)
 
         # ---------- 存成單檔 → 再打開 ----------
-        song = {"format": "worship-motion/1", "title": "All the Lights", "style": "riso", "bpm": 120, "sections": [
+        song = {"format": "worship-motion/1", "title": "示意歌名", "style": "riso", "bpm": 120, "sections": [
             {"name": "主歌", "background": "calm", "subtitle": "none"},
             {"name": "導歌", "background": "build", "subtitle": "flashy", "clipSeconds": 6, "lyrics": "這是第[一]行示意文字\n這是第[二]行示意文字\n這是第[三]行示意文字\n這是第[四]行示意文字"},
-            {"name": "副歌", "background": "peak", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字\n\n這是第三行示意文字\n第四行"}]}
+            {"name": "副歌", "background": "peak", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字\n\n這是第三行示意文字\n這是第四行示意文字"}]}
         await p.ev("p=>__app.load(p)", song)
         ref = await p.shot(2, 1, 2.0)
         html = await p.ev("__app.singleHTML()")
-        f1 = ROOT / "dist" / "simple" / "範例_單檔.html"; f1.write_text(html)
+        f1 = OUT / "範例_單檔.html"; f1.write_text(html)
         rec("存成單檔 HTML", len(html.encode()) < 300 * 1024, f"{len(html.encode())/1024:.1f} KB")
-        p2 = Page(await ctx.new_page(), []); p2.pg.on("pageerror", lambda e: p2.log.append(str(e)))
-        await p2.pg.goto(f1.as_uri() + "?nopreview"); await p2.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
+        p2 = await open_url(ctx, f1.as_uri())
         pj = await p2.ev("__app.project")
         same = {k: pj[k] for k in ("title", "style", "bpm")} == {k: song[k] for k in ("title", "style", "bpm")} and len(pj["sections"]) == 3 and pj["sections"][1]["lyrics"] == song["sections"][1]["lyrics"]
         im2 = await p2.shot(2, 1, 2.0, OUT / "single_reopen.png")
-        rec("單檔再打開：同一首歌、畫面一樣", same and diff(ref, im2) < 2000, f"差異像素 {diff(ref, im2)}；錯誤 {p2.log[:2]}")
+        rec("單檔再打開：同一首歌、畫面一樣", same and diff16(ref, im2) < 2000, f"差異像素 {diff16(ref, im2)}；錯誤 {p2.log[:2]}")
         html2 = await p2.ev("__app.singleHTML()")
-        p3 = Page(await ctx.new_page(), [])
         f2 = OUT / "再存一次.html"; f2.write_text(html2)
-        await p3.pg.goto(f2.as_uri() + "?nopreview"); await p3.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
-        rec("單檔再存一次、再打開", (await p3.ev("__app.project"))["title"] == "All the Lights", f"{len(html2.encode())/1024:.1f} KB")
-        cs = ROOT / "dist" / "simple" / "範例_自訂shader_單檔.html"
+        p3 = await open_url(ctx, f2.as_uri())
+        rec("單檔再存一次、再打開", (await p3.ev("__app.project"))["title"] == "示意歌名", f"{len(html2.encode())/1024:.1f} KB")
+        cs = OUT / "範例_自訂shader_單檔.html"
         await p2.ev("c=>__app.pasteScene(c)", (EX / "duotone_shader.js").read_text())
         cs.write_text(await p2.ev("__app.singleHTML()"))
         rec("自訂 shader 場景也能存成單檔", cs.stat().st_size < 300 * 1024, f"{cs.stat().st_size/1024:.1f} KB")
 
         print("\n頁面錯誤：", [x for x in p.log if "destroyed" not in x][:6])
         await b.close()
-    bad = [r for r in results if not r[1]]
-    print(f"\n通過 {len(results) - len(bad)} / {len(results)}")
-    (OUT / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=1))
-asyncio.run(main())
+asyncio.run(main()); finish()
