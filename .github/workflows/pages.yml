@@ -1,4 +1,4 @@
-# 部署到 GitHub Pages：main → 網站根目錄（正式版）、develop → /dev/（開發版）
+# 部署到 GitHub Pages：main → 網站根目錄（正式版）、develop → /dev/（開發版）；教學頁在各自的 guide/
 # 任一分支有新的 commit 就把兩邊都重新打包，一起部署
 name: 部署
 
@@ -30,7 +30,10 @@ jobs:
       - name: 打包
         run: |
           mkdir -p site/dev
-          build() { (cd "$1" && python3 build_simple.py) && cp "$1/dist/simple/詩歌影片編輯器.html" "$2/index.html"; }
+          build() {
+            (cd "$1" && python3 build_simple.py) && cp "$1/dist/simple/詩歌影片編輯器.html" "$2/index.html"
+            if [ -d "$1/guide" ]; then cp -r "$1/guide" "$2/guide"; fi   # 教學頁：/guide/
+          }
           build prod site
           if [ -f dev/build_simple.py ]; then build dev site/dev; else cp site/index.html site/dev/index.html; fi
           touch site/.nojekyll

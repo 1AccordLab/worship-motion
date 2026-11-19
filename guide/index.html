@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>詩歌影片教學</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=LXGW+WenKai+TC:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('nz-theme'); } catch (e) {}
+    if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'night-ink' : 'soft-paper';
+    document.documentElement.dataset.nzTheme = t;
+  })();
+</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <span>WORSHIP MOTION · 同工教學</span>
+  <label>亮度
+    <select id="theme" aria-label="切換亮度">
+      <option value="soft-paper">柔光紙</option>
+      <option value="dusk">暮色</option>
+      <option value="graphite">石墨</option>
+      <option value="night-ink">夜讀暖墨</option>
+      <option value="deep-forest">深林</option>
+    </select>
+  </label>
+</div>
+
+<!-- 總覽 -->
+<header style="display:grid; gap:20px;">
+  <div>
+    <h1>詩歌影片，跟 AI 聊天就做得出來</h1>
+    <p class="lead">不用會寫程式，也不用會下提示詞。<span class="mark">編輯器和 AI 之間來回「複製、貼上」</span>就好：AI 用選擇題問你想要什麼，你把它的回覆整則貼回編輯器，畫面馬上出來。</p>
+  </div>
+  <div class="flow wrap2" role="img" aria-label="流程：在編輯器複製給 AI，AI 問你並給回覆，整則貼回編輯器套用，貼上歌詞，匯出放進簡報軟體">
+    <div class="node node-start"><span class="where">編輯器</span>複製給 AI</div>
+    <svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node"><span class="where">AI 對話</span>回答選擇題<small>AI 給你一則回覆</small></div>
+    <svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-key"><span class="where">編輯器</span>整則貼回來<small>按「套用」</small></div>
+    <svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node"><span class="where">編輯器</span>貼上歌詞</div>
+    <svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-end"><span class="where">編輯器</span>匯出 MP4<small>放進簡報軟體</small></div>
+  </div>
+  <p><a class="btnlike primary" style="text-decoration:none; font-size:15px; padding:6px 16px;" href="../">打開詩歌影片編輯器</a></p>
+  <div class="loop"><svg viewBox="0 0 46 24" aria-hidden="true"><path d="M40 4 C 44 18, 10 22, 6 10 M 2 15 L 6 9 L 11 14"/></svg>不滿意？回到第一格，寫下想改什麼再複製給 AI；小地方也可以自己調。</div>
+  <nav class="toc" aria-label="目錄">
+    <a href="#prepare">開始前</a><a href="#tour">編輯器長怎樣</a><a href="#step1">1 跟 AI 開始</a><a href="#step2">2 貼回來</a><a href="#step3">3 貼歌詞</a><a href="#step4">4 修改</a><a href="#step5">5 匯出</a><a href="#saving">存檔</a><a href="#undo">改錯了</a><a href="#newstyle">新風格</a><a href="#styles">風格圖鑑</a><a href="#cheatsheet">小抄</a><a href="#faq">常見問題</a>
+  </nav>
+</header>
+
+<!-- 準備 -->
+<section id="prepare">
+  <div class="sec-head">
+    <span class="eyebrow">開始前</span>
+    <h2>準備兩樣東西：編輯器、任何一個 AI</h2>
+    <p>AI 負責聽你說、寫設定；編輯器負責把設定變成畫面和影片。</p>
+  </div>
+  <div class="cards">
+    <div class="card card-key"><h3>編輯器</h3><p>用 <b>Chrome</b> 或 <b>Edge</b> 打開<a href="../">詩歌影片編輯器</a>，永遠是最新版。其他瀏覽器沒測過。</p></div>
+    <div class="card"><h3>任何 AI 都可以</h3><p>ChatGPT、Gemini、Claude 都行。編輯器裡有「複製開場白」，貼給 AI 它就知道怎麼做，不用另外裝東西。</p></div>
+    <div class="card"><h3>已裝 skill 的 Claude</h3><p>裝了「worship-motion-backgrounds」的話，開新對話直接說「我想做○○的背景影片」就好。</p></div>
+  </div>
+</section>
+
+<!-- 編輯器導覽 -->
+<section id="tour">
+  <div class="sec-head">
+    <span class="eyebrow">編輯器長怎樣</span>
+    <h2>上面是歌曲分頁，左邊看畫面，右邊跟 AI 來回</h2>
+  </div>
+  <div class="shot">
+    <img src="img/editor.jpg" alt="詩歌影片編輯器：最上面歌曲分頁、還原重做、存檔；左邊段落分頁、預覽、影片清單；右邊請 AI 改、自己調、進階三個分頁">
+    <span class="pin" style="left:34.8%; top:6.5%;">1</span>
+    <span class="pin" style="left:55.3%; top:5.4%;">2</span>
+    <span class="pin" style="left:88.0%; top:5.3%;">3</span>
+    <span class="pin" style="left:1.2%; top:15.0%;">4</span>
+    <span class="pin" style="left:22.6%; top:23.0%;">5</span>
+    <span class="pin" style="left:4.2%; top:30.0%;">6</span>
+    <span class="pin" style="left:1.2%; top:91.0%;">7</span>
+    <span class="pin" style="left:62.9%; top:23.0%;">8</span>
+    <span class="pin" style="left:97.6%; top:30.0%;">9</span>
+    <span class="pin" style="left:97.6%; top:65.0%;">10</span>
+  </div>
+  <div class="legend">
+    <div><b>1</b><span>歌曲分頁：一個分頁一首歌，「⋯」是這首的選項</span></div>
+    <div><b>2</b><span>↶ 還原、↷ 重做</span></div>
+    <div><b>3</b><span>存成單檔 HTML：整本存成一個檔</span></div>
+    <div><b>4</b><span>三步驟：告訴你現在在哪一步</span></div>
+    <div><b>5</b><span>段落分頁：主歌、導歌、副歌</span></div>
+    <div><b>6</b><span>預覽：就是匯出後的樣子</span></div>
+    <div><b>7</b><span>這一段的影片：點一支就預覽那一支</span></div>
+    <div><b>8</b><span>右邊三個分頁：請 AI 改／自己調／進階</span></div>
+    <div><b>9</b><span>告訴 AI 想改什麼，按「複製給 AI」</span></div>
+    <div><b>10</b><span>把 AI 的回覆整則貼回來，按「套用」</span></div>
+  </div>
+</section>
+
+<!-- 步驟 1 -->
+<section id="step1">
+  <div class="step">
+    <div class="num" aria-hidden="true">1</div>
+    <div class="step-body">
+      <div class="sec-head">
+        <span class="eyebrow">步驟 1 · 跟 AI 開始</span>
+        <h2>第一次：按「複製開場白」，貼給 AI</h2>
+        <p>在「請 AI 改」分頁最下面。開場白裡有完整做法，任何 AI 看了都會照著做。</p>
+      </div>
+      <div class="two">
+        <figure class="plain"><img src="img/open.jpg" alt="編輯器的「還沒開始跟 AI 聊？」卡片，有複製開場白按鈕"><figcaption>沒裝 skill 的 AI 按左邊；已裝 skill 的 Claude 按右邊的短版</figcaption></figure>
+        <ol class="plain">
+          <li>按「複製開場白」。</li>
+          <li>打開 ChatGPT（或 Gemini、Claude），開新對話，貼上送出。</li>
+          <li>AI 會用選擇題問你歌名、感覺、風格、要不要字幕，<b>回代號就好</b>。</li>
+          <li>歌詞不用給 AI，套用後在編輯器自己貼（步驟 3）。</li>
+        </ol>
+      </div>
+      <div class="chat" aria-label="對話示範">
+        <div class="msg ai"><span class="who">AI</span><div class="bubble">
+          先問三個問題，回代號就好（例如「1D 2B 3B」）：
+          <div class="q"><b>1. 這首歌給人的感覺？</b>
+            <div class="opts"><span class="opt"><i>A</i>安靜敬拜</span><span class="opt"><i>B</i>溫暖感恩</span><span class="opt"><i>C</i>活潑歡慶</span><span class="opt pick"><i>D</i>熱血宣告</span><span class="opt"><i>E</i>前面安靜、副歌爆發</span><span class="opt"><i>F</i>交給你</span></div>
+          </div>
+          <div class="q"><b>2. 畫面想要哪一種？</b>
+            <div class="opts"><span class="opt"><i>A</i>瑞士網格</span><span class="opt pick"><i>B</i>剪紙拼貼</span><span class="opt"><i>C</i>大字排版</span><span class="opt"><i>D</i>包浩斯幾何</span><span class="opt"><i>E</i>網點印刷</span><span class="opt"><i>F</i>墨染</span><span class="opt"><i>G</i>光柱</span><span class="opt"><i>H</i>天空</span><span class="opt"><i>I</i>我描述給你</span><span class="opt"><i>J</i>交給你</span></div>
+          </div>
+          <div class="q"><b>3. 要動態字幕嗎？</b>
+            <div class="opts"><span class="opt"><i>A</i>不用，只要背景</span><span class="opt pick"><i>B</i>重點段落要</span><span class="opt"><i>C</i>每段都要</span><span class="opt"><i>D</i>交給你</span></div>
+          </div>
+        </div></div>
+        <div class="msg me"><span class="who">你</span><div class="bubble">1D 2B 3B</div></div>
+        <div class="msg ai"><span class="who">AI</span><div class="bubble">做好了！用這則回覆下方的「複製」按鈕整則複製，貼回編輯器；歌詞在編輯器「自己調 → 貼上整首歌詞」貼。
+          <div class="tip"><b>下次可以這樣說：</b>「○○○（歌名），熱血宣告，剪紙拼貼，導歌和副歌要動態字幕。」</div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 步驟 2 -->
+<section id="step2">
+  <div class="step">
+    <div class="num" aria-hidden="true">2</div>
+    <div class="step-body">
+      <div class="sec-head">
+        <span class="eyebrow">步驟 2 · 貼回來</span>
+        <h2>AI 的回覆整則貼回來，不用自己挑</h2>
+        <p>編輯器會自己找出要用的部分。AI 的回覆通常長這樣：</p>
+      </div>
+      <div class="anat" role="img" aria-label="AI 回覆的各部分：說明文字略過；js 程式碼框變成新風格；json 程式碼框變成設定；下次可以這樣說略過">
+        <span class="anat-head">AI 的回覆</span><span class="anat-head"></span><span class="anat-head">編輯器怎麼用</span>
+        <div class="seg seg-text">好的！我做了一個新風格「色帶」…</div>
+        <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+        <div class="res res-skip"><b>略過</b><span>說明文字不影響</span></div>
+        <div class="seg seg-js">```js<br>…defineScene(…)<br>```</div>
+        <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+        <div class="res res-js"><b>新風格</b><span>只有要新畫面時才會有</span></div>
+        <div class="seg seg-json">```json<br>{ "title": "○○○", … }<br>```</div>
+        <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+        <div class="res res-json"><b>設定</b><span>段落、歌詞、顏色、速度</span></div>
+        <div class="seg seg-text">下次可以這樣說：「…」</div>
+        <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+        <div class="res res-skip"><b>略過</b><span>留給你學</span></div>
+      </div>
+      <div class="dodont">
+        <div class="do"><h3><span class="mark-ok">✓</span>用回覆下方的「複製」按鈕</h3><span>整則複製，``` 框線都在，一定能讀到。</span></div>
+        <div class="dont"><h3><span class="mark-no">✗</span>用滑鼠拖曳選取</h3><span>框線會不見。只有設定時還能用；有新風格時會失敗。</span></div>
+      </div>
+      <div class="two">
+        <figure class="plain"><img src="img/paste_detect.jpg" alt="貼上後顯示「找到：設定 ✔ 新風格 ✔」"><figcaption>① 貼上後，先告訴你找到什麼</figcaption></figure>
+        <figure class="plain"><img src="img/paste_applied.jpg" alt="按套用後列出改了哪些"><figcaption>② 按「套用」後，列出改了哪些</figcaption></figure>
+      </div>
+      <div class="two">
+        <figure class="plain"><img src="img/paste_error.jpg" alt="有錯時，紅框列出哪一段哪一欄不對，下面有「複製錯誤訊息給 AI」"><figcaption>有錯時不會套用，紅框列出哪裡不對</figcaption></figure>
+        <div class="callout"><span class="callout-icon">!</span><div><b>出現紅框？</b>按「複製錯誤訊息給 AI」，貼回 AI 對話，它會修好再給你一次。原本的設定不會被弄壞。</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 步驟 3 -->
+<section id="step3">
+  <div class="step">
+    <div class="num" aria-hidden="true">3</div>
+    <div class="step-body">
+      <div class="sec-head">
+        <span class="eyebrow">步驟 3 · 貼歌詞</span>
+        <h2>整首歌詞一次貼，編輯器自己分到各段</h2>
+        <p>「自己調」分頁 → 「貼上整首歌詞」，貼進去按「分到各段」，看過預覽再按「套用」。</p>
+      </div>
+      <div class="two">
+        <figure class="plain"><img src="img/lyrics.jpg" alt="分到各段的預覽：轉成繁體、中英交錯怎麼放、每段填進哪裡、拿掉版權行"><figcaption>套用前先預覽：每段會填進哪裡</figcaption></figure>
+        <div class="list">
+          <div class="row"><span class="badge badge-ok">標題</span><div><b>【主歌】、[Chorus] 這類標題</b><span class="muted">自動對到同名的段落；沒有標題就照空行依序填。</span></div></div>
+          <div class="row"><span class="badge badge-info">雙語</span><div><b>一行中文、一行英文</b><span class="muted">會被認出來，選誰當大字、誰當小字。</span></div></div>
+          <div class="row"><span class="badge badge-info">繁體</span><div><b>簡體歌詞</b><span class="muted">勾「轉成繁體」。</span></div></div>
+          <div class="row"><span class="badge badge-warn">略過</span><div><b>詞、曲、©、CCLI 開頭的行</b><span class="muted">自動拿掉，不會變成字幕。</span></div></div>
+        </div>
+      </div>
+      <h3>雙語字幕：大字一種語言、小字另一種</h3>
+      <div class="flow" role="img" aria-label="雙語：歌詞框放大字，第二語言歌詞放小字，勾大小對調就交換">
+        <div class="node node-start">「歌詞」框<small>大字</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+        <div class="node">「第二語言歌詞」框<small>小字，一行對一行</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+        <div class="node node-key">勾「大小對調」<small>兩種語言交換大小</small></div>
+      </div>
+      <p class="small muted">中文和英文都會唱的段落，做成兩段（例如「副歌（中）」「副歌（英）」），英文那段勾「大小對調」。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 步驟 4 -->
+<section id="step4">
+  <div class="step">
+    <div class="num" aria-hidden="true">4</div>
+    <div class="step-body">
+      <div class="sec-head">
+        <span class="eyebrow">步驟 4 · 修改</span>
+        <h2>想改：說得出來就請 AI，小地方自己調</h2>
+      </div>
+      <h3>請 AI 改：寫一句 → 複製給 AI → 貼回來</h3>
+      <div class="two">
+        <figure class="plain"><img src="img/ask.jpg" alt="「告訴 AI 想改什麼」卡片：輸入框、常用說法按鈕、複製給 AI"><figcaption>點常用說法會自動帶入目前段落；留空的話 AI 會用選擇題問你</figcaption></figure>
+        <div class="tablebox">
+          <table>
+            <thead><tr><th>你覺得…</th><th>可以這樣寫</th></tr></thead>
+            <tbody>
+              <tr><td>太躁、看了累</td><td>副歌背景跳太快，想穩一點</td></tr>
+              <tr><td>不夠嗨</td><td>導歌不夠嗨，想更有能量</td></tr>
+              <tr><td>太亂、太花</td><td>主歌太滿，想多留白</td></tr>
+              <tr><td>顏色不對</td><td>顏色太刺眼，想用教會的墨綠</td></tr>
+              <tr><td>字出來太急</td><td>字幕進場太快，慢一點</td></tr>
+              <tr><td>字停太短</td><td>每句字幕停久一點</td></tr>
+              <tr><td>放大的字不對</td><td>第二句想放大「熱」</td></tr>
+              <tr><td>說不出來</td><td>（留空，讓 AI 問你）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <h3>自己調：「自己調」分頁，改了預覽馬上變</h3>
+      <div class="two">
+        <figure class="plain"><img src="img/self_section.jpg" alt="「自己調」分頁的「這一段」：背景、色塊換位、動態字幕、歌詞、第二語言歌詞、每支長度、進場速度"><figcaption>歌詞框下方會告訴你「會做成幾支字幕影片」</figcaption></figure>
+        <div style="display:grid; gap:12px;">
+          <p class="small muted"><b>背景</b>：同一個風格，從安靜到熱鬧。字幕影片底下也是這段選的背景。</p>
+          <div class="strip">
+            <figure><img src="img/bg_calm.jpg" alt="平靜"><figcaption>平靜</figcaption></figure>
+            <figure><img src="img/bg_build.jpg" alt="累積"><figcaption>累積</figcaption></figure>
+            <figure><img src="img/bg_peak.jpg" alt="高潮"><figcaption>高潮</figcaption></figure>
+          </div>
+          <p class="small muted"><b>配色</b>：點色票換顏色，例如改成墨綠底</p>
+          <div class="ba">
+            <figure><img src="img/pal_before.jpg" alt="剪紙拼貼原本配色"><figcaption>原本</figcaption></figure>
+            <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+            <figure><img src="img/pal_after.jpg" alt="剪紙拼貼換成墨綠底"><figcaption>換配色後</figcaption></figure>
+          </div>
+          <p class="small muted"><b>色塊換位</b>：很快／快／中／慢，越慢畫面越穩（動態效果，預覽裡看最準）</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 步驟 5 -->
+<section id="step5">
+  <div class="step">
+    <div class="num" aria-hidden="true">5</div>
+    <div class="step-body">
+      <div class="sec-head">
+        <span class="eyebrow">步驟 5 · 匯出、放進簡報軟體</span>
+        <h2>一段 = 一支背景 ＋ 幾支字幕</h2>
+        <p>預覽下方的「這一段的影片」列出這一段會匯出的所有影片。</p>
+      </div>
+      <figure class="plain"><img src="img/clips.jpg" alt="這一段的影片：背景（會循環）、字幕 1、字幕 2…（播一次停住）"><figcaption>點一支就預覽那一支</figcaption></figure>
+      <figure class="plain"><img src="img/export.jpg" alt="匯出區：這一支影片、這一段全部、整首歌全部、全部歌曲"><figcaption>四種匯出；檔名照段落順序編號，「全部歌曲」每首一個資料夾</figcaption></figure>
+      <div class="list">
+        <div class="row"><span class="badge badge-ok">背景</span><div><b>設成「循環播放」</b><span class="muted">頭尾接得上，可以一直播（通常在影片的播放選項裡）。歌詞用簡報軟體自己的文字疊上去。</span></div></div>
+        <div class="row"><span class="badge badge-info">字幕</span><div><b>播一次、停在最後一格</b><span class="muted">華麗是一行一支，收斂是空一行分一支（一組超過 3 行會自動切開）。用字幕影片的那幾張投影片，不要再打歌詞，不然字會疊兩次。</span></div></div>
+        <div class="row"><span class="badge badge-warn">注意</span><div><b>在要播放的那台電腦上匯出</b><span class="muted">字型用電腦內建的，換電腦字形可能不同。匯出時不要切走、不要關分頁。影片存到瀏覽器的下載資料夾。</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 存檔 -->
+<section id="saving">
+  <div class="sec-head">
+    <span class="eyebrow">存檔怎麼運作</span>
+    <h2>所有分頁自動記在這台電腦；要帶走，就存成單檔 HTML</h2>
+    <p>看右上角的狀態：<span class="chipstate chip-warn">這台電腦已暫存，還沒存成檔案</span> 就是還沒存；<span class="chipstate chip-ok">已存成檔案</span> 才安全。</p>
+  </div>
+  <div class="save">
+    <div class="card"><h3>這台電腦的暫存（自動）</h3><ul><li>所有分頁、每首歌的歷史紀錄，改了就記住</li><li>關掉再開還在</li><li>換電腦、換瀏覽器、清瀏覽器資料就沒了</li></ul></div>
+    <div class="card card-key"><h3>單檔 HTML（要按「存成單檔 HTML」）</h3><ul><li>整本（所有分頁）存成一個檔，打開還是多分頁</li><li>只要一首：分頁的「⋯」→「只存這一首」</li><li>可以放雲端、傳給同工；改完再存一次，用新檔取代舊檔</li></ul></div>
+  </div>
+  <div class="flow wrap2" role="img" aria-label="存檔流程：做好，存成單檔 HTML，放進雲端資料夾，下次打開那個檔案，改完再存一次">
+    <div class="node node-start">做好</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-key">存成單檔 HTML</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node">放進雲端資料夾</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node">下次打開那個檔</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-end">改完再存一次</div>
+  </div>
+  <div class="two">
+    <figure class="plain"><img src="img/songmenu.jpg" alt="分頁的「⋯」選單：改名、往左移、往右移、還原到初始狀態、只存這一首、關閉這一首"><figcaption>分頁的「⋯」：改名、排序、只存這一首、關閉</figcaption></figure>
+    <p class="small muted">「＋ 新的一首」開新分頁，原本的歌還在。別人傳來的單檔 HTML，用 Chrome 打開就是那一本的編輯器。</p>
+  </div>
+</section>
+
+<!-- 改錯了 -->
+<section id="undo">
+  <div class="sec-head">
+    <span class="eyebrow">改錯了</span>
+    <h2>每一步都記著，隨時回得去</h2>
+  </div>
+  <div class="two">
+    <figure class="plain"><img src="img/history.jpg" alt="歷史紀錄：每一步一列，點一列看和現在差在哪裡，再按回到這個狀態；下方有一鍵還原到初始狀態"><figcaption>「進階 → 歷史紀錄」：點一列，看和現在差在哪</figcaption></figure>
+    <div class="list">
+      <div class="row"><span class="badge badge-ok">一步</span><div><b>↶ 還原、↷ 重做</b><span class="muted">在最上面，也可以按 Ctrl＋Z（Mac 是 ⌘＋Z）。</span></div></div>
+      <div class="row"><span class="badge badge-info">很多步</span><div><b>歷史紀錄</b><span class="muted">每首歌記最近 50 步，選一列按「回到這個狀態」。</span></div></div>
+      <div class="row"><span class="badge badge-info">從頭來</span><div><b>一鍵還原到初始狀態</b><span class="muted">回到這首歌剛打開時的樣子。在歷史紀錄裡，或分頁的「⋯」。</span></div></div>
+      <div class="row"><span class="badge badge-warn">關錯了</span><div><b>最近關閉</b><span class="muted">關掉的分頁，從分頁列旁邊的「最近關閉」叫回來（關過分頁才會出現）。</span></div></div>
+    </div>
+  </div>
+  <p class="small muted">回到舊狀態、還原到初始狀態，也都可以再按「↶ 還原」反悔。</p>
+</section>
+
+<!-- 新風格 -->
+<section id="newstyle">
+  <div class="sec-head">
+    <span class="eyebrow">新風格</span>
+    <h2>內建都不像？跟 AI 描述，它會做一個新的</h2>
+    <p>例如「想要海面」「像木刻版畫」。拿到之後跟一般回覆一樣，整則貼回來。</p>
+  </div>
+  <div class="flow wrap2" role="img" aria-label="新風格流程：描述感覺，AI 給新風格，整則貼回套用，編輯器試跑，風格選單出現自訂">
+    <div class="node node-start"><span class="where">AI 對話</span>描述想要的感覺</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node"><span class="where">AI 對話</span>AI 給新風格<small>回覆裡有 ```js 框</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-key"><span class="where">編輯器</span>整則貼回、套用</div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node"><span class="where">編輯器</span>先試跑幾秒<small>有問題會擋下</small></div><svg class="arrow" viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg>
+    <div class="node node-end"><span class="where">編輯器</span>風格選單多「自訂：…」</div>
+  </div>
+  <div class="callout"><span class="callout-icon">!</span><div><b>新風格跟著那一首歌（分頁）。</b>存成單檔 HTML 時會一起存進去，帶到別台電腦也能用。試跑失敗的原因會顯示在貼上框下方，複製給 AI 修。</div></div>
+</section>
+
+<!-- 字幕兩種 -->
+<section id="subtitles">
+  <div class="sec-head">
+    <span class="eyebrow">動態字幕</span>
+    <h2>兩種字幕：衝的地方用華麗，跟唱的地方用收斂</h2>
+    <p>字幕影片底下的背景，就是這一段選的背景（平靜、累積或高潮）。</p>
+  </div>
+  <div class="two">
+    <figure><img src="img/riso_flashy.jpg" alt="華麗字幕：一行一支，關鍵字放大"><figcaption><b>華麗</b>：一行一支，<code>[ ]</code> 標的字會放大（每行一個）。適合導歌、宣告句。</figcaption></figure>
+    <figure><img src="img/swiss_gentle.jpg" alt="收斂字幕：一次兩三行"><figcaption><b>收斂</b>：空一行分一支，一組超過 3 行會自動切開。適合副歌、大家一起唱。</figcaption></figure>
+  </div>
+</section>
+
+<!-- 風格圖鑑 -->
+<section id="styles">
+  <div class="sec-head">
+    <span class="eyebrow">風格圖鑑</span>
+    <h2>八種內建風格</h2>
+    <p>每種都有平靜、累積、高潮三種背景，華麗、收斂兩種字幕。</p>
+  </div>
+  <div class="styles">
+    <div class="style"><div class="style-head"><h3>瑞士網格</h3><span class="badge">俐落、色塊跟拍子跳格</span><span class="small muted">快歌、現代感</span></div><div class="frames">
+<figure><img src="img/swiss_peak.jpg" alt="瑞士網格高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/swiss_flashy.jpg" alt="瑞士網格華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/swiss_gentle.jpg" alt="瑞士網格收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>剪紙拼貼</h3><span class="badge">溫暖、手作、紙片有影子</span><span class="small muted">青年、見證、溫馨</span></div><div class="frames">
+<figure><img src="img/paper_peak.jpg" alt="剪紙拼貼高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/paper_flashy.jpg" alt="剪紙拼貼華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/paper_gentle.jpg" alt="剪紙拼貼收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>大字排版</h3><span class="badge">大字當背景紋理</span><span class="small muted">宣告、口號型歌詞。背景大字是「光、火、愛」，想換字請 AI 改</span></div><div class="frames">
+<figure><img src="img/type_peak.jpg" alt="大字排版高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/type_flashy.jpg" alt="大字排版華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/type_gentle.jpg" alt="大字排版收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>包浩斯幾何</h3><span class="badge">圓、三角、原色</span><span class="small muted">兒童、歡慶</span></div><div class="frames">
+<figure><img src="img/bauhaus_peak.jpg" alt="包浩斯幾何高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/bauhaus_flashy.jpg" alt="包浩斯幾何華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/bauhaus_gentle.jpg" alt="包浩斯幾何收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>網點印刷</h3><span class="badge">復古印刷、套色錯位</span><span class="small muted">年輕、潮、活力</span></div><div class="frames">
+<figure><img src="img/riso_peak.jpg" alt="網點印刷高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/riso_flashy.jpg" alt="網點印刷華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/riso_gentle.jpg" alt="網點印刷收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>墨染</h3><span class="badge">宣紙上墨慢慢暈開、淡去，像呼吸</span><span class="small muted">安靜敬拜</span></div><div class="frames">
+<figure><img src="img/ink_peak.jpg" alt="墨染高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/ink_flashy.jpg" alt="墨染華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/ink_gentle.jpg" alt="墨染收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>光柱</h3><span class="badge">深藍綠底，高窗落下幾道光</span><span class="small muted">安靜敬拜、感恩</span></div><div class="frames">
+<figure><img src="img/nave_peak.jpg" alt="光柱高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/nave_flashy.jpg" alt="光柱華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/nave_gentle.jpg" alt="光柱收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div><div class="style"><div class="style-head"><h3>天空</h3><span class="badge">雲層慢慢飄，高潮雲開、光束落下</span><span class="small muted">敬拜、高舉</span></div><div class="frames">
+<figure><img src="img/sky_peak.jpg" alt="天空高潮背景" loading="lazy"><figcaption>背景（高潮）</figcaption></figure>
+<figure><img src="img/sky_flashy.jpg" alt="天空華麗字幕" loading="lazy"><figcaption>華麗字幕</figcaption></figure>
+<figure><img src="img/sky_gentle.jpg" alt="天空收斂字幕" loading="lazy"><figcaption>收斂字幕</figcaption></figure></div></div>
+  </div>
+</section>
+
+<!-- 小抄 -->
+<section id="cheatsheet">
+  <div class="sec-head">
+    <span class="eyebrow">提示詞小抄</span>
+    <h2>照著填空，一句話就說清楚</h2>
+    <p>每次 AI 給完，最後都會附一句「下次可以這樣說」。多用幾次就會了。</p>
+  </div>
+  <div class="tpl">
+    <div class="tpl-top"><h3>做新歌</h3><button class="copy" type="button" data-copy="歌名＿＿，感覺＿＿，畫面像＿＿，＿＿段要動態字幕，顏色＿＿。">複製範本</button></div>
+    <p class="tpl-text">歌名<span class="blank">＿＿</span>，感覺<span class="blank">＿＿</span>，畫面像<span class="blank">＿＿</span>，<span class="blank">＿＿</span>段要動態字幕，顏色<span class="blank">＿＿</span>。</p>
+  </div>
+  <div class="tpl">
+    <div class="tpl-top"><h3>改一個地方</h3><button class="copy" type="button" data-copy="＿＿段的（背景／字幕）太＿＿，希望＿＿一點，像＿＿那樣。">複製範本</button></div>
+    <p class="tpl-text"><span class="blank">＿＿</span>段的（背景／字幕）太<span class="blank">＿＿</span>，希望<span class="blank">＿＿</span>一點，像<span class="blank">＿＿</span>那樣。</p>
+  </div>
+  <div class="card">
+    <h3>卡住的時候，從這些詞挑</h3>
+    <div class="vocab">
+      <div class="vrow"><b>節奏</b><div class="chips"><span class="chip">跳得快／慢</span><span class="chip">穩</span><span class="chip">有呼吸感</span><span class="chip">跟拍子</span></div></div>
+      <div class="vrow"><b>密度</b><div class="chips"><span class="chip">滿／空</span><span class="chip">簡單</span><span class="chip">留白多</span></div></div>
+      <div class="vrow"><b>色調</b><div class="chips"><span class="chip">暖／冷</span><span class="chip">亮／暗</span><span class="chip">鮮豔／柔和</span><span class="chip">教會主色</span></div></div>
+      <div class="vrow"><b>質感</b><div class="chips"><span class="chip">紙</span><span class="chip">印刷</span><span class="chip">手繪</span><span class="chip">俐落</span><span class="chip">復古</span><span class="chip">現代</span></div></div>
+      <div class="vrow"><b>字幕</b><div class="chips"><span class="chip">大／小</span><span class="chip">進場快／慢</span><span class="chip">華麗／收斂</span><span class="chip">重點字</span><span class="chip">雙語</span></div></div>
+    </div>
+  </div>
+  <p class="small muted" id="copy-status" role="status"></p>
+</section>
+
+<!-- 常見問題 -->
+<section id="faq">
+  <div class="sec-head">
+    <span class="eyebrow">常見問題</span>
+    <h2>卡住了先看這裡</h2>
+  </div>
+  <div class="faq">
+    <div class="qa"><h3>出現「這個瀏覽器沒有開啟 WebGPU」或「初始化失敗」？</h3><p>改用最新版 Chrome 或 Edge 打開。換了還不行，就換一台電腦試，最好是要播放的那台。</p></div>
+    <div class="qa"><h3>出現「不允許背景執行緒」的黃色提示？</h3><p>代表是在某個預覽視窗裡看（例如聊天畫面裡的預覽）。可以看、可以改；要匯出或試新風格，請用 Chrome 打開<a href="../">編輯器</a>，或打開存好的單檔 HTML。</p></div>
+    <div class="qa"><h3>貼上後「找到」都是空的？</h3><p>多半是用滑鼠選取，漏了 ``` 框線。改用 AI 回覆下方的「複製」按鈕再貼一次。</p></div>
+    <div class="qa"><h3>剛才那首歌不見了？</h3><p>先看上面的歌曲分頁；關掉的分頁從「最近關閉」叫回來；改壞了用「↶ 還原」或歷史紀錄。換了電腦或清過瀏覽器資料，就打開存好的單檔 HTML。</p></div>
+    <div class="qa"><h3>匯出要等很久？</h3><p>正常，每一格都要算。整首歌匯出時，不要切走、不要關分頁。</p></div>
+    <div class="qa"><h3>為什麼背景影片裡沒有歌詞？</h3><p>背景要乾淨，歌詞交給簡報軟體；要字在影片裡，就用動態字幕。</p></div>
+    <div class="qa"><h3>節拍對不上？</h3><p>在「自己調」填歌的速度（BPM）。不知道就留 120，畫面本來就只是跟著大概的拍子跳。</p></div>
+    <div class="qa"><h3>AI 把歌詞寫進回覆裡了？</h3><p>可以照樣貼。不過歌詞自己用「貼上整首歌詞」貼最準，AI 也不用重打一次。</p></div>
+  </div>
+</section>
+
+</div>
+<script>
+  (function () {
+    var sel = document.getElementById('theme');
+    sel.value = document.documentElement.dataset.nzTheme;
+    sel.addEventListener('change', function () {
+      document.documentElement.dataset.nzTheme = sel.value;
+      try { localStorage.setItem('nz-theme', sel.value); } catch (e) {}
+    });
+    var status = document.getElementById('copy-status');
+    var fail = function () { status.textContent = '這裡不能自動複製，請手動選取上面的範本文字。'; };
+    document.querySelectorAll('.copy').forEach(function (b) {
+      b.addEventListener('click', function () {
+        try { navigator.clipboard.writeText(b.getAttribute('data-copy')).then(function () { status.textContent = '已複製範本，貼到 AI 對話後把空格填上。'; }, fail); } catch (e) { fail(); }
+      });
+    });
+  })();
+</script>
+</body>
+</html>

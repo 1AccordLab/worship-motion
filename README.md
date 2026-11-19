@@ -4,8 +4,9 @@
 
 | 網址 | 分支 | 用途 |
 |---|---|---|
-| `/` | `main` | 正式版：給同工用 |
-| `/dev/` | `develop` | 開發版：新功能先在這裡試 |
+| `/` | `main` | 正式版編輯器：給同工用 |
+| `/guide/` | `main` | 教學 |
+| `/dev/`、`/dev/guide/` | `develop` | 開發版：新功能先在這裡試 |
 
 ## 流程
 
@@ -22,6 +23,7 @@
 | `src/app.js`、`src/editor.html` | 編輯器 |
 | `examples/` | 自訂風格範例（例如海面） |
 | `skill/SKILL.md` | 給 AI 的說明（任何 AI 都能用） |
+| `guide/` | 給同工的教學頁（截圖由 `tests/shots_guide.py` 產生） |
 | `tests/` | 無頭瀏覽器測試 |
 
 ## 打包與測試
