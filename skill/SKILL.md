@@ -1,6 +1,6 @@
 ---
 name: worship-motion-backgrounds
-description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者給一句話（歌名、段落、風格、歌詞），AI 回覆一份設定 JSON；要新風格時再回覆一段「場景程式」。使用者貼進「詩歌影片編輯器.html」預覽、存成單檔 HTML、匯出 MP4 放進簡報軟體（Keynote、PowerPoint、Google 簡報等）。適用任何 AI，不綁平台。
+description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用選擇題引導同工說出想要的，再回設定 JSON 或場景程式，貼進「詩歌影片編輯器」預覽、存成單檔 HTML、匯出 MP4 放進簡報軟體；任何 AI 都能用。
 ---
 
 # 詩歌影片：設定 JSON ＋ 場景程式 ＋ 單檔編輯器
