@@ -1,4 +1,4 @@
-/* 包浩斯幾何：墨藍底，圓、半圓、三角、方形、粗線條。背景沒有任何字；換位置一律用跳的 */
+/* 包浩斯幾何：墨藍底，圓、半圓、三角、方形、粗線條；換位置一律用跳的 */
 const BH = { bg: '#1c2433', red: '#d4472f', yel: '#e2b33d', blu: '#3657a8', crm: '#ebdfc7', dim: '#243049', ink: '#121826' };
 const PI = Math.PI;
 const sq = (cx, cy, s, deg, col, a = 1) => band(cx, cy, s, s, deg, col, a);
@@ -42,7 +42,7 @@ function beatDots(f, t, px, py, n, gap = 34) { const k = Math.floor(t / BEAT) % 
 function calm(f, x) {
   const tt = mod(x.t, LOOP);
   edgeShapes(f, EDGE, stateAt(x, tt, BAR), 1 + .04 * pulse(tt, 3, BAR));
-  f.add(arc(1700, 760, 120, 6, TAU * tt / LOOP, PI * 1.5, BH.crm, .5));   // 圓環缺口慢慢轉一圈
+  f.add(arc(1700, 760, 120, 6, TAU * tt / LOOP, PI * 1.5, BH.crm, .5));
   beatDots(f, tt, 820, 1020, 8);
 }
 /* ---------- 累積：每 1 秒跳一次，元素更多 ---------- */
@@ -93,7 +93,7 @@ function flashy(f, x) {
     f.text(ch, px, py + (kind === 't' ? (bar % 2 ? -10 : 22) : 0), { px: 112, weight: 900, scale: (isK ? 1.25 : 1) * lerp(.4, 1, p) * (1 + kick), col: col === BH.yel ? BH.ink : BH.crm });
   });
   const sub = x.small[0];
-  if (sub) {                                               // 第二語言小字：形狀那一排下方
+  if (sub) {
     const SM = { px: 50, weight: 600, spacing: 2 }, a = E.io(seg(t, .3 + n * .07, .7 + n * .07));
     f.add(rect(960 - 60 * a, 662, 960 + 60 * a, 668, BH.yel, a));
     f.text(sub, 960, 718 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 1300, SM), col: BH.crm, a: .75 * a });

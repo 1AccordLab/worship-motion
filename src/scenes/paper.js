@@ -86,7 +86,7 @@ function flashy(f, x) {
     f.text(ch, px, py + 6 * sc, { px: 128, weight: 900, scale: sc * (size / 176), rot, col: ink });
   });
   const sub = x.small[0];
-  if (sub) {                                               // 第二語言小字：貼紙下方一條深色紙條托住
+  if (sub) {
     const SM = { px: 58, weight: 600, spacing: 2 }, a = E.io(seg(t, .5 + n * .12, .9 + n * .12)), sc = f.fit(sub, 1400, SM), tw = f.measure(sub, SM).tw * sc;
     const sy = cy + size * .62 + 92;
     f.add(paper(band(960, sy, (tw + 90) * (.6 + .4 * a), 86, -1, PC.deep, a), 650, { rough: 6, shadow: .8 }));

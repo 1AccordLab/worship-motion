@@ -25,9 +25,9 @@ fn dots(px: vec2f, ang: f32, cell: f32, tone: f32) -> f32 {
 fn shade(uv: vec2f, t: f32, beat: f32, base: vec4f) -> vec4f {
   let px = uv * RES;
   let l = dot(base.rgb, vec3f(0.299, 0.587, 0.114));
-  let jog = vec2f(3.0, -2.0) * (1.0 + floor(beat / 8.0) % 2.0);   // 每 8 拍套色重新錯位
-  let a = dots(px, 0.26, param(0), (0.8 - l) * 1.7);          // 第一版：比紙暗的地方才有墨
-  let b = dots(px + jog, 1.31, param(0), (0.55 - l) * 2.2);   // 第二版：只印最暗的地方
+  let jog = vec2f(3.0, -2.0) * (1.0 + floor(beat / 8.0) % 2.0);
+  let a = dots(px, 0.26, param(0), (0.8 - l) * 1.7);
+  let b = dots(px + jog, 1.31, param(0), (0.55 - l) * 2.2);
   var c = pal(0);
   c = mix(c, c * pal(1), a * 0.9);
   c = mix(c, c * pal(2), b * 0.85);
