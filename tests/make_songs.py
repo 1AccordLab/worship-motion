@@ -33,7 +33,6 @@ async def main():
                 (OUT / name).write_text(await p.ev("__app.singleHTML('one')")); print("→", name, flush=True)
             await p.ev("__app.switchSong(0)")
             (OUT / book_name).write_text(await p.ev("__app.singleHTML('book')")); print("→", book_name, flush=True)
-        await build([ATL, FIX, GRACE("field_photo"), WORTHY("sky_photo")], ["AllTheLights_大字排版.html", "定睛在耶穌身上_海面.html", "數算恩典_麥田寫實.html", "配得_天空寫實.html"], "四首詩歌.html")
-        await build([ATL, FIX, GRACE("field"), WORTHY("sky")], [None, None, "數算恩典_麥田.html", "配得_天空.html"], "四首詩歌_平面版.html")
+        await build([ATL, FIX, GRACE("nave"), WORTHY("sky")], ["AllTheLights_大字排版.html", "定睛在耶穌身上_海面.html", "數算恩典_光柱.html", "配得_天空.html"], "四首詩歌.html")
         print("錯誤", p.log[:4]); await b.close()
 asyncio.run(main())

@@ -7,7 +7,7 @@ from wm import *
 from PIL import ImageChops
 SONGS = ROOT / "dist" / "songs"
 REF = ROOT / "q" / "ref_before"
-NEW = ["ink", "nave", "field", "sky", "field_photo", "sky_photo"]
+NEW = ["ink", "nave", "sky"]
 OLD = ["swiss", "paper", "type", "bauhaus", "riso"]
 res = []
 def rec(n, ok, d=""): res.append((n, bool(ok))); print(("✔" if ok else "✘"), n, "｜", str(d).replace("\n", " ")[:220], flush=True)
@@ -146,9 +146,8 @@ async def main():
         # ---------- 四首歌與整本 ----------
         exp = {"AllTheLights_大字排版.html": ("All the Lights", "type", 120, ["主歌", "導歌", "副歌", "橋段"]),
                "定睛在耶穌身上_海面.html": ("定睛在耶穌身上", "waves", 104, ["主歌", "副歌"]),
-               "數算恩典_麥田寫實.html": ("數算恩典", "field_photo", 72, ["主歌一", "副歌一", "主歌二", "副歌二"]),
-               "數算恩典_麥田.html": ("數算恩典", "field", 72, ["主歌一", "副歌一", "主歌二", "副歌二"]),
-               "配得_天空寫實.html": ("配得", "sky_photo", 72, None), "配得_天空.html": ("配得", "sky", 72, None)}
+               "數算恩典_光柱.html": ("數算恩典", "nave", 72, ["主歌一", "副歌一", "主歌二", "副歌二"]),
+               "配得_天空.html": ("配得", "sky", 72, None)}
         BGS = {"All the Lights": ["calm", "build", "peak", "build"], "定睛在耶穌身上": ["storm", "peak"], "數算恩典": ["calm", "build", "calm", "peak"],
                "配得": ["calm", "calm", "peak", "peak", "calm", "calm", "build", "build"]}
         SUBS = {"All the Lights": ["gentle", "flashy", "gentle", "gentle"], "定睛在耶穌身上": ["gentle", "flashy"]}
@@ -167,7 +166,7 @@ async def main():
             rec(f"{fn}：打開設定正確、沒有歌詞、看得到「貼上整首歌詞（自己調 → 貼上整首歌詞）」", good and "貼上整首歌詞（自己調 → 貼上整首歌詞）" in clips and len(await q.ev("__app.songs()")) == 1 and not q.log,
                 f"{pj['title']} {pj['style']} {pj['bpm']} {[s['name'] for s in pj['sections']]} {q.log[:1]}")
             await q.pg.close()
-        for fn, styles in [("四首詩歌.html", ["type", "waves", "field_photo", "sky_photo"]), ("四首詩歌_平面版.html", ["type", "waves", "field", "sky"])]:
+        for fn, styles in [("四首詩歌.html", ["type", "waves", "nave", "sky"])]:
             q = Page(await ctx.new_page(), []); q.pg.on("pageerror", lambda e: q.log.append(str(e)))
             await q.pg.goto((SONGS / fn).as_uri() + "?nopreview"); await q.pg.wait_for_function("window.__app&&__app.ready", timeout=120000)
             sg = await q.ev("__app.songs()"); ok = [s["style"] for s in sg] == styles and [s["title"] for s in sg] == ["All the Lights", "定睛在耶穌身上", "數算恩典", "配得"]

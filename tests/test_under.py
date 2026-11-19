@@ -7,7 +7,7 @@ from PIL import ImageChops
 res = []
 def rec(n, ok, d=""): res.append((n, bool(ok))); print(("✔" if ok else "✘"), n, "｜", str(d)[:200], flush=True)
 def diff(a, b): return sum(ImageChops.difference(a, b).convert("L").histogram()[24:])
-STYLES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "field", "sky", "field_photo", "sky_photo"]
+STYLES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky"]
 G = "這是第一行示意文字\n這是第二行示意文字"
 def proj(st, sub):
     lyr = G if sub == "gentle" else "這是[示]意文字"
@@ -26,6 +26,12 @@ async def main():
         # 背景影片本身：大字排版高潮左邊多了元素，歌詞區不動
         await p.ev("x=>__app.load(x)", proj("type", "gentle"))
         await p.shot(2, 0, 4.0, out / "type_peak_bg.png")
+        # 拿掉的風格：舊設定打開自動換成相近的、有提示
+        for old, new in [("field", "nave"), ("field_photo", "nave"), ("sky_photo", "sky")]:
+            ok = await p.ev("x=>__app.load(x)", proj(old, "gentle")); pj = await p.ev("__app.project")
+            msg = await p.pg.inner_text("#cfgStatus") if await p.pg.query_selector("#cfgStatus") else ""
+            rec(f"舊設定用「{old}」→ 自動換成「{new}」並提示", ok and pj["style"] == new and "已經拿掉" in msg, (pj["style"], msg[:80]))
+        n = await p.ev("document.querySelectorAll('#style option').length"); rec("風格選單：內建 8 種", n == 8, n)
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
     n = sum(ok for _, ok in res); print(f"\n通過 {n} / {len(res)}"); sys.exit(0 if n == len(res) else 1)

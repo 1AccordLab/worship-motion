@@ -5,7 +5,7 @@ dist/simple/詩歌影片編輯器.html（單檔、無依賴）。場景程式保
 import pathlib, re, json, sys
 ROOT = pathlib.Path(__file__).parent
 SRC = ROOT / "src"
-SCENES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "field", "sky", "field_photo", "sky_photo"]
+SCENES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky"]
 S2T = SRC / "engine" / "s2t.txt"
 
 def make_s2t():

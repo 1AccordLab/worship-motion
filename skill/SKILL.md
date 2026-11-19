@@ -44,9 +44,8 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者�
    E 網點印刷：復古印刷、顏色稍微錯位，像獨立樂團海報
    F 墨染：宣紙上墨慢慢暈開、淡去，像呼吸（安靜敬拜）
    G 光柱：深藍綠底，高窗落下幾道光（安靜敬拜）
-   H 麥田：低地平線的麥田隨風擺，高潮金色麥浪（感恩、溫暖）；也有寫實版
-   I 天空：雲層慢慢飄，高潮雲開、光束落下（敬拜、高舉）；也有寫實版
-   J 都不像，我描述給你　K 交給你決定
+   H 天空：雲層慢慢飄，高潮雲開、光束落下（敬拜、高舉）
+   I 都不像，我描述給你　J 交給你決定
 3. 動態字幕？
    A 不用，只要背景（歌詞用簡報軟體打）　B 重點段落要（導歌、高潮）　C 每段都要　D 交給你決定
 ```
@@ -112,12 +111,9 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者�
 | `riso` 網點印刷 | 復古印刷、套色錯位 | 年輕、潮、活力 |
 | `ink` 墨染 | 宣紙上墨慢慢暈開、淡去，像呼吸 | 適合敬拜、安靜的歌 |
 | `nave` 光柱 | 深藍到墨綠底，高窗落下平塗光柱 | 適合敬拜、安靜的歌 |
-| `field` 麥田 | 低地平線、筆觸麥穗三層流動，高潮金色麥浪 | 感恩、溫暖（例如數算恩典） |
 | `sky` 天空 | 切紙雲層慢慢飄，高潮雲開、平塗光束 | 敬拜、宣告、高舉 |
-| `field_photo` 麥田・寫實 | 像實拍：低機位麥田、一波波麥浪、夕陽金色（較吃顯示卡） | 感恩、溫暖 |
-| `sky_photo` 天空・寫實 | 像實拍：體積雲、雲開、雲隙光（較吃顯示卡） | 敬拜、高舉 |
 
-使用者說的感覺內建沒有（例如「木刻版畫」「拼布」「海面」），才寫新場景（第二節）。內建都有 `calm` `build` `peak` 三種背景與 `flashy` `gentle` 兩種字幕；`ink` `nave` `field` `sky`（含寫實版）的 `flashy` 是克制版（字重、顏色、慢慢淡入）。
+使用者說的感覺內建沒有（例如「木刻版畫」「拼布」「海面」），才寫新場景（第二節）。內建都有 `calm` `build` `peak` 三種背景與 `flashy` `gentle` 兩種字幕；`ink` `nave` `sky` 的 `flashy` 是克制版（字重、顏色、慢慢淡入）。
 
 ---
 
@@ -137,7 +133,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者�
 
 | 欄位 | 值 | 預設 | 說明 |
 |---|---|---|---|
-| `style` | 內建 `swiss` `paper` `type` `bauhaus` `riso` `ink` `nave` `field` `sky` `field_photo` `sky_photo`，或自訂場景的 `id` | 第一個 | 自訂場景要先貼上場景程式 |
+| `style` | 內建 `swiss` `paper` `type` `bauhaus` `riso` `ink` `nave` `sky`，或自訂場景的 `id` | 第一個 | 自訂場景要先貼上場景程式 |
 | `bpm` | 40–220 | 120 | 會微調到循環格數為整數 |
 | `palette` | `{ 鍵: "#rrggbb" }` | 場景原色 | 只填想改的；換風格會清空 |
 | `params` | `{ 鍵: 數字 }` | 場景預設 | 場景有定義才有 |
@@ -151,7 +147,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片。使用者�
 | `lyrics2` | 文字，換行 `\n` | "" | 第二語言歌詞（小字）：和 `lyrics` 同樣的切法、逐行配對，行數不同也可以 |
 | `swapLang` | `true` `false` | `false` | 大小對調：第二語言當大字、第一語言當小字 |
 
-內建風格配色鍵：swiss `bg org crm dim`｜paper `bg red yel crm pnk`｜type `bg tone org crm`｜bauhaus `bg red yel blu crm`｜riso `bg pink blue yel teal ink`｜ink `bg ink wash warm seal shade`｜nave `bg green win light gold`｜field `bg haze far green gold warm ink`｜sky `bg blue warm far mid near hill light`｜field_photo `zen hor warm green gold`｜sky_photo `zen hor warm cloud shade`。
+內建風格配色鍵：swiss `bg org crm dim`｜paper `bg red yel crm pnk`｜type `bg tone org crm`｜bauhaus `bg red yel blu crm`｜riso `bg pink blue yel teal ink`｜ink `bg ink wash warm seal shade`｜nave `bg green win light gold`｜sky `bg blue warm far mid near hill light`。
 純 JSON：雙引號、無註解、無尾逗號；不確定就省略。編輯器會檢查，錯了列出哪段哪欄、不套用。
 
 ---

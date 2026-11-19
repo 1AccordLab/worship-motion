@@ -823,8 +823,15 @@ function rebuild() {
 const SKILL = window.WM_SRC ? (WM_SRC.skill || '') : (($('#wm-skill') || {}).textContent || '');
 const STYLE_DESC = { swiss: '俐落色塊、跟著節拍跳格，像設計展海報。', paper: '溫暖手作、紙片有影子，像手作卡片。', type: '大字當背景紋理，像口號海報。', bauhaus: '圓、三角、原色，活潑像兒童繪本。', riso: '復古印刷、顏色稍微錯位，像獨立樂團海報。',
   ink: '暖色宣紙上，墨慢慢暈開、淡去、再暈開，像呼吸。適合敬拜、安靜的歌。', nave: '深藍到墨綠的底，高窗落下幾道平塗光柱，慢慢淡入淡出。適合敬拜、安靜的歌。',
-  field: '低地平線的麥田，筆觸草葉隨風擺、三層慢慢流動，高潮翻成金色麥浪。適合感恩、數算恩典這類溫暖的歌。', sky: '切紙雲層慢慢飄，高潮時雲開、平塗光束落下。適合敬拜、宣告、高舉的歌。',
-  field_photo: '像實拍的麥田：低機位、風吹過一波波麥浪，高潮是夕陽金色。適合感恩、溫暖的歌（較吃顯示卡）。', sky_photo: '像實拍的天空：有體積的雲慢慢飄、生成、消散，高潮雲開、陽光從雲隙灑下。適合敬拜、高舉的歌（較吃顯示卡）。' };
+  sky: '切紙雲層慢慢飄，高潮時雲開、平塗光束落下。適合敬拜、宣告、高舉的歌。', };
+/* 拿掉的內建風格：舊歌打開時自動換成相近的，並提示 */
+const RETIRED = { field: ['麥田', 'nave'], field_photo: ['麥田・寫實', 'nave'], sky_photo: ['天空・寫實', 'sky'] };
+function retire(raw) {
+  const k = raw && raw.style != null ? String(raw.style).toLowerCase() : '', r = RETIRED[k];
+  if (!r || sourceFor(k)) return null;
+  const to = BUILTIN.find(b => b.id === r[1]) || BUILTIN[0]; raw.style = to.id;
+  return `風格「${r[0]}」已經拿掉，這首先換成「${to.name}」，可以在「自己調 → 風格」改成別的。`;
+}
 const JUMP_WORD = { 1: '很快', 2: '快', 4: '中', 8: '慢' };
 const SPLIT_DESC = { line: '一行做成一支，用 [ ] 框住的字會放大', block: '空一行分成一支，好跟唱；一組超過 3 行會自動平均切開' };
 const SPLIT_SHORT = { line: '一行一支', block: '一段一支' };
@@ -1224,6 +1231,7 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   const out = (s, k) => say(where, s, k);
   const before = pre ? pre.before : (P ? clone(P) : null), mOld = pre ? pre.mOld : (scene ? meta() : null), prefix = pre ? pre.prefix : '';
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { out(`${source}沒有套用：設定要用 { } 包起來。`, true); return false; }
+  const retired = retire(raw);
   const want = raw.style != null ? String(raw.style).toLowerCase() : meta().id;
   let prep = null, m = meta();
   if (want !== m.id) {
@@ -1238,7 +1246,7 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   P = n.project; cur = 0; clipIdx = 0; t = 0;
   save(chg.length && /^換成另一首歌/.test(chg[0]) ? chg[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : '載入' + source);
   renderStyle(); await refresh();
-  out(doneText(prefix, changes(before, P, mOld, meta()), n.warnings), 'ok');
+  out(doneText(prefix, changes(before, P, mOld, meta()), retired ? [retired, ...n.warnings] : n.warnings), 'ok');
   return true;
 }
 /* 貼上新風格：檢查通過才換；失敗保留原本的風格 */
@@ -1441,6 +1449,7 @@ async function activate0(i, { first = false, noStash = false } = {}) {
 async function activateInner(i, first) {
   ACT = Math.max(0, Math.min(i, SONGS.length - 1)); const sg = SONGS[ACT]; CUSTOM = sg.custom || null;
   const raw = sg.P && typeof sg.P === 'object' ? sg.P : clone(SAMPLE);
+  const retired = retire(raw); if (retired) notice('scene', `「${raw.title || ''}」：${retired}`);
   const want = raw.style ? String(raw.style).toLowerCase() : BUILTIN[0].id, src = sourceFor(want);
   if (!(scene && src && scene.code === src.code)) {
     let ok = false;

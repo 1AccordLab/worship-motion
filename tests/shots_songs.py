@@ -1,6 +1,6 @@
 """風格與介面截圖（示意文字）：python3 tests/shots_songs.py → q/songs/
-墨染、光柱、海面、麥田（寫實／平面）、天空（寫實／平面）各三種背景＋收斂雙語；海面華麗；瑞士網格雙語（中大／英大）；
-多分頁整體畫面與歷史紀錄面板（1440×900，無頭模式把 grab 的畫面疊到預覽位置）。另外量寫實版的效能。"""
+墨染、光柱、海面、天空各三種背景＋收斂雙語；海面華麗；瑞士網格雙語（中大／英大）；
+多分頁整體畫面與歷史紀錄面板（1440×900，無頭模式把 grab 的畫面疊到預覽位置）。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -9,8 +9,7 @@ WAVES = (ROOT / "examples" / "waves.js").read_text()
 OVERLAY = (ROOT / "tests" / "shots_ux.py").read_text().split('OVERLAY = """')[1].split('"""')[0]
 L1, L2 = "這是第一行示意文字\n這是第二行示意文字", "Sample line one\nSample line two"
 STY = [("墨染", "ink", ["calm", "build", "peak"]), ("光柱", "nave", ["calm", "build", "peak"]), ("海面", "waves", ["calm", "storm", "peak"]),
-       ("麥田寫實", "field_photo", ["calm", "build", "peak"]), ("天空寫實", "sky_photo", ["calm", "build", "peak"]),
-       ("麥田平面", "field", ["calm", "build", "peak"]), ("天空平面", "sky", ["calm", "build", "peak"])]
+       ("天空", "sky", ["calm", "build", "peak"])]
 ZH = {"calm": "平靜", "build": "累積", "peak": "高潮", "storm": "風浪"}
 def proj2(style, bgs, swap=False):
     return {"format": "worship-motion/1", "title": "示意", "style": style, "bpm": 120, "sections": [
@@ -40,7 +39,7 @@ async def main():
             await p.ev("t=>__app.importText(t)", (ROOT / "dist" / "songs" / f).read_text())
         await p.ev("__app.switchSong(3)"); await p.ev("__app.tab('self')")
         await pg.click("#introClose") if await pg.is_visible("#introClose") else None
-        d = proj2("sky_photo", ["calm", "build", "peak"], True)
+        d = proj2("sky", ["calm", "build", "peak"], True)
         await p.ev("()=>{const t=document.querySelector('#lyrAll');t.value='[Verse 1]\\n這是第一行示意文字\\nSample line one\\n這是第二行示意文字\\nSample line two'}")
         await p.ev("__app.select(1,0)"); png = await pg.evaluate(GRAB, 3.0); await p.ev("scrollTo(0,0)")
         await pg.evaluate(OVERLAY, png); await pg.wait_for_timeout(200); await pg.screenshot(path=str(OUT / "多分頁整體畫面.png"))

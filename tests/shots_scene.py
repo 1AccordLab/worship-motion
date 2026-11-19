@@ -4,7 +4,7 @@ import asyncio, sys, pathlib, json, time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
 from PIL import Image, ImageStat
-BG = {"field_photo": ["calm", "build", "peak"], "sky_photo": ["calm", "build", "peak"], "waves": ["calm", "storm", "peak"]}
+BG = {"waves": ["calm", "storm", "peak"]}
 def song(style, bgs):
     return {"format": "worship-motion/1", "title": "示意", "style": style, "bpm": 120, "sections": [
         {"name": "A", "background": bgs[0], "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字", "lyrics2": "Sample line one\nSample line two"},
