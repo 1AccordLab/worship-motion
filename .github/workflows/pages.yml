@@ -59,10 +59,11 @@ jobs:
           }
 
           # $1 網址、$2 輸出資料夾、$3 wget 要略過的目錄層數、$4 要排除的路徑（可空）
+          # 注意：已上線的頁面可能連到還不存在的網址（404 時 wget 回傳 8），只以 index.html 有抓到為準
           fetch_live() {
             rm -rf "$2"; mkdir -p "$2"
-            wget -q -r -np -p -nH --cut-dirs="$3" ${4:+-X "$4"} -P "$2" "$1" || return 1
-            [ -s "$2/index.html" ] && [ -d "$2/guide" ]
+            wget -q -r -np -p -nH --cut-dirs="$3" ${4:+-X "$4"} -P "$2" "$1" || true
+            [ -s "$2/index.html" ]
           }
 
           if build_fresh prod site; then
