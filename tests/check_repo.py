@@ -1,6 +1,9 @@
-"""repo 規則檢查（不開瀏覽器）：python3 tests/check_repo.py
+"""repo 規則檢查（不開瀏覽器、只用標準庫）：python3 tests/check_repo.py
 (a) 沒有 \\uXXXX 跳脫碼藏中文  (b) 程式／測試／文件裡 lyrics、lyrics2 的字串值只用示意文字
-(c) 已知真實歌詞的指紋（只存雜湊）  (d) src／skill／guide／README 沒有過時用語
+(c) 已知真實歌詞的指紋（只存雜湊）  (d) 文件與程式沒有過時用語
+(e) 配色不用純白、純黑  (f) 場景不連網、不碰 DOM；src、examples 不用 WebGL 與遊戲引擎
+(g) 註解數量只准變少，新增的註解要以「注意：」開頭  (h) SKILL.md 的欄位表與風格說明和程式一致
+(i) 教學頁引用的介面文字都在編輯器裡、圖都存在  (j) CLAUDE.md、README、.claude 提到的路徑都存在
 失敗時列出 檔名:行號 並 exit 1；為了不把歌詞印出來，(b)(c) 只印位置。"""
 import hashlib, pathlib, re, subprocess, sys, unicodedata
 
@@ -20,14 +23,33 @@ LYRIC_FINGERPRINTS = {
     (2, "17760cd1dc6eb2c5c04eb0458faa2315bef3b234c8440ae1acf5de5a09177fbc"),
 }
 
-# (d) 過時用語與掃描範圍；之後文件包會擴充
-STALE_TERMS = ["以前", "舊版", "已拿掉", "改之前", "不再", "相容舊", "TODO", "FIXME"]
-STALE_SCOPE = ("src/", "skill/", "guide/index.html", "README.md")
+# (d) 過時用語與掃描範圍（check_repo.py 自己不掃，因為清單寫在裡面）
+STALE_TERMS = ["以前", "舊版", "舊的", "已拿掉", "已移除", "已刪除", "拿掉了", "改之前", "改之後", "不再", "相容舊", "向下相容", "過去的版本", "暫時解", "先這樣", "legacy", "deprecated", "TODO", "FIXME", "HACK"]
+STALE_SCOPE = ("src/", "skill/", "guide/index.html", "README.md", "CLAUDE.md", ".claude/", "examples/", "tests/", "build.py")
 # (路徑前綴, 該行要包含的文字, 理由)：誤判才加，越小越好
 STALE_ALLOW = [
     ("src/", "知道了，不再顯示", "按鈕上給使用者看的字，不是歷史說明"),
+    ("src/", "已刪除「", "按下刪除後給使用者看的提示，描述這一次動作"),
+    ("tests/test_ux.py", "重開不再顯示", "測試名稱描述使用者看到的行為（說明卡關掉後的狀態）"),
+    ("tests/test_ux.py", "說明卡關掉後不再出現", "同上"),
     ("src/", "行版權說明（詞、曲、©、CCLI 開頭），不會放進歌詞", "給使用者看的提示，描述這一次動作"),
 ]
+
+# (g) 註解行數上限：只准往下調。其他註解要改成命名、拆函式或測試；留下的以「注意：」開頭（外部限制、陷阱、為什麼）
+COMMENT_CEILING = 228
+COMMENT_SCOPE = ("src/", "examples/", "tests/", "build.py")
+COMMENT_JS = re.compile(r"^\s*(?://|/\*|\*(?!/)|<!--)\s*(.*)|\s(?://|/\*)\s(.*)$")
+COMMENT_PY = re.compile(r"^\s*#(?!!)\s*(.*)|\s#\s(.*)$")
+# (e) 純白、純黑（src/engine 的文字遮罩用白色，不在範圍內）
+PURE_RE = re.compile(r"#(?:fff|ffffff|000|000000)\b|rgba?\(\s*(?:255\s*,\s*255\s*,\s*255|0\s*,\s*0\s*,\s*0)\b", re.I)
+PURE_SCOPE = ("src/scenes/", "src/editor/", "examples/", "guide/")
+# (f) 場景（src/scenes、examples）在 Worker 裡跑：不連網、不碰 DOM、不 import
+SCENE_RE = re.compile(r"\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts|\bimport\b|\bdocument\.|\bwindow\.|\blocalStorage\b|https?://")
+GPU_RE = re.compile(r"""getContext\(\s*['"](?:webgl2?|experimental-webgl)|\bTHREE\.|\bBABYLON\.|\bPIXI\.""")
+# (i) 教學頁「」裡的字：在 src/editor、src/scenes、SKILL.md 找得到才算介面文字；其餘是示範對話或簡報軟體的字
+GUIDE_QUOTE_OK = {"1D 2B 3B": "對話示範", "像木刻版畫": "對 AI 的說法", "想要海面": "對 AI 的說法", "循環播放": "簡報軟體的選項", "複製、貼上": "動作的說明", "熱": "範例"}
+# (j) 文件裡的路徑：這些是產物或輸出，不一定存在
+PATH_OK = ("dist/", "tests/out/", "lyrics/")
 
 CJK_ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})|\\u\{([0-9a-fA-F]{1,6})\}")
 LYRICS_LITERAL = re.compile(r"""(?<!\w)["']?lyrics2?["']?\s*[:=]\s*(?P<q>["'`])(?P<v>(?:\\.|(?!(?P=q)).)*)(?P=q)""")
@@ -49,6 +71,84 @@ def text_files():
         try: yield name, path.read_text(encoding="utf-8").splitlines()
         except UnicodeDecodeError: continue
 
+def read(rel):
+    return (ROOT / rel).read_text(encoding="utf-8")
+
+def tracked():
+    return [n for n, _ in text_files()]
+
+def comment_lines():
+    for name, lines in text_files():
+        if name == "tests/check_repo.py" or not name.startswith(COMMENT_SCOPE) or not name.endswith((".js", ".py", ".html", ".css")): continue
+        for no, line in enumerate(lines, 1):
+            if name.endswith(".py") and no == 1 and line.startswith("#!"): continue
+            m = (COMMENT_PY if name.endswith(".py") else COMMENT_JS).search(line)
+            if m: yield name, no, (m.group(1) if m.group(1) is not None else m.group(2)).strip()
+
+def table_names(md, heading, stop):
+    """SKILL.md 某一節裡，表格第一欄用反引號框起來的名稱"""
+    body = md[md.index(heading):]
+    body = body[:body.index(stop, len(heading))] if stop in body[len(heading):] else body
+    names = set()
+    for row in re.findall(r"^\|([^|\n]+)\|", body, re.M):
+        for n in re.findall(r"`([^`]+)`", row): names.add(re.sub(r"^sections\[\]\.", "", n))
+    return names
+
+def check_files():
+    bad, files = [], tracked()
+    # (e) 純白、純黑
+    for name, lines in text_files():
+        if not name.startswith(PURE_SCOPE) or name.endswith(".md"): continue
+        for no, line in enumerate(lines, 1):
+            if PURE_RE.search(line): bad.append(f"{name}:{no}: (e) 純白或純黑色碼（用有色調的深淺色）")
+    # (f) 場景不連網、不碰 DOM；不用 WebGL 與遊戲引擎
+    for name, lines in text_files():
+        scene = name.startswith(("src/scenes/", "examples/")) and name.endswith(".js")
+        for no, line in enumerate(lines, 1):
+            if scene and SCENE_RE.search(line): bad.append(f"{name}:{no}: (f) 場景裡不能連網、碰 DOM 或 import")
+            if name.startswith(("src/", "examples/")) and name.endswith((".js", ".html")) and GPU_RE.search(line): bad.append(f"{name}:{no}: (f) 只用 WebGPU，不用 WebGL 或遊戲引擎")
+    # (g) 註解
+    loose = [(n, no) for n, no, body in comment_lines() if body and not body.startswith("注意：")]
+    if len(loose) > COMMENT_CEILING: bad.append(f"(g) 不是「注意：」開頭的註解有 {len(loose)} 行，上限 {COMMENT_CEILING}（新增的註解請改成命名、拆函式或測試；真的要留就以「注意：」開頭）：" + "、".join(f"{n}:{no}" for n, no in loose[-3:]))
+    elif len(loose) < COMMENT_CEILING: print(f"提示：註解變少了（{len(loose)} 行），可以把 COMMENT_CEILING 調成 {len(loose)}")
+    # (h) SKILL.md ⇄ 程式
+    skill, proj, rt = read("skill/SKILL.md"), read("src/editor/project.js"), read("src/engine/runtime.js")
+    norm = proj[proj.index("function normalize"):proj.index("function adapt")]
+    top = set(re.findall(r"\braw\.(\w+)", norm)) | {"style"}
+    sec = set(re.findall(r"\bs\.(\w+)", norm))
+    doc = table_names(skill, "## 一、設定 JSON", "\n---")
+    fields = (top | sec) - {"sections"}
+    for k in sorted(fields - doc): bad.append(f"skill/SKILL.md: (h) 設定欄位「{k}」程式有讀，欄位表沒有")
+    for k in sorted(doc - fields - {"sections"}): bad.append(f"skill/SKILL.md: (h) 設定欄位表的「{k}」程式沒有讀")
+    scene_doc = table_names(skill, "### `defineScene({...})`", "\n###")
+    scene_code = set(re.findall(r"\bd\.(\w+)", rt[rt.index("function defineScene"):]))
+    for k in sorted(scene_code - scene_doc): bad.append(f"skill/SKILL.md: (h) defineScene 欄位「{k}」程式有讀，欄位表沒有")
+    for k in sorted(scene_doc - scene_code): bad.append(f"skill/SKILL.md: (h) defineScene 欄位表的「{k}」程式沒有讀")
+    for name in files:
+        if name.startswith("src/scenes/") and name.endswith(".js"):
+            m = re.search(r"description:\s*'([^']+)'", read(name))
+            if not m: bad.append(f"{name}: (h) 缺少 description")
+            elif m.group(1).split("。")[0] not in skill: bad.append(f"{name}: (h) description 的第一句沒有出現在 SKILL.md 的風格表")
+    # (i) 教學頁
+    guide = read("guide/index.html")
+    ui = "".join(read(n) for n in files if n.startswith(("src/editor/", "src/scenes/"))) + skill
+    for q in sorted(set(re.findall(r"「([^」]+)」", guide))):
+        if q in GUIDE_QUOTE_OK or "○" in q: continue
+        for part in re.split(r"\s*→\s*", q):
+            if part not in ui: bad.append(f"guide/index.html: (i)「{part}」在編輯器裡找不到（改成實際的介面文字，或不加「」）")
+    for img in sorted(set(re.findall(r'src="(img/[^"]+)"', guide))):
+        if not (ROOT / "guide" / img).is_file(): bad.append(f"guide/index.html: (i) 圖 {img} 不存在")
+    # (j) 文件提到的路徑
+    for name in files:
+        if not (name in ("CLAUDE.md", "README.md") or (name.startswith(".claude/") and name.endswith(".md"))): continue
+        for no, line in enumerate(read(name).splitlines(), 1):
+            for tok in re.findall(r"`([^`\s]+)`", line):
+                tok = tok.rstrip("/")
+                if "/" not in tok or tok.startswith(("/",) + PATH_OK) or re.search(r"[<>$:{}]|^https?|^\.\.|\.\.\.", tok): continue
+                if not (re.search(r"\.(py|js|json|md|html|css|yml|txt)$", tok) or (ROOT / tok.split("/")[0]).exists()): continue
+                if not list(ROOT.glob(tok)): bad.append(f"{name}:{no}: (j) 提到的路徑 {tok} 不存在")
+    return bad
+
 def main():
     bad = []
     by_len = {}
@@ -64,9 +164,10 @@ def main():
             for n, hashes in by_len.items():
                 spans = [norm] if n < 3 else (norm[i:i + n] for i in range(len(norm) - n + 1))
                 if any(len(s) == n and hashlib.sha256(s.encode()).hexdigest() in hashes for s in spans): bad.append(f"{name}:{no}: (c) 符合已知真實歌詞的指紋")
-            if name.startswith(STALE_SCOPE):
+            if name.startswith(STALE_SCOPE) and name != "tests/check_repo.py":
                 for t in STALE_TERMS:
                     if t in line and not any(name.startswith(p) and s in line for p, s, _ in STALE_ALLOW): bad.append(f"{name}:{no}: (d) 過時用語「{t}」")
+    bad += check_files()
     for b in bad: print(b)
     print(f"check_repo：{'失敗 ' + str(len(bad)) + ' 處' if bad else '通過'}")
     sys.exit(1 if bad else 0)

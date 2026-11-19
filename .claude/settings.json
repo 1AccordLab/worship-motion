@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(git push * main*)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git merge *)",
+      "Bash(git checkout main*)",
+      "Bash(git switch main*)",
+      "Edit(.github/**)",
+      "Write(.github/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)",
+      "Edit(tests/check_repo.py)",
+      "Write(tests/check_repo.py)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_check.py\"" } ] }
+    ]
+  }
+}
