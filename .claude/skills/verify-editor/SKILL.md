@@ -48,7 +48,10 @@ asyncio.run(main())
 |---|---|---|---|
 | 貼上 AI 回覆（設定＋新風格） | 「請 AI 改」→ 貼上 | `__app.paste` | `__app.project` 套用、`__app.status()` 以「已套用 ✔」開頭 |
 | 新風格（場景程式） | 貼上框 | `__app.paste`、`__app.pasteScene` | `__app.sceneInfo()`；擋下時 `__app.sceneStatus()` 說明第幾行 |
-| 貼上整首歌詞 | 「自己調 → 貼上整首歌詞」 | `__app.applySplitText` | `__app.project.sections[i].lyrics` |
+| 貼上整首歌詞 | 「自己調」→「貼上整首歌詞（自動分段）」→ 對話框 | `#lyrOpen`、`#lyrAll`、`#lyrSplit`、`__app.applySplitText` | `__app.project.sections[i].lyrics` |
+| 段落分頁 | 預覽上方：點一下切換、按住拖曳、Alt+← →、點兩下改名、× 刪除 | `#secTabs [role=tab]`、`.secx`、`__app.select` | `__app.project.sections` 的順序、`#secTitle` |
 | 歌曲分頁、歷史紀錄 | 分頁列、「＋ 新的一首」 | `__app.songs`、`newSong`、`undo`、`history` | `__app.songs()`、`__app.history()` |
+| 播放快捷鍵 | 空白鍵、← → | 鍵盤 | `#play` 的文字、`__app.clipIdx()` |
+| 拖檔打開 | 把 .json 或單檔 HTML 拖進視窗 | `drop` 事件（`DataTransfer` 帶 `File`） | `__app.songs()`、`#songMsg` |
 | 存成單檔 HTML | 「存成單檔 HTML」 | `__app.singleHTML`、`saveHTML` | 產出的 HTML 重新開啟能用 |
 | 匯出 MP4 | 「匯出」 | `__app.exportTest` | 回傳的 `size` 與 `ftyp` |
