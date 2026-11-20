@@ -61,7 +61,7 @@ function bindUI() {
   $('#sceneCopy').onclick = () => copyText(`這是我目前的詩歌影片風格程式（風格「${meta().name}」）。請照「worship-motion-backgrounds」skill 的場景 API 修改，回覆一段完整的 js 程式碼區塊（可以再附一段設定 json）。\n我想改：（例如「色塊太滿，想多留白」；不知道怎麼說就留空，請你用選擇題問我）\n\n\`\`\`js\n${sceneCode}\n\`\`\``, '已複製 ✔ 貼到 AI 對話，在「我想改」後面寫需求。AI 回覆後，到「請 AI 改」②整則貼回來。', '#sceneStatus');
   $('#scenePaste').onclick = () => { showTab('ai'); $('#pasteCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('#pasteText').focus({ preventScroll: true }); };
   $('#exportCfg').onclick = () => { const name = `${fileSafe(P.title)}_設定.json`; download(new Blob([exportText()], { type: 'application/json' }), name); say('#fileMsg', `已下載「${name}」。`, 'ok'); };
-  $('#importCfg').onclick = () => $('#importFile').click();
+  $('#importCfg').onclick = () => { if (exporting) { say('#fileMsg', '正在匯出，等匯出完再打開設定檔。', true); return; } $('#importFile').click(); };
   $('#importFile').onchange = async () => {
     const f = $('#importFile').files[0]; if (!f) return;
     try { await importText(await f.text()); } catch (e) { say('#fileMsg', '讀不到這個檔案：' + e.message, true); }
@@ -102,11 +102,13 @@ function bindUI() {
   $('#exAll').onclick = () => runExport('all');
 }
 
-// 注意：按鈕上的空白鍵是瀏覽器的「按下按鈕」；分頁、下拉、滑桿上的方向鍵是它們自己的操作，都要讓給瀏覽器。
+// 注意：一般按鈕上的空白鍵是瀏覽器的「按下按鈕」，下拉、滑桿上的方向鍵是它們自己的操作，都要讓給瀏覽器；
+// 注意：分頁按鈕點過就已經選好，空白鍵留給播放。右邊三個分頁自己處理 ← →（會 preventDefault）。
 function previewKeys(e) {
   if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || exporting || anyDialogOpen()) return;
-  const el = e.target, tag = el && el.tagName, own = isTextField(el) || /^(SELECT|INPUT)$/.test(tag) || (el && el.getAttribute && el.getAttribute('role') === 'tab');
-  if (e.key === ' ' && !own && tag !== 'BUTTON' && tag !== 'A') { e.preventDefault(); setPlaying(!playing); }
+  const el = e.target, tag = el && el.tagName, own = isTextField(el) || /^(SELECT|INPUT)$/.test(tag);
+  const pressable = /^(BUTTON|A)$/.test(tag) && el.getAttribute('role') !== 'tab';
+  if (e.key === ' ' && !own && !pressable) { e.preventDefault(); setPlaying(!playing); }
   else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !own) { e.preventDefault(); stepClip(e.key === 'ArrowRight' ? 1 : -1); }
 }
 // 注意：兩個框行數不同時，短的那個捲不到同樣位置會回送 scroll，所以剛被同步的那一邊要略過一次。
@@ -124,6 +126,7 @@ function bindFileDrop() {
   addEventListener('drop', async e => {
     if (!hasFiles(e)) return; e.preventDefault(); off();
     const f = e.dataTransfer.files[0]; if (!f) return;
+    if (exporting) { say('#songMsg', `正在匯出，等匯出完再拖「${f.name}」進來。`, true); return; }
     if (!OPENABLE.test(f.name)) { say('#songMsg', `不認得「${f.name}」：可以拖進來的是設定檔（.json）或存好的單檔 HTML。`, true); return; }
     await importText(await f.text(), '#songMsg');
   });

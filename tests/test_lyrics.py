@@ -110,7 +110,7 @@ async def main():
         await p.pg.click("#s2tBtn"); msg = await p.pg.inner_text("#lyrMsg")
         rec("「轉成繁體」按鈕：作用在該段兩個框、提示檢查一字多義", (await p.ev("__app.project"))["sections"][0]["lyrics"] == "這是第一行示意文字" and "一字多義" in msg, msg)
         await p.ev("__app.tab('self')"); await p.pg.click("#lyrOpen"); await p.pg.fill("#lyrAll", "[Verse 1]\n这是第一行示意文字"); await p.pg.click("#lyrSplit"); await p.pg.check("#lyrTrad")
-        rec("整首貼上對話框也有「轉成繁體」", "這是" in (await p.ev("__app.lyricsDialog()"))["text"] or True)
+        rec("整首貼上對話框也有「轉成繁體」勾選框", await p.pg.is_visible("#lyrDlg #lyrTrad") and await p.pg.is_checked("#lyrTrad"))
         await p.pg.click("#lyrApply"); rec("整首貼上勾轉繁體 → 歌詞是繁體", (await p.ev("__app.project"))["sections"][0]["lyrics"].startswith("這是"))
         s2t = (ROOT / "src" / "engine" / "s2t.txt").stat().st_size
         rec("簡轉繁對照表 ≤ 40 KB", s2t <= 40 * 1024, f"{s2t/1024:.1f} KB")
