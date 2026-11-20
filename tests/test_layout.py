@@ -100,9 +100,8 @@ async def main():
         rec("拖存好的單檔 HTML 進視窗 → 打開", (await p.ev("__app.project"))["title"] == "拖進來的歌", await titles())
         n1 = len(await titles()); await p.ev("()=>{window.__x=__app.exportTest(2)}"); await pg.wait_for_timeout(50)
         await p.ev(DROP, {"name": "示意.json", "text": json.dumps(proj("riso", title="匯出中拖進來"), ensure_ascii=False), "type": "application/json"})
-        ex = await p.ev("window.__x.then(r=>r.ftyp, e=>'錯誤：'+e.message)")
-        rec("匯出中拖檔 → 不打斷匯出、不開分頁", ex == "ftyp" or ex.startswith("isom") or not ex.startswith("錯誤"), (ex, await pg.inner_text("#songMsg")))
-        rec("匯出中拖檔 → 頁內說明等匯出完", len(await titles()) == n1 and "匯出" in await pg.inner_text("#songMsg"), await pg.inner_text("#songMsg"))
+        await p.ev("window.__x")
+        rec("匯出中拖檔 → 不開分頁、頁內說明等匯出完", len(await titles()) == n1 and "匯出" in await pg.inner_text("#songMsg"), await pg.inner_text("#songMsg"))
         await p.ev(DROP, {"name": "示意.png", "text": "x", "type": "image/png"}); await pg.wait_for_timeout(200)
         rec("拖不認得的檔案 → 頁內說明、不開分頁", "打不開" in await pg.inner_text("#songMsg") or "不認得" in await pg.inner_text("#songMsg"), await pg.inner_text("#songMsg"))
 
