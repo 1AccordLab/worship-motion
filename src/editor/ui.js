@@ -279,7 +279,13 @@ function renderSongTabs() {
     d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); const from = +e.dataTransfer.getData('text/plain'); if (isFinite(from)) moveSongTo(from, i); };
     box.appendChild(d);
   });
-  const a = box.querySelector('.stab[aria-current],.sname[aria-selected=true]'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  const a = box.querySelector('.sname[aria-selected=true]'); if (a) revealInRow(a.parentElement);
+}
+// 注意：scrollIntoView 會連整頁一起捲；每次 refresh 都會重畫分頁列，只能捲分頁列本身的 scrollLeft。
+function revealInRow(el) {
+  const row = el.closest('.songrow'); if (!row) return;
+  const r = el.getBoundingClientRect(), c = row.getBoundingClientRect();
+  if (r.left < c.left) row.scrollLeft += r.left - c.left; else if (r.right > c.right) row.scrollLeft += r.right - c.right;
 }
 function openSongMenu(btn) {
   const m = $('#songMenu'), rc = btn.getBoundingClientRect();

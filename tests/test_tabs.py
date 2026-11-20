@@ -1,6 +1,6 @@
 """歌曲分頁的無頭測試：python3 tests/test_tabs.py
 新增／切換／關閉復原／排序／改名、每首各自的自訂風格、整本存檔再開、只存這一首、打開設定 JSON、
-貼上另一首歌開新分頁、複製給 AI 只帶目前這首、全部歌曲 ZIP 檔名、窄螢幕橫向捲動。全部用示意文字。"""
+貼上另一首歌開新分頁、複製給 AI 只帶目前這首、全部歌曲 ZIP 檔名、窄螢幕橫向捲動、操作時整頁不跳動。全部用示意文字。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -67,6 +67,12 @@ async def main():
         await pg.set_viewport_size({"width": 420, "height": 800})
         sw = await p.ev("(()=>{const r=document.querySelector('.songrow');return [r.scrollWidth,r.clientWidth,getComputedStyle(r).overflowX]})()")
         rec("窄螢幕：分頁列可以橫向捲動", sw[0] > sw[1] and sw[2] in ("auto", "scroll"), sw)
+        await p.ev("__app.tab('self')"); await p.ev("()=>{scrollTo(0,900);document.querySelector('.songrow').scrollLeft=0}")
+        y0 = await p.ev("scrollY"); await p.ev("__app.select(1,0)")
+        await p.ev("(()=>{const s=document.querySelector('#style');s.value='paper';s.dispatchEvent(new Event('change'))})()"); await p.wait("__app.project.style==='paper'")
+        await p.ev("document.querySelectorAll('#secList button')[0].click()"); await pg.wait_for_timeout(300)
+        pos = await p.ev("(()=>{const r=document.querySelector('.songrow').getBoundingClientRect(),a=document.querySelector('.sname[aria-selected=true]').parentElement.getBoundingClientRect();return {y:scrollY,inRow:a.left>=r.left-1&&a.right<=r.right+1}})()")
+        rec("換段落、換風格、點按鈕：整頁停在原處，目前分頁橫向捲進分頁列", y0 > 0 and pos["y"] == y0 and pos["inRow"], (y0, pos))
         await pg.screenshot(path=str(OUT / "窄螢幕.png"))
         rec("沒有頁面錯誤", not [l for l in p.log if "pageerror" in l], p.log[:3])
         await b.close()
