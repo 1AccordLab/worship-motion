@@ -13,7 +13,7 @@ EDITOR = ["editor/core.js", "editor/guard.js", "editor/hosts.js", "editor/projec
           "editor/bind.js", "editor/export.js", "editor/single.js", "editor/main.js"]
 SHELL = "editor/shell.html"
 RUNTIME = "engine/runtime.js"
-SCENE_ORDER = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky"]
+SCENE_ORDER = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky", "oil"]
 
 def read(rel):
     p = SRC / rel

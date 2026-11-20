@@ -25,7 +25,7 @@ asyncio.run(main())
 
 ## 健康檢查
 
-- `__app.builtins()` 列出 8 種內建風格；`__app.status()` 沒有錯誤訊息；`p.log` 為空。不對就先停下來回報。
+- `__app.builtins()` 列出 9 種內建風格；`__app.status()` 沒有錯誤訊息；`p.log` 為空。不對就先停下來回報。
 
 ## 操作
 

@@ -1,5 +1,5 @@
 """行為基準抽格：python3 tests/golden.py <輸出資料夾> [編輯器 html] [--examples 資料夾]
-8 種內建風格 × 背景／字幕／雙語／大小對調，加上 examples/ 四個自訂風格，共約 200 張。只依賴 __app.load／select／grab／pasteScene。"""
+內建風格（編輯器裡沒有的略過）× 背景／字幕／雙語／大小對調，加上 examples/ 四個自訂風格，共約 200 張。只依賴 __app.load／select／grab／pasteScene。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -26,7 +26,8 @@ async def shoot(out, html=None, examples=None):
                 for t in (1.0, 5.5): await p.shot(si, 0, t, out / f"{tag}_s{i}_bg_{t}.png")
                 await p.shot(si + 1, 0, 0.9, out / f"{tag}_s{i}_flashy_0.9.png"); await p.shot(si + 1, 0, 3.0, out / f"{tag}_s{i}_flashy_3.0.png")
                 await p.shot(si + 2, 0, 4.0, out / f"{tag}_s{i}_gentle_4.0.png")
-        for st in STYLES:
+        have = set(await p.ev("__app.builtins()"))
+        for st in (s for s in STYLES if s in have):
             await cap(st, gproj(st), 3)
             await cap(st + "_bi", gproj(st, ("peak",), True), 1)
             await cap(st + "_swap", gproj(st, ("peak",), True, True), 1)

@@ -11,15 +11,36 @@ let queue = Promise.resolve();
 const serial = fn => { const p = queue.then(fn, fn); queue = p.catch(() => { }); return p; };
 function canvasInfo(st) { return { beat: st / BEAT, W, H, pal: resolvedPal(), params: paramsNow(), kind: clip.kind, type: clip.type, text: clip.text || '', text2: clip.text2 || '', swap: !!clip.swap, dur: clip.dur || 0 }; }
 const paramsNow = () => Object.fromEntries(Object.entries(meta().params).map(([k, d]) => [k, (P && P.params && P.params[k]) ?? d.value]));
+let worldData = null, previewDensity = 1, worldMs = 0;
+// 注意：預覽跟不上時少畫一些筆觸（洗牌過，少畫是均勻變稀）；匯出一律畫滿
+function worldDensityFor(target) {
+  if (target === 'out') return 1;
+  if (worldMs > 50) previewDensity = Math.max(.3, previewDensity * .85); else if (worldMs && worldMs < 28) previewDensity = Math.min(1, previewDensity * 1.04);
+  return previewDensity;
+}
+function syncWorld(fr, target) {
+  const fw = fr.frame.world; if (!fw) return;
+  if (fr.world) worldData = { key: fw.key, buf: fr.world, n: fw.n, keep: fw.keep };
+  if (!worldData || worldData.key !== fw.key) return;
+  if (!r.world || r.world.key !== fw.key) r.uploadWorld(worldData.key, worldData.buf, worldData.n, worldData.keep);
+  r.worldDensity = worldDensityFor(target);
+}
 async function drawAt(tt, idx, target) {
   const c = clip; if (!c) throw new Error('沒有可預覽的影片');
   const st = c.map(tt), fa = needAtlas; needAtlas = false;
   let cv = null;
-  const [fr] = await Promise.all([scene.frame(st, fa), canvasHost ? canvasHost.frame(st, canvasInfo(st)).then(x => { cv = x; }, e => canvasFail(e)) : null]);
+  let [fr] = await Promise.all([scene.frame(st, fa), canvasHost ? canvasHost.frame(st, canvasInfo(st)).then(x => { cv = x; }, e => canvasFail(e)) : null]);
   if (fr.atlas) r.uploadAtlas(fr.atlas);
+  const fwk = fr.frame.world && fr.frame.world.key;
+  if (fwk && !fr.world && (!worldData || worldData.key !== fwk)) fr = await scene.frame(st, false, true);
+  syncWorld(fr, target);
   if (cv && canvasHost) r.uploadCanvas(new Uint8Array(cv.px), cv.w, cv.h);
+  const t0 = performance.now();
   r.render(fr.frame, idx, target, st, st / BEAT);
   watchdog();
+  // 注意：有筆觸層的預覽要等這一格真的畫完才送下一格，不然慢的顯示卡會一直排隊、越來越延遲
+  const rr = r;
+  if (fr.frame.world && target === 'canvas' && await rr.device.queue.onSubmittedWorkDone().then(() => true, () => false)) { const dt = performance.now() - t0; worldMs = worldMs ? worldMs * .6 + dt * .4 : dt; }
 }
 function canvasFail(e) {
   if (canvasHost) canvasHost.kill(); canvasHost = null; if (r) r.canvasOn = false;

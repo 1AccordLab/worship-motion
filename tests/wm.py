@@ -9,7 +9,7 @@ EDITOR = ROOT / "dist" / "詩歌影片編輯器.html"
 OUT = ROOT / "tests" / "out"
 CHROME = os.environ.get("WM_CHROME", "/usr/bin/google-chrome")
 FLAGS = ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--use-vulkan=swiftshader", "--use-webgpu-adapter=swiftshader", "--disable-vulkan-surface"]
-STYLES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky"]
+STYLES = ["swiss", "paper", "type", "bauhaus", "riso", "ink", "nave", "sky", "oil"]
 GRAB = "(t)=>__app.grab(t).then(a=>{let s='';for(let i=0;i<a.length;i+=32768)s+=String.fromCharCode.apply(null,a.subarray(i,i+32768));return btoa(s)})"
 OVERLAY = """(b64)=>{document.querySelectorAll('#ovl').forEach(x=>x.remove()); const c=document.querySelector('#view'); const r=c.getBoundingClientRect();
 const i=document.createElement('img'); i.id='ovl'; i.src='data:image/png;base64,'+b64;

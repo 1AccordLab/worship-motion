@@ -3,6 +3,7 @@ const W = 1920, H = 1080, FPS = 30, AW = 4096, AH = 2048;
 const U_HEAD_FLOATS = 24, U_FLOATS = 88;
 const ITEM_FLOATS = 24;
 const CU_BYTES = 192;
+const WORLD_FLOATS = 20, WU_BYTES = 176, WORLD_MSAA = 4;  // 注意：WORLD_FLOATS 和 runtime.js 一致
 const LOOK_DEFAULT = { grain: .035, vignette: .22, lift: .025, cap: .93, paper: .05 };
 const hexToRgb = h => { const n = parseInt(String(h).slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
 const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16).padStart(8, '0'); };
@@ -197,6 +198,9 @@ ${wgslFullscreen('vs_full')}
 @fragment fn fs_canvas(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let c = textureSampleLevel(lay, smp, fc.xy / vec2f(${W}.0, ${H}.0), 0.0); return vec4f(c.rgb * c.a, c.a);
 }
+@fragment fn fs_premul(@builtin(position) fc: vec4f) -> @location(0) vec4f {
+  return textureSampleLevel(lay, smp, fc.xy / vec2f(${W}.0, ${H}.0), 0.0);
+}
 /* 注意：半解析度的自訂 shader 只把「差值」放大回去，原本清楚的地方保持清楚 */
 @fragment fn fs_half(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let uv = fc.xy / vec2f(${W}.0, ${H}.0);
@@ -244,6 +248,80 @@ fn yv(c: vec3f) -> u32 { return u32(round(16.0 + 219.0 * dot(c, vec3f(0.2126, 0.
   outb[(W * H) / 4u + id.y * row + id.x] = u;
   outb[(W * H + CW * CH) / 4u + id.y * row + id.x] = v;
 }`;
+
+const WGSL_WORLD = `
+struct WU { vp: mat4x4f, eye: vec4f, fwd: vec4f, cam: vec4f, look: vec4f, fog: vec4f, fogr: vec4f, light: vec4f };
+@group(0) @binding(0) var<uniform> wu: WU;
+@group(0) @binding(1) var<storage, read> st: array<vec4f>;
+struct WO { @builtin(position) pos: vec4f, @location(0) q: vec2f, @location(1) @interpolate(flat) col: vec4f, @location(2) @interpolate(flat) m: vec4f };
+const QUAD = array<vec2f, 6>(vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0), vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));
+fn h1(x: f32) -> f32 { return fract(sin(x * 127.1 + 311.7) * 43758.5453); }
+fn ndc2(p: vec3f) -> vec2f { let c = wu.vp * vec4f(p, 1.0); return c.xy / max(c.w, 0.0001); }
+@vertex fn vs_world(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> WO {
+  let a = st[ii * 5u]; let b = st[ii * 5u + 1u]; let c = st[ii * 5u + 2u]; let d = st[ii * 5u + 3u]; let e = st[ii * 5u + 4u];
+  let dir = b.xyz; let side = c.xyz; let seed = c.w; let keep = e.w > 0.5;
+  var o: WO; o.pos = vec4f(2.0, 2.0, 2.0, 1.0); o.q = vec2f(0.0); o.col = vec4f(0.0); o.m = vec4f(0.0);
+  var center = a.xyz; var grow = 1.0;
+  if (e.x > 0.0) {
+    let ph = fract(wu.eye.w * e.y + fract(seed * 0.1373));
+    center += dir * (ph - 0.5) * e.x; grow = smoothstep(0.0, 0.18, ph) * smoothstep(1.0, 0.82, ph);
+  }
+  let toC = center - wu.eye.xyz; let dist = max(length(toC), 0.0001); let viewZ = dot(toC, wu.fwd.xyz);
+  if (viewZ < wu.fwd.w) { return o; }
+  let dens = wu.cam.y; let free = max(wu.cam.z - wu.cam.w, 1.0);
+  let rank = (f32(ii) - wu.cam.w) / free;
+  let px0 = a.w * wu.cam.x / viewZ;
+  let keepFrac = clamp(pow(px0 / wu.look.z, 2.0), 0.02, 1.0);
+  var k = 1.0;
+  if (!keep) {
+    let fade = clamp((keepFrac - rank) / (0.35 * keepFrac), 0.0, 1.0);
+    let enlarge = min(1.0 / sqrt(min(keepFrac, dens)), 3.0);
+    let px = px0 * enlarge;
+    k = enlarge * clamp(px, wu.look.x, wu.look.y) / max(px, 0.0001) * fade * grow;
+    if (k <= 0.0001) { return o; }
+    center += toC / dist * (fract(seed * 7.31) - 0.5) * wu.look.w * dist;
+  }
+  let q = QUAD[vi];
+  o.pos = wu.vp * vec4f(center + dir * a.w * k * q.y + side * b.w * k * q.x, 1.0);
+  let p0 = ndc2(center); let sd = normalize(ndc2(center + dir) - p0 + vec2f(0.00001, 0.0)); let ss = normalize(ndc2(center + side) - p0 + vec2f(0.0, 0.00001));
+  let fogK = e.z * wu.fog.w * smoothstep(wu.fogr.x, wu.fogr.y, dist);
+  o.q = q; o.col = vec4f(d.rgb, fogK); o.m = vec4f(seed, d.w, dot(wu.light.xy, ss), dot(wu.light.xy, sd));
+  return o;
+}
+@fragment fn fs_world(i: WO) -> @location(0) vec4f {
+  let q = i.q; let seed = i.m.x; var col = i.col.rgb; var al = 1.0;
+  if (i.m.y < 0.5) {
+    let bx = (q.x * 0.5 + 0.5) * 7.0; let bi = floor(bx); let bf = fract(bx);
+    let hb = h1(seed + bi * 1.37); let hb2 = h1(seed * 1.7 + bi * 2.11);
+    let tip = 1.0 - hb * 0.45; let tail = -1.0 + hb2 * 0.3;
+    let ends = smoothstep(tip, tip - 0.15, q.y) * smoothstep(tail, tail + 0.15, q.y);
+    let edge = smoothstep(1.0, 0.8, abs(q.x) + 0.3 * pow(abs(q.y), 3.0));
+    let ridge = 1.0 - pow(abs(bf * 2.0 - 1.0), 2.0);
+    let load = 1.0 - 0.5 * smoothstep(-0.3, 1.0, q.y);
+    let gap = step(h1(seed * 0.73 + bi * 3.1 + floor(q.y * 5.0) * 1.7), 0.95 - 0.55 * smoothstep(0.1, 1.0, q.y));
+    let cov = ends * edge * mix(0.55, 1.0, ridge) * gap;
+    al = smoothstep(0.3, 0.6, cov);
+    let slope = -4.0 * (bf * 2.0 - 1.0) * load;
+    let n = normalize(vec3f(-slope * 0.3, 0.25 * load, 1.0));
+    let L = normalize(vec3f(i.m.z, i.m.w, 0.9));
+    let height = ridge * load * (0.6 + 0.4 * hb);
+    col = col * (0.8 + 0.3 * max(dot(n, L), 0.0) + 0.08 * height) * (0.93 + 0.14 * hb);
+  }
+  col = mix(col, wu.fog.rgb, i.col.a);
+  return vec4f(col, al);
+}`;
+function worldUniforms(cam, time, dens, n, keep) {
+  const eye = cam.slice(0, 3), fov = cam[3] * Math.PI / 180, at = cam.slice(4, 7), near = cam[7], far = cam[13], sun = cam.slice(15, 18), [minPx, maxPx, lod] = cam.slice(18, 21);
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const nz = a => { const l = Math.hypot(...a) || 1; return a.map(v => v / l); }, dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const f = nz(sub(at, eye)), r = nz(cr(f, [0, 1, 0])), u = cr(r, f), t = 1 / Math.tan(fov / 2), A = W / H;
+  const V = [r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, -dt(r, eye), -dt(u, eye), dt(f, eye), 1];
+  const P = [t / A, 0, 0, 0, 0, t, 0, 0, 0, 0, near / (far - near), -1, 0, 0, near * far / (far - near), 0];
+  const M = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let row = 0; row < 4; row++) for (let k = 0; k < 4; k++) M[c * 4 + row] += P[k * 4 + row] * V[c * 4 + k];
+  const ls = nz([dt(sun, r) || -.4, dt(sun, u) || .8, 0]);
+  return new Float32Array([...M, ...eye, time, ...f, near, (H / 2) * t, dens, n, keep, minPx, maxPx, lod, .012, cam[8], cam[9], cam[10], cam[14], cam[11], cam[12], 0, 0, ls[0], ls[1], 0, 0]);
+}
 
 class Renderer {
   async init(canvas) {
@@ -308,8 +386,43 @@ class Renderer {
     this.cpl = d.createPipelineLayout({ bindGroupLayouts: [this.cbgl] });
     this.cBind = this.scn.map(t => d.createBindGroup({ layout: this.cbgl, entries: [
       { binding: 0, resource: { buffer: this.cubuf } }, { binding: 1, resource: t.createView() }, { binding: 2, resource: this.smp }] }));
+    this.pPremul = lmk('fs_premul', 'rgba16float', BL[0]);
     this.setScene({});
-    this.shader = null;
+    this.shader = null; this.world = null; this.worldDensity = 1; this.worldInfo = null;
+  }
+  /* 注意：反向深度（近 1、遠 0）配 32 位元浮點深度，遠處的精度才夠；深度太接近的兩筆會在鏡頭移動時互相搶前後而閃爍 */
+  ensureWorldPipes() {
+    if (this.wp) return this.wp;
+    const d = this.device, T = GPUTextureUsage, SS = GPUShaderStage, mod = d.createShaderModule({ code: WGSL_WORLD });
+    const bgl = d.createBindGroupLayout({ entries: [
+      { binding: 0, visibility: SS.VERTEX | SS.FRAGMENT, buffer: { type: 'uniform' } },
+      { binding: 1, visibility: SS.VERTEX, buffer: { type: 'read-only-storage' } }] });
+    const pipe = d.createRenderPipeline({ layout: d.createPipelineLayout({ bindGroupLayouts: [bgl] }),
+      vertex: { module: mod, entryPoint: 'vs_world' }, fragment: { module: mod, entryPoint: 'fs_world', targets: [{ format: 'rgba16float' }] },
+      primitive: { topology: 'triangle-list' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'greater' },
+      multisample: { count: WORLD_MSAA, alphaToCoverageEnabled: true } });
+    const tex = (format, n, extra = 0) => d.createTexture({ size: [W, H], format, sampleCount: n, usage: T.RENDER_ATTACHMENT | extra });
+    const res = tex('rgba16float', 1, T.TEXTURE_BINDING);
+    this.wp = { bgl, pipe, ubuf: d.createBuffer({ size: WU_BYTES, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }),
+      col: tex('rgba16float', WORLD_MSAA), depth: tex('depth32float', WORLD_MSAA), res, comp: this.lbind(res, res) };
+    return this.wp;
+  }
+  uploadWorld(key, buf, n, keep) {
+    const d = this.device, wp = this.ensureWorldPipes();
+    if (this.world) this.world.buf.destroy();
+    const sb = d.createBuffer({ size: Math.max(16, buf.byteLength), usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    d.queue.writeBuffer(sb, 0, buf);
+    this.world = { key, n, keep, buf: sb, bind: d.createBindGroup({ layout: wp.bgl, entries: [{ binding: 0, resource: { buffer: wp.ubuf } }, { binding: 1, resource: { buffer: sb } }] }) };
+  }
+  worldPass(enc, cam, time) {
+    const wp = this.wp, w = this.world, dens = Math.max(.05, Math.min(1, this.worldDensity));
+    const drawn = w.keep + Math.round((w.n - w.keep) * dens);
+    this.device.queue.writeBuffer(wp.ubuf, 0, worldUniforms(cam, time, dens, w.n, w.keep));
+    const p = enc.beginRenderPass({ colorAttachments: [{ view: wp.col.createView(), resolveTarget: wp.res.createView(), loadOp: 'clear', storeOp: 'discard', clearValue: { r: 0, g: 0, b: 0, a: 0 } }],
+      depthStencilAttachment: { view: wp.depth.createView(), depthLoadOp: 'clear', depthClearValue: 0, depthStoreOp: 'discard' } });
+    if (drawn) { p.setPipeline(wp.pipe); p.setBindGroup(0, w.bind); p.draw(6, drawn); }
+    p.end();
+    this.worldInfo = { n: w.n, keep: w.keep, drawn, density: dens, key: w.key };
   }
   lbind(a, b) {
     return this.device.createBindGroup({ layout: this.lbgl, entries: [
@@ -376,6 +489,10 @@ class Renderer {
     for (const [k, bl, first, count] of fr.runs) {
       if (k <= 2) { if (count) { p.setPipeline(this.pItem[k][bl]); p.draw(6, count, 0, first); } }
       else if (k === 3) { if (this.canvasOn) { p.setPipeline(this.pCanvas); p.setBindGroup(0, this.canvasBind); p.draw(3); p.setBindGroup(0, this.itemBind()); } }
+      else if (k === 5 && fr.world && this.world && this.world.key === fr.world.key) {
+        p.end(); this.worldPass(enc, fr.world.cam, time); if (target === 'out') this.worldOut = this.worldInfo;
+        p = begin(true); p.setPipeline(this.pPremul); p.setBindGroup(0, this.wp.comp); p.draw(3); p.setBindGroup(0, this.itemBind());
+      }
       else if (k === 4 && this.shader) {
         p.end();
         const sh = this.shader, nxt = 1 - cur;

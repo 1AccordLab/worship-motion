@@ -80,6 +80,73 @@ class Atlas {
 }
 let atlas = null;
 
+const WORLD_FLOATS = 20;  // 注意：和 gpu.js 的 WORLD_FLOATS 一致
+const WORLD_MAX = 400000, BRUSH = { oil: 0, flat: 1 };
+const v3 = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k], dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: a => Math.hypot(a[0], a[1], a[2]), norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+  lerp: (a, b, k) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)],
+};
+class World {
+  constructor() { this.buf = new Float32Array(WORLD_FLOATS * 65536); this.n = 0; this.sun = [0, 1, 0]; this.sunCol = [1, 1, 1]; this.ambient = .25; this.lamps = []; }
+  moon(dir, col = '#e8e4d8', ambient = .25) { this.sun = v3.norm(dir); this.sunCol = color(col).slice(0, 3); this.ambient = ambient; return this; }
+  lamp(at, radius, col = '#e0a050', amount = .85) { this.lamps.push({ at, r: radius, col: color(col).slice(0, 3), k: amount }); return this; }
+  lit(normal, at) {
+    const n = v3.norm(normal); let l = this.ambient + (1 - this.ambient) * Math.max(0, v3.dot(n, this.sun)), warm = 0;
+    for (const L of this.lamps) { const d = v3.len(v3.sub(at, L.at)); if (d < L.r) warm = Math.max(warm, L.k * (1 - d / L.r) ** 2); }
+    return { light: clamp01(l), warm };
+  }
+  paint(light, dark, lit, jitter = .06, seed = 0) {
+    const a = color(light), b = color(dark), k = clamp01(lit.light), j = (hash(seed * 7.13 + 1.7) - .5) * 2 * jitter, h = (hash(seed * 3.31 + 9.1) - .5) * jitter;
+    let c = [lerp(b[0], a[0], k) * (1 + j) + h, lerp(b[1], a[1], k) * (1 + j), lerp(b[2], a[2], k) * (1 + j) - h];
+    if (lit.warm > 0) { const L = this.lamps.reduce((m, x) => x.k > m.k ? x : m, this.lamps[0]); c = c.map((v, i) => lerp(v, L.col[i] * Math.max(.75, k + .3), lit.warm)); }
+    return c.map(clamp01);
+  }
+  stroke(at, dir, normal, len, wid, light, dark = light, o = {}) {
+    if (this.n >= WORLD_MAX) throw new Error(`world 的筆觸超過 ${WORLD_MAX} 筆；請減少數量或加大筆觸`);
+    if (this.n * WORLD_FLOATS >= this.buf.length) { const nb = new Float32Array(this.buf.length * 2); nb.set(this.buf); this.buf = nb; }
+    const d = v3.norm(dir), side = v3.norm(v3.cross(normal, d)), seed = o.seed ?? hash(this.n * .618 + at[0] * 1.3 + at[2] * .7) * 1000;
+    const lt = o.lit === undefined ? this.lit(normal, at) : typeof o.lit === 'number' ? { light: o.lit, warm: 0 } : o.lit;
+    const c = Array.isArray(light) ? light : this.paint(light, dark, lt, o.jitter ?? .06, seed);
+    const flow = o.flow || [0, 0], p = this.n * WORLD_FLOATS, B = this.buf;
+    B[p] = at[0]; B[p + 1] = at[1]; B[p + 2] = at[2]; B[p + 3] = len;
+    B[p + 4] = d[0]; B[p + 5] = d[1]; B[p + 6] = d[2]; B[p + 7] = wid;
+    B[p + 8] = side[0]; B[p + 9] = side[1]; B[p + 10] = side[2]; B[p + 11] = seed;
+    B[p + 12] = c[0]; B[p + 13] = c[1]; B[p + 14] = c[2]; B[p + 15] = BRUSH[o.brush ?? 'oil'] ?? 0;
+    B[p + 16] = flow[0]; B[p + 17] = flow[1]; B[p + 18] = o.fog ?? 1; B[p + 19] = o.keep ?? 0;
+    this.n++; return this;
+  }
+  /* 注意：洗牌後任何前綴都是均勻抽樣，GPU 少畫幾筆（預覽降密度、遠處變稀）時才不會整塊消失；keep 的筆觸（剪影墊底）固定排在最前面 */
+  pack() {
+    const n = this.n, F = WORLD_FLOATS, src = this.buf, keep = [], rest = [];
+    for (let i = 0; i < n; i++) (src[i * F + 19] > 0 ? keep : rest).push(i);
+    for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(hash(i * 1.618 + .5) * (i + 1)); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+    const out = new Float32Array(Math.max(1, n) * F); let k = 0;
+    for (const i of keep.concat(rest)) out.set(src.subarray(i * F, i * F + F), (k++) * F);
+    return { buf: out, n, keep: keep.length };
+  }
+}
+let WORLD = null;
+function worldFor(x) {
+  const wd = SCENE.d.world; if (!wd) return null;
+  const key = SCENE.id + '|' + JSON.stringify(x.pal) + '|' + JSON.stringify(x.params);
+  if (WORLD && WORLD.key === key) return WORLD;
+  const w = new World(); wd.build(w, x);
+  const pk = w.pack();
+  WORLD = { key, ...pk, sun: w.sun, sent: false };
+  return WORLD;
+}
+const CAM_DEFAULT = { eye: [0, 2, 10], at: [0, 2, 0], fov: 45, fog: null, fogNear: 30, fogFar: 300, near: .5, far: 2000, minPx: 1.5, maxPx: 48, lod: 6 };
+function cameraAt(t, x) {
+  const wd = SCENE.d.world, c = { ...CAM_DEFAULT, ...(wd.camera ? wd.camera(t, x) || {} : {}) };
+  for (const k of ['eye', 'at']) if (!Array.isArray(c[k]) || c[k].length !== 3 || c[k].some(v => !isFinite(v))) throw new Error(`world.camera 回傳的 ${k} 要是 [x, y, z] 三個數字`);
+  const fog = c.fog ? color(c.fog) : color(SCENE.palette.bg);
+  const sun = WORLD ? WORLD.sun : [0, 1, 0];
+  return [...c.eye, c.fov, ...c.at, c.near, fog[0], fog[1], fog[2], c.fogNear, c.fogFar, c.far, c.fog ? 1 : 0, ...sun, c.minPx, c.maxPx, c.lod];
+}
+
 /* 注意：照呼叫順序疊；z 小的在下（形狀與線 0、字 1、top 2） */
 class Frame {
   constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.items = []; }
@@ -144,6 +211,10 @@ function defineScene(d) {
   }
   if (d.canvas && typeof d.canvas.draw !== 'function') bad('canvas 要有 draw(ctx, t, info) 函式');
   if (d.shader && typeof d.shader.code !== 'string') bad('shader 要有 code（WGSL 文字）');
+  if (d.world !== undefined) {
+    if (!d.world || typeof d.world.build !== 'function') bad('world 要有 build(w, x) 函式');
+    if (d.world.camera !== undefined && typeof d.world.camera !== 'function') bad('world.camera 要是 camera(t, x) 函式');
+  }
   if (d.description !== undefined && (typeof d.description !== 'string' || d.description.length > DESC_MAX)) bad(`description 要是一句話的字串（${DESC_MAX} 字以內）`);
   SCENE = { d, id, backgrounds, subtitles, textures, params, palette: d.palette, defaults: { ...d.palette } };
 }
@@ -193,7 +264,7 @@ function frame(t) {
   const items = f.items.sort((a, b) => a.z - b.z || a.i - b.i);
   const n = items.length, buf = new Float32Array(Math.max(1, n) * ITEM_FLOATS), runs = [];
   const cz = SCENE.d.canvas ? (SCENE.d.canvas.z ?? .5) : null, sz = SCENE.d.shader ? (SCENE.d.shader.z ?? .5) : null;
-  const marks = []; if (cz !== null) marks.push([cz, 3]); if (sz !== null) marks.push([sz, 4]); marks.sort((a, b) => a[0] - b[0]);
+  const marks = []; if (cz !== null) marks.push([cz, 3]); if (sz !== null) marks.push([sz, 4]); if (SCENE.d.world) marks.push([SCENE.d.world.z ?? .5, 5]); marks.sort((a, b) => a[0] - b[0]);
   let mi = 0;
   for (let i = 0; i < n; i++) {
     const it = items[i], o = it.o, p = i * ITEM_FLOATS, c = o.col;
@@ -218,17 +289,22 @@ function frame(t) {
   }
   while (mi < marks.length) runs.push([marks[mi++][1], 0, n, 0]);
   const g = f.grid, gc = color(g.col), bg = color(f.bg);
-  return { buf, n, runs, bg, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
+  const out = { buf, n, runs, bg, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
+  if (SCENE.d.world) {
+    const wo = worldFor(x); out.world = { key: wo.key, n: wo.n, keep: wo.keep, cam: cameraAt(t, x) };
+  }
+  return out;
 }
 
 self.onmessage = ev => {
   const m = ev.data;
   try {
-    if (m.op === 'clip') { setClip(m.clip); postMessage({ id: m.id, ok: true }); return; }
+    if (m.op === 'clip') { setClip(m.clip); if (SCENE.d.world) worldFor(CLIP.x); postMessage({ id: m.id, ok: true }); return; }
     if (m.op === 'frame') {
       const r = frame(m.t), at = atlas.take(!SENT_ALL || m.fullAtlas); SENT_ALL = true;
       const tr = [r.buf.buffer]; if (at) tr.push(at.a.buffer, at.b.buffer);
-      postMessage({ id: m.id, ok: true, frame: r, atlas: at }, tr); return;
+      let wbuf = null; if (r.world && (!WORLD.sent || m.fullWorld)) { wbuf = WORLD.buf.slice(0, WORLD.n * WORLD_FLOATS); WORLD.sent = true; tr.push(wbuf.buffer); }
+      postMessage({ id: m.id, ok: true, frame: r, atlas: at, world: wbuf }, tr); return;
     }
   } catch (e) { postMessage({ id: m.id, ok: false, error: String(e && e.message || e), stack: String(e && e.stack || '') }); }
 };
@@ -244,5 +320,6 @@ function __wmReady() {
     subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))) })),
     canvas: d.canvas ? { src: String(d.canvas.draw), z: d.canvas.z ?? .5, half: !!d.canvas.half } : null,
     shader: d.shader ? { code: d.shader.code, z: d.shader.z ?? .5 } : null,
+    world: d.world ? { z: d.world.z ?? .5 } : null,
   } });
 }

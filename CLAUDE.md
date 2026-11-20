@@ -31,9 +31,9 @@
 
 | 位置 | 內容 |
 |---|---|
-| `src/engine/` | `gpu.js`（Renderer、WGSL）、`shader_guard.js`（自訂 WGSL 檢查）、`mp4.js`、`zip.js`、`download.js`、`runtime.js`（Worker 裡的場景環境）、`s2t.txt` |
+| `src/engine/` | `gpu.js`（Renderer、WGSL、3D 筆觸層）、`shader_guard.js`（自訂 WGSL 檢查）、`mp4.js`、`zip.js`、`download.js`、`runtime.js`（Worker 裡的場景環境）、`s2t.txt` |
 | `src/editor/` | `core` `guard` `hosts` `project` `lyrics` `preview` `history` `songs` `paste` `ui` `bind` `export` `single` `main`（`.js`）＋ `shell.html` |
-| `src/scenes/` | 8 個內建風格：swiss paper type bauhaus riso ink nave sky（`build.py` 的 `SCENE_ORDER` 決定下拉順序，第一個 swiss 是預設） |
+| `src/scenes/` | 9 個內建風格：swiss paper type bauhaus riso ink nave sky oil（`build.py` 的 `SCENE_ORDER` 決定下拉順序，第一個 swiss 是預設） |
 | `examples/` | 自訂風格範例 |
 | `skill/SKILL.md`、`guide/` | 給 AI 的說明、給同工的教學 |
 | `docs/architecture.md` | 架構與路線：資料格式、執行時的組成、防護、儲存、動手前要先決定的事。改了架構就一起改 |
@@ -47,6 +47,7 @@
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。
 - 質感表在 `gpu.js`（`T`／`ON`）和 `runtime.js`（`TEX_TYPES`／`TEX_ON`）各一份，要一起改；`tests/check_repo.py`（k）會比對。
+- 3D 筆觸層（`world`）：`WORLD_FLOATS` 在 `gpu.js` 和 `runtime.js` 各一份要一致。無頭 SwiftShader 畫油彩一格約 8 秒，測試只拍少數幾格。無頭環境裡不帶 `?nopreview` 的預覽會讓 GPU 掛掉（2D 風格也一樣），預覽的程式路徑用 `__app.previewFrames` 測。
 - `x.under(f, 預設)` 的底跟著段落選的背景走，改字幕時一起看背景。
 - 截圖與抽格給人看；判斷對錯用 `window.__app` 讀實際的值。
 - 改了 `src/` 沒重新打包，測試跑的是上一次打包的 `dist/`。
