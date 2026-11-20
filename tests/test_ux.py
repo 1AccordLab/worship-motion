@@ -1,6 +1,6 @@
 """新介面流程的無頭測試：python3 tests/test_ux.py
 分頁切換、三步驟、複製給 AI（含輸入框文字與設定）、貼上偵測（只有設定／只有新風格／兩者／無框）、
-換歌前提醒、存檔狀態、做新的一首、刪段落復原、自己調、影片清單、開場白含 SKILL.md、錯誤附「複製給 AI」。"""
+換歌前提醒、存檔狀態、做新的一首、刪段落復原、拖曳排序段落、自己調、影片清單、開場白含 SKILL.md、錯誤附「複製給 AI」。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -153,6 +153,19 @@ async def main():
         await pg.click("#undoDel")
         names2 = [s["name"] for s in (await p.ev("__app.project"))["sections"]]
         rec("刪除段落 → 出現「復原」→ 復原回原位", names1 == ["主歌", "副歌"] and has_undo and names2 == names0, f"{names1} → {names2}")
+        arrows = await pg.locator("#secList button", has_text="↑").count() + await pg.locator("#secList button", has_text="↓").count()
+        rec("段落列：每列一個拖曳把手、沒有上下移按鈕", arrows == 0 and await pg.locator("#secList .grip").count() == len(names0), arrows)
+        names = lambda: p.ev("__app.project.sections.map(s=>s.name)")
+        await p.ev("__app.select(0,0)")
+        g, last = await pg.locator("#secList .grip").nth(0).bounding_box(), await pg.locator("#secList .sec").nth(2).bounding_box()
+        await pg.mouse.move(g["x"] + g["width"] / 2, g["y"] + g["height"] / 2); await pg.mouse.down()
+        await pg.mouse.move(g["x"] + g["width"] / 2, last["y"] + last["height"] - 4, steps=12); await pg.mouse.up(); await pg.wait_for_timeout(200)
+        rec("拖曳把手：主歌拖到最後，目前段落跟著走", await names() == ["導歌", "副歌", "主歌"] and "主歌" in await pg.inner_text("#secTitle"), await names())
+        await pg.locator("#secList .grip").nth(2).focus(); await pg.keyboard.press("ArrowUp")
+        moved = await names(); focused = await p.ev("document.activeElement.closest('.sec')?.querySelector('.n')?.textContent||''")
+        rec("鍵盤：把手上按 ↑ 往上移一格，焦點留在同一段", moved == ["導歌", "主歌", "副歌"] and "主歌" in focused, (moved, focused))
+        await pg.click("#undoBtn"); rec("拖曳排序可以「↶ 還原」", await names() == ["導歌", "副歌", "主歌"], await names())
+        await p.ev("__app.load(" + json.dumps(SONG, ensure_ascii=False) + ")")
         await p.ev("p=>__app.load(p)", {"format": "worship-motion/1", "title": "一段", "style": "riso", "sections": [{"background": "calm"}]})
         r = await p.ev("__app.removeSection(0)")
         rec("只剩一段 → 不能刪、紅字在段落區", r is False and "至少" in await pg.inner_text("#secMsg"))

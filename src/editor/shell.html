@@ -101,6 +101,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .sec[aria-current=true]{border-color:var(--accent);background:var(--accent-soft)}
 .sec .n{flex:1;font-weight:600}
 .sec .m{font-size:12px;color:var(--muted)}
+.sec .grip{border:none;background:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 4px;min-height:32px;cursor:grab;touch-action:none}
+.sec .grip:hover{color:var(--ink)}
+.sec.lift{background:var(--sunk);border-color:var(--ink);box-shadow:0 6px 20px rgba(10,10,8,.35)}
+body.dragging,body.dragging *{cursor:grabbing!important;user-select:none}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
@@ -342,7 +346,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
         </div>
 
         <div class="card">
-          <h2>段落 <span class="m">點一列就切到那一段</span></h2>
+          <h2>段落 <span class="m">點一列切到那一段；按住 ⠿ 拖曳調整順序</span></h2>
           <div id="secList"></div>
           <div class="row"><button class="small" id="secAdd">＋ 新增段落</button></div>
           <div class="status" id="secMsg" role="status"></div>

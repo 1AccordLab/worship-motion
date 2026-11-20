@@ -141,14 +141,51 @@ function renderSections() {
     const n = document.createElement('span'); n.className = 'n'; n.textContent = `${i + 1}. ${s.name}`;
     const k = slidesOf(s).length;
     const mm = document.createElement('span'); mm.className = 'm'; mm.textContent = `${m.backgrounds[s.background].label}・${s.subtitle === 'none' ? '無字幕' : `${m.subtitles[s.subtitle].label} ${k} 支`}`;
-    d.append(n, mm, btn('↑', `把「${s.name}」往上移`, () => move(i, -1)), btn('↓', `把「${s.name}」往下移`, () => move(i, 1)), btn('刪除', `刪除「${s.name}」`, () => remove(i)));
+    d.append(secGrip(s, i), n, mm, btn('刪除', `刪除「${s.name}」`, () => remove(i)));
     d.onclick = e => { if (e.target.tagName !== 'BUTTON') pickSec(i); };
     d.onkeydown = e => { if (e.key === 'Enter' && e.target === d) pickSec(i); };
     box.appendChild(d);
   });
 }
 function btn(txt, aria, fn) { const b = document.createElement('button'); b.className = 'small'; b.textContent = txt; b.setAttribute('aria-label', aria); b.onclick = e => { e.stopPropagation(); fn(); }; return b; }
-function move(i, d) { const j = i + d; if (j < 0 || j >= P.sections.length) return; [P.sections[i], P.sections[j]] = [P.sections[j], P.sections[i]]; if (cur === i) cur = j; else if (cur === j) cur = i; save(`段落「${P.sections[j].name}」${d < 0 ? '往上移' : '往下移'}`); refresh(); }
+function moveSecTo(from, to) {
+  if (from === to || to < 0 || to >= P.sections.length) return false;
+  const [s] = P.sections.splice(from, 1); P.sections.splice(to, 0, s);
+  if (cur === from) cur = to; else if (from < cur && to >= cur) cur--; else if (from > cur && to <= cur) cur++;
+  save(`段落「${s.name}」移到第 ${to + 1} 段`); refresh(); return true;
+}
+function secGrip(s, i) {
+  const g = document.createElement('button'); g.type = 'button'; g.className = 'grip'; g.textContent = '⠿';
+  g.title = '按住拖曳調整順序'; g.setAttribute('aria-label', `調整「${s.name}」的順序：按住拖曳，或按 ↑ ↓`);
+  g.onclick = e => e.stopPropagation();
+  g.onpointerdown = e => dragSec(e, i);
+  g.onkeydown = e => {
+    const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0; if (!d) return;
+    e.preventDefault(); if (moveSecTo(i, i + d)) $('#secList').children[i + d].querySelector('.grip').focus({ preventScroll: true });
+  };
+  return g;
+}
+// 注意：被拖的列在 DOM 裡搬動會失去 pointer capture，所以在 window 上聽 pointermove／pointerup。
+function dragSec(e, from) {
+  if (e.button > 0) return; e.preventDefault();
+  const list = $('#secList'), row = list.children[from], mid = el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+  row.classList.add('lift'); document.body.classList.add('dragging');
+  const onMove = ev => {
+    for (;;) {
+      const prev = row.previousElementSibling, next = row.nextElementSibling;
+      if (next && ev.clientY > mid(next)) list.insertBefore(next, row);
+      else if (prev && ev.clientY < mid(prev)) list.insertBefore(row, prev);
+      else break;
+    }
+  };
+  const onEnd = ev => {
+    removeEventListener('pointermove', onMove); removeEventListener('pointerup', onEnd); removeEventListener('pointercancel', onEnd);
+    document.body.classList.remove('dragging');
+    const to = [...list.children].indexOf(row);
+    if (ev.type === 'pointercancel' || !moveSecTo(from, to)) renderSections();
+  };
+  addEventListener('pointermove', onMove); addEventListener('pointerup', onEnd); addEventListener('pointercancel', onEnd);
+}
 function remove(i) {
   if (P.sections.length <= 1) { say('#secMsg', '至少要留一段。', true); return false; }
   const [s] = P.sections.splice(i, 1); undoDel = { s, i };

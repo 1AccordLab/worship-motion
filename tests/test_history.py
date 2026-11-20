@@ -34,7 +34,7 @@ async def main():
         await act("色塊換位", "document.querySelector('#sJump button:nth-child(4)').click()", lambda a, b: a["sections"][0]["jumpBeats"] != b["sections"][0]["jumpBeats"])
         await act("新增段落", "__app.addSection()", lambda a, b: len(b["sections"]) == len(a["sections"]) + 1)
         await act("刪除段落", "__app.removeSection(1)", lambda a, b: len(b["sections"]) == len(a["sections"]) - 1)
-        await act("段落排序", "document.querySelector('#secList button[aria-label^=\"把「副歌」往上移\"]').click()", lambda a, b: b["sections"][0]["name"] == "副歌")
+        await act("段落排序", "document.querySelector('#secList button[aria-label^=\"調整「副歌」\"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true}))", lambda a, b: b["sections"][0]["name"] == "副歌")
         await act("配色", "(()=>{const i=document.querySelector('#swatches input');i.value='#225588';i.dispatchEvent(new Event('input'))})()", lambda a, b: b["palette"] != a["palette"])
         await act("換風格", "(async()=>{const s=document.querySelector('#style');s.value='paper';await s.onchange()})()", lambda a, b: b["style"] == "paper")
         await p.ev("(()=>{const t=document.querySelector('#sLyrics');t.value='这是第一行示意文字';t.dispatchEvent(new Event('input'))})()"); await p.wait("__app.project.sections[0].lyrics==='这是第一行示意文字'")
