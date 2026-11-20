@@ -82,6 +82,7 @@ let atlas = null;
 
 const WORLD_FLOATS = 20;  // 注意：和 gpu.js 的 WORLD_FLOATS 一致
 const WORLD_MAX = 400000, BRUSH = { oil: 0, flat: 1 };
+const isVec3 = a => Array.isArray(a) && a.length === 3 && a.every(v => typeof v === 'number' && isFinite(v));
 const v3 = {
   add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
   mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k], dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
@@ -100,16 +101,21 @@ class World {
   }
   paint(light, dark, lit, jitter = .06, seed = 0) {
     const a = color(light), b = color(dark), k = clamp01(lit.light), j = (hash(seed * 7.13 + 1.7) - .5) * 2 * jitter, h = (hash(seed * 3.31 + 9.1) - .5) * jitter;
-    let c = [lerp(b[0], a[0], k) * (1 + j) + h, lerp(b[1], a[1], k) * (1 + j), lerp(b[2], a[2], k) * (1 + j) - h];
+    const s = this.sunCol, tint = i => lerp(1, s[i] / Math.max(.2, (s[0] + s[1] + s[2]) / 3), k * .5);
+    let c = [0, 1, 2].map(i => lerp(b[i], a[i] * tint(i), k) * (1 + j));
+    c[0] += h; c[2] -= h;
     if (lit.warm > 0) { const L = this.lamps.reduce((m, x) => x.k > m.k ? x : m, this.lamps[0]); c = c.map((v, i) => lerp(v, L.col[i] * Math.max(.75, k + .3), lit.warm)); }
     return c.map(clamp01);
   }
-  stroke(at, dir, normal, len, wid, light, dark = light, o = {}) {
+  stroke(at, dir, normal, len, wid, light, dark, o = {}) {
     if (this.n >= WORLD_MAX) throw new Error(`world 的筆觸超過 ${WORLD_MAX} 筆；請減少數量或加大筆觸`);
+    if (![at, dir, normal].every(isVec3)) throw new Error('w.stroke 的位置、方向、朝向都要是 [x, y, z] 三個數字');
+    if (!(len > 0 && wid > 0 && isFinite(len) && isFinite(wid))) throw new Error('w.stroke 的半長、半寬要是大於 0 的數字');
+    dark = dark ?? light;
     if (this.n * WORLD_FLOATS >= this.buf.length) { const nb = new Float32Array(this.buf.length * 2); nb.set(this.buf); this.buf = nb; }
     const d = v3.norm(dir), side = v3.norm(v3.cross(normal, d)), seed = o.seed ?? hash(this.n * .618 + at[0] * 1.3 + at[2] * .7) * 1000;
     const lt = o.lit === undefined ? this.lit(normal, at) : typeof o.lit === 'number' ? { light: o.lit, warm: 0 } : o.lit;
-    const c = Array.isArray(light) ? light : this.paint(light, dark, lt, o.jitter ?? .06, seed);
+    const c = this.paint(light, dark, lt, o.jitter ?? .06, seed);
     const flow = o.flow || [0, 0], p = this.n * WORLD_FLOATS, B = this.buf;
     B[p] = at[0]; B[p + 1] = at[1]; B[p + 2] = at[2]; B[p + 3] = len;
     B[p + 4] = d[0]; B[p + 5] = d[1]; B[p + 6] = d[2]; B[p + 7] = wid;
@@ -141,7 +147,11 @@ function worldFor(x) {
 const CAM_DEFAULT = { eye: [0, 2, 10], at: [0, 2, 0], fov: 45, fog: null, fogNear: 30, fogFar: 300, near: .5, far: 2000, minPx: 1.5, maxPx: 48, lod: 6 };
 function cameraAt(t, x) {
   const wd = SCENE.d.world, c = { ...CAM_DEFAULT, ...(wd.camera ? wd.camera(t, x) || {} : {}) };
-  for (const k of ['eye', 'at']) if (!Array.isArray(c[k]) || c[k].length !== 3 || c[k].some(v => !isFinite(v))) throw new Error(`world.camera 回傳的 ${k} 要是 [x, y, z] 三個數字`);
+  for (const k of ['eye', 'at']) if (!isVec3(c[k])) throw new Error(`world.camera 回傳的 ${k} 要是 [x, y, z] 三個數字`);
+  if (v3.len(v3.sub(c.at, c.eye)) < 1e-3) throw new Error('world.camera 的 eye 和 at 不能是同一點');
+  if (!(c.fov >= 5 && c.fov <= 150)) throw new Error('world.camera 的 fov 要在 5 到 150 度之間');
+  const lim = (v, a, b) => Math.min(b, Math.max(a, +v || a));
+  c.minPx = lim(c.minPx, .5, 8); c.maxPx = lim(c.maxPx, 4, 160); c.lod = lim(c.lod, 2, 40);
   const fog = c.fog ? color(c.fog) : color(SCENE.palette.bg);
   const sun = WORLD ? WORLD.sun : [0, 1, 0];
   return [...c.eye, c.fov, ...c.at, c.near, fog[0], fog[1], fog[2], c.fogNear, c.fogFar, c.far, c.fog ? 1 : 0, ...sun, c.minPx, c.maxPx, c.lod];

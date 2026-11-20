@@ -24,7 +24,7 @@ async def main():
         await p.ev("x=>__app.load(x)", SONG); await p.ev("__app.tab('self')")
 
         rec("段落只有一處：沒有段落清單、預覽上方分頁一段一個", await pg.locator("#secList").count() == 0 and await tabs.count() == 3, await tabs.all_inner_texts())
-        await tabs.nth(1).click(); await pg.wait_for_timeout(150)
+        await tabs.nth(1).click(); await p.wait("document.querySelector('#secTitle').textContent.includes('導歌')")
         rec("段落分頁：點一下切換", "導歌" in await pg.inner_text("#secTitle"), await pg.inner_text("#secTitle"))
         await p.ev("__app.select(0,0)")
         last = await tabs.nth(2).bounding_box()

@@ -66,7 +66,7 @@ class SceneHost {
       this.w.postMessage({ ...msg, id });
     });
   }
-  clip(spec) { this.fresh = true; return this.call({ op: 'clip', clip: spec }, TIMEOUT.clip, '準備影片時'); }
+  clip(spec) { this.fresh = true; return this.call({ op: 'clip', clip: spec }, this.meta && this.meta.world ? TIMEOUT.world : TIMEOUT.clip, '準備影片時'); }
   frame(t, fullAtlas, fullWorld) { const first = this.fresh; this.fresh = false; return this.call({ op: 'frame', t, fullAtlas, fullWorld }, first ? TIMEOUT.firstFrame : TIMEOUT.frame, `在第 ${t.toFixed(2)} 秒`); }
   kill() { if (this.w) { this.w.terminate(); this.w = null; } for (const r of this.wait.values()) r({ ok: false, error: '場景已停止。' }); this.wait.clear(); }
 }

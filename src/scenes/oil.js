@@ -12,7 +12,7 @@ const sizeAt = (p, k = 1) => Math.hypot(p[0] - BASE[0], p[1] - BASE[1], p[2] - B
 let rk = 0;
 const rnd = () => hash(++rk * .7311 + .123);
 // 月光下的顏色：亮部偏藍、暗部沉進夜色
-const lit = (h, k = .22) => [mix3(hexA(h), MOONLIT, k), mix3(hexA(h), NIGHT, .62)];
+const lit = (h, k = .32) => [mix3(hexA(h), MOONLIT, k), mix3(hexA(h), NIGHT, .62)];
 const ground = (x, z) => 1.1 * Math.sin(x * .05 + z * .03) + .7 * Math.sin(x * .11 - z * .07) + .35 * fbm(x * .08, z * .08) - .4;
 const groundN = (x, z) => v3.norm([ground(x - .5, z) - ground(x + .5, z), 1, ground(x, z - .5) - ground(x, z + .5)]);
 const roadX = z => 6 * Math.sin(z * .035) - z * .3;
@@ -82,7 +82,7 @@ function range(w, P, z, base, amp, sd, light, cnt, snow) {
 }
 // 地面：先鋪實心的暗色地面，再依區域畫小徑、麥田、草地的筆觸
 function land(w, P) {
-  const [rl, rd] = lit(P.road), [wl, wd] = lit(P.wheat, .38), [ml, md] = lit(P.meadow);
+  const [rl, rd] = lit(P.road), [wl, wd] = lit(P.wheat, .42), [ml, md] = lit(P.meadow);
   for (let z = 16; z > -140; z -= 5) for (let x = -40 + z * 1.3; x < 40 - z * 1.3; x += 5) {
     const at = [x, ground(x, z) - .4, z], n = groundN(x, z);
     w.stroke(at, [0, 0, -1], n, 2.9, 2.9, mix3(md, ml, .25), null, { brush: 'flat', keep: 1, lit: 1 });
@@ -135,7 +135,7 @@ function village(w, P) {
 }
 function build(w, x) {
   rk = 0; const P = x.pal;
-  w.moon(v3.sub(skyPt(MOON.az, MOON.el, MOON.d), BASE), '#e9dcae', .32);
+  w.moon(v3.sub(skyPt(MOON.az, MOON.el, MOON.d), BASE), '#cfd8ec', .4);
   sky(w, P); moon(w, P); stars(w, P);
   range(w, P, -280, 22, 34, 3.1, P.far, 9000, true);
   range(w, P, -200, 12, 22, 7.7, '#45588a', 10000, false);

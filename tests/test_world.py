@@ -19,6 +19,17 @@ defineScene({ id: 'miniworld', name: '筆觸地面', palette: MP, world: { build
 def mean_diff(a, b, s=8):
     a, b = (x.convert("RGB").resize((x.width // s, x.height // s), Image.BOX) for x in (a, b))
     return sum(ImageStat.Stat(ImageChops.difference(a, b)).mean) / 3
+LIT = """// 示意：三片同顏料（用 [r, g, b] 陣列）的筆觸，左朝光、中背光、右在燈火旁
+const LP = { bg: '#22304a', a: '#8090b0', b: '#202838' };
+function build(w) {
+  w.moon([0, 0, 1], 'MOONC', .15); w.lamp([6, 0, 0], 3.5, '#e0a050', .9);
+  for (const [cx, nz] of [[-6, 1], [0, -1], [6, 1]]) for (let i = 0; i < 500; i++) w.stroke([cx + (hash(i + cx) - .5) * 2, (hash(i * 1.3 + cx) - .5) * 2, 0], [1, .2, 0], [0, 0, nz], .3, .1, [.5, .56, .69], [.13, .16, .22], { jitter: 0 });
+}
+function camera() { return { eye: [0, 0, 12], at: [0, 0, 0], fov: 60 }; }
+function calm(f) { f.bg = LP.bg; }
+defineScene({ id: 'litw', name: '受光示意', palette: LP, world: { build, camera }, backgrounds: { calm: { draw: calm } } });"""
+def patch(im, cx, cy=540, r=40):
+    return [round(v) for v in ImageStat.Stat(im.convert("RGB").crop((cx - r, cy - r, cx + r, cy + r))).mean]
 def jumps(a, b, box):
     d = ImageChops.difference(a.convert("RGB"), b.convert("RGB")).crop(box).convert("L")
     return sum(d.histogram()[60:]) / (d.width * d.height)
@@ -64,6 +75,15 @@ async def main():
         await p.ev("x=>__app.load(x)", {"format": "worship-motion/1", "title": "範例", "style": "docworld", "bpm": 120, "sections": [{"name": "s", "background": "calm", "subtitle": "none"}]})
         im = await p.shot(0, 0, 3.0, OUT / "skill_example.png"); wi = await p.ev("__app.worldInfo()")
         rec("SKILL.md「D. world」的範例程式可以直接用", ok and wi and wi["key"].startswith("docworld") and ImageStat.Stat(im.convert("L")).stddev[0] > 4, (await p.ev("__app.sceneStatus()"))[:80])
+        for i, (mc, sid) in enumerate([("#c8d4ff", "lit1"), ("#ffd0a0", "lit2")]):
+            await p.ev("c=>__app.pasteScene(c)", LIT.replace("MOONC", mc).replace("litw", sid))
+            await p.ev("x=>__app.load(x)", {"format": "worship-motion/1", "title": "受光", "style": sid, "bpm": 120, "sections": [{"name": "s", "background": "calm", "subtitle": "none"}]})
+            shots = (shots if i else []) + [await p.shot(0, 0, 1.0, OUT / f"lit_{sid}.png")]
+        sun, shade, lamp = (patch(shots[0], x) for x in (492, 960, 1428))
+        rec("亮部／暗部依受光選色：朝光的那片比背光的亮", sum(sun) > sum(shade) * 1.3, (sun, shade))
+        rec("燈火附近偏暖（紅多藍少），遠處偏月光藍", lamp[0] - lamp[2] > sun[0] - sun[2] + 20, (lamp, sun))
+        sun2 = patch(shots[1], 492)
+        rec("月光的光色會影響受光的筆觸", (sun2[0] - sun2[2]) - (sun[0] - sun[2]) > 8, (sun, sun2))
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         await b.close()
 
@@ -75,4 +95,4 @@ async def main():
         await p.ev("__app.exportTest(0.05)"); wx = (await p.ev("__app.worldInfo()"))["out"]
         rec("預覽跟不上時自動少畫筆觸；匯出時回到 100%", low and wx["density"] == 1 and wx["drawn"] == wx["n"], f"預覽一格 {wi['frameMs']} ms → 密度 {wi['density']:.2f}（{wi['drawn']}／{wi['n']}）；匯出 {wx['density']}")
         await b.close()
-asyncio.run(main()); finish()
+if __name__ == "__main__": asyncio.run(main()); finish()

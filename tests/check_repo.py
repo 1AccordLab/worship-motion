@@ -4,7 +4,7 @@
 (e) 配色不用純白、純黑  (f) 場景不連網、不碰 DOM；src、examples 不用 WebGL 與遊戲引擎
 (g) 程式的註解一律以「注意：」開頭；場景與範例只有檔頭一行與宣告上方一行  (h) SKILL.md 的欄位表與風格說明和程式一致
 (i) 教學頁引用的介面文字都在編輯器裡、圖都存在  (j) CLAUDE.md、README、.claude 提到的路徑都存在
-(k) 質感表 T／ON（gpu.js）與 TEX_TYPES／TEX_ON（runtime.js）一致
+(k) 質感表 T／ON（gpu.js）與 TEX_TYPES／TEX_ON（runtime.js）一致；3D 筆觸每筆的浮點數 WORLD_FLOATS 兩邊一致
 失敗時列出 檔名:行號 並 exit 1；為了不把歌詞印出來，(b)(c) 只印位置。"""
 import hashlib, pathlib, re, subprocess, sys, unicodedata
 
@@ -131,6 +131,9 @@ def check_files():
     squash = lambda t: re.sub(r"\s", "", t)
     if squash(gpu_types) != squash(rt_types): bad.append("src/engine/gpu.js: (k) 質感種類 T 和 runtime.js 的 TEX_TYPES 不一致")
     if squash(gpu_on) != squash(rt_on): bad.append("src/engine/gpu.js: (k) 作用圖層 ON 和 runtime.js 的 TEX_ON 不一致")
+    wf = [re.search(r"WORLD_FLOATS = (\d+)", t).group(1) for t in (gpu, rt_text)]
+    if wf[0] != wf[1]: bad.append(f"src/engine/gpu.js: (k) WORLD_FLOATS {wf[0]} 和 runtime.js 的 {wf[1]} 不一致")
+    if int(wf[0]) % 4 or f"ii * {int(wf[0]) // 4}u" not in gpu: bad.append("src/engine/gpu.js: (k) WGSL_WORLD 每筆讀幾個 vec4 要等於 WORLD_FLOATS / 4")
     # (h) SKILL.md ⇄ 程式
     skill, proj, rt = read("skill/SKILL.md"), read("src/editor/project.js"), read("src/engine/runtime.js")
     norm = proj[proj.index("function normalize"):proj.index("function adapt")]

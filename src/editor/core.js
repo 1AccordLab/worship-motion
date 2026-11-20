@@ -6,7 +6,7 @@ const SECTION_MAX = 40, HIST_MAX = 50, HIST_BYTES_MAX = 2500000, HIST_MERGE_MS =
 const BEAT = .5, BASE_BPM = 120;
 const GRAB_FRAME_INDEX = 999;
 const SHADER_TOO_SLOW_MS = 700, SHADER_HALF_MAX_MS = 1500, SHADER_BUDGET_MIN_MS = 25, SHADER_BUDGET_PER_BASELINE = 30;
-const TIMEOUT = { workerProbe: 3000, load: 3000, clip: 3000, firstFrame: 5000, frame: 1000, canvasInit: 2000, canvasFrame: 1000, shaderBaseline: 3000, shaderProbe: 2000, stuck: 2000 };
+const TIMEOUT = { workerProbe: 3000, load: 3000, clip: 3000, world: 15000, firstFrame: 5000, frame: 1000, canvasInit: 2000, canvasFrame: 1000, shaderBaseline: 3000, shaderProbe: 2000, stuck: 2000 };
 const NOPREVIEW = new URLSearchParams(location.search).has('nopreview');
 const RUNTIME = window.WM_SRC ? WM_SRC.runtime : $('#wm-runtime').textContent;
 const APP_SRC = window.WM_SRC ? WM_SRC.app : $('#wm-app').textContent;
