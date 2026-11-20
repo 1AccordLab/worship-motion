@@ -97,7 +97,7 @@ async def main():
         rec("只留中文／只留英文", "Sample" not in e0["zh"][0] and not e0["zh"][1] and e0["en"][0].startswith("Sample") and "這是" not in e0["en"][0], e0)
         rec("中文主要＋英文第二語言／英文主要＋中文第二語言", e0["both"][0].startswith("這是") and e0["both"][1].startswith("Sample") and e0["bothEn"][0].startswith("Sample") and e0["bothEn"][1].startswith("這是"), e0)
         rec("「主歌一（中）」「主歌一（英）」都對上 [Verse 1]", r["both"]["plan"][0]["targets"] == [0, 1], r["both"]["plan"][0]["targets"])
-        await p.ev("__app.tab('self')"); await p.pg.fill("#lyrAll", BILING); await p.pg.click("#lyrSplit")
+        await p.ev("__app.tab('self')"); await p.pg.click("#lyrOpen"); await p.pg.fill("#lyrAll", BILING); await p.pg.click("#lyrSplit")
         d = await p.ev("__app.lyricsDialog()")
         rec("「分到各段」→ 頁內對話框預覽、有中英三種以上選項", d["open"] and await p.pg.is_visible("#lyrLangRow") and await p.pg.locator("input[name=lyrLang]").count() == 4, d["text"][:100])
         await p.pg.click("#lyrApply"); pj = await p.ev("__app.project")
@@ -109,7 +109,7 @@ async def main():
         await p.ev("__app.select(0,0)"); await p.pg.fill("#sLyrics", "这是第一行示意文字"); await p.pg.fill("#sLyrics2", "Sample line one")
         await p.pg.click("#s2tBtn"); msg = await p.pg.inner_text("#lyrMsg")
         rec("「轉成繁體」按鈕：作用在該段兩個框、提示檢查一字多義", (await p.ev("__app.project"))["sections"][0]["lyrics"] == "這是第一行示意文字" and "一字多義" in msg, msg)
-        await p.ev("__app.tab('self')"); await p.pg.fill("#lyrAll", "[Verse 1]\n这是第一行示意文字"); await p.pg.click("#lyrSplit"); await p.pg.check("#lyrTrad")
+        await p.ev("__app.tab('self')"); await p.pg.click("#lyrOpen"); await p.pg.fill("#lyrAll", "[Verse 1]\n这是第一行示意文字"); await p.pg.click("#lyrSplit"); await p.pg.check("#lyrTrad")
         rec("整首貼上對話框也有「轉成繁體」", "這是" in (await p.ev("__app.lyricsDialog()"))["text"] or True)
         await p.pg.click("#lyrApply"); rec("整首貼上勾轉繁體 → 歌詞是繁體", (await p.ev("__app.project"))["sections"][0]["lyrics"].startswith("這是"))
         s2t = (ROOT / "src" / "engine" / "s2t.txt").stat().st_size

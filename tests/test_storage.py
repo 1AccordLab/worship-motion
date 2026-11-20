@@ -1,4 +1,4 @@
-"""正式版（/）和開發版（/dev/）的暫存分開：python3 tests/test_storage.py（同一個瀏覽器、同一個網域，看不到對方的歌、說明卡、試跑標記）"""
+"""正式版（/）和開發版（/dev/）的暫存分開：python3 tests/test_storage.py（同一個瀏覽器、同一個網域，看不到對方的歌、試跑標記）"""
 import asyncio, sys, pathlib, shutil, tempfile, threading, functools, http.server
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -28,10 +28,6 @@ async def main():
             rec("開發版只看到自己的歌", await titles(dev_p) == ["開發版的歌"], await titles(dev_p))
             keys = sorted(await main_p.ev("Object.keys(localStorage)"))
             rec("鍵名都帶 channel", keys and all(k.startswith(("wm:main:", "wm:dev:")) for k in keys) and any(k.startswith("wm:dev:") for k in keys) and any(k.startswith("wm:main:") for k in keys), keys)
-            visible = lambda p: p.ev("!document.querySelector('#intro').hidden")
-            rec("說明卡兩邊一開始都有", await visible(main_p) and await visible(dev_p))
-            await main_p.pg.click("#introClose"); await reopen(main_p); await reopen(dev_p)
-            rec("正式版關掉說明卡，開發版還在", not await visible(main_p) and await visible(dev_p), (await visible(main_p), await visible(dev_p)))
             await main_p.ev("()=>localStorage.setItem('wm:main:probe', JSON.stringify({kind:'scene', hash:'deadbeef', name:'測試風格'}))")
             await reopen(dev_p); await reopen(main_p)
             rec("試跑標記只影響同一個 channel", not any("上次在試跑" in n for n in await dev_p.ev("__app.notices()")) and any("上次在試跑" in n for n in await main_p.ev("__app.notices()")), (await dev_p.ev("__app.notices()"), await main_p.ev("__app.notices()")))

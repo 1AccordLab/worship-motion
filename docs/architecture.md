@@ -75,7 +75,7 @@ flowchart LR
 | 資料 | 位置 | 鍵 |
 |---|---|---|
 | 這本的歌、歷史紀錄（每首 50 步）、存檔狀態 | localStorage | `wm:<doc>:book`、`hist`、`saved` |
-| 試跑標記、說明卡是否看過 | localStorage | `wm:<channel>:probe`、`suspect`、`intro` |
+| 試跑標記 | localStorage | `wm:<channel>:probe`、`suspect` |
 | 可帶走的存檔 | 單檔 HTML | 檔案自己的 id 當 `doc` |
 
 正式版與開發版同一個網域，用 `channel`（`main`、`dev`）分開；存成的單檔用自己的 id，互不影響。

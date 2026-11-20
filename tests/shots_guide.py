@@ -37,7 +37,6 @@ async def main():
         await p.ev("__app.switchSong(1)") if len(sg) > 3 else None
         sg = await p.ev("__app.songs()"); idx = [s["title"] for s in sg].index("範例詩歌一"); await p.ev(f"__app.switchSong({idx})")
         await p.ev("__app.tab('ai')"); await p.ev("scrollTo(0,0)")
-        if await pg.is_visible("#introClose"): await pg.click("#introClose")
         png = await frame(1, 1, 2.5); await pg.evaluate(OVERLAY, png)
         await pg.screenshot(path=str(TMP / "editor.png")); jpg(TMP / "editor.png", "editor.jpg", 1600)
         pins = {}
@@ -67,7 +66,7 @@ async def main():
         await apply(); await el("#pasteCard", "paste_applied.jpg", 1000)
         await p.ev("__app.undo()")
 
-        await p.ev("__app.tab('self')")
+        await p.ev("__app.tab('self')"); await pg.click("#lyrOpen")
         await pg.fill("#lyrAll", "[Verse]\n這是第一行示意文字\nThis is sample line one\n這是第二行示意文字\nThis is sample line two\n\n[Chorus]\n這是第三行示意文字\nThis is sample line three\n\n詞曲：示意")
         await pg.click("#lyrSplit"); await p.wait("__app.lyricsDialog().open")
         await el("#lyrDlg", "lyrics.jpg", 1000)

@@ -42,7 +42,7 @@
 
 - 編輯器各檔由 `build.py` 的 `ENGINE`、`EDITOR` 清單依序串接成一份腳本，不是模組。新增檔案要加進清單，順序就是載入順序。
 - 頂層 DOM 副作用只在 `src/editor/main.js`；事件綁定在 `bind.js` 的 `bindUI()`。其他檔只定義函式與常數。
-- localStorage 鍵：`wm:<doc>:book|hist|saved`、`wm:<channel>:probe|suspect|intro`。網頁上 doc＝channel；存成的單檔 doc＝檔案自己的 id。channel 只在 http(s) 網址判斷，路徑含 `/dev/` 這一段是 `dev`，其餘（含 file://）是 `main`。正式版與開發版同網域，鍵不能混用。
+- localStorage 鍵：`wm:<doc>:book|hist|saved`、`wm:<channel>:probe|suspect`。網頁上 doc＝channel；存成的單檔 doc＝檔案自己的 id。channel 只在 http(s) 網址判斷，路徑含 `/dev/` 這一段是 `dev`，其餘（含 file://）是 `main`。正式版與開發版同網域，鍵不能混用。
 - 場景檔（`src/scenes/`、`examples/`）會被整份拿去給 AI 當範例：檔頭一行說明風格，不寫歷史、不寫「不是…」這類否定句，會誤導 AI。
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。

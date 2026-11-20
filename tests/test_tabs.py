@@ -70,7 +70,7 @@ async def main():
         await p.ev("__app.tab('self')"); await p.ev("()=>{scrollTo(0,900);document.querySelector('.songrow').scrollLeft=0}")
         y0 = await p.ev("scrollY"); await p.ev("__app.select(1,0)")
         await p.ev("(()=>{const s=document.querySelector('#style');s.value='paper';s.dispatchEvent(new Event('change'))})()"); await p.wait("__app.project.style==='paper'")
-        await p.ev("document.querySelectorAll('#secList button')[0].click()"); await pg.wait_for_timeout(300)
+        await p.ev("document.querySelectorAll('#secTabs [role=tab]')[0].click()"); await pg.wait_for_timeout(300)
         pos = await p.ev("(()=>{const r=document.querySelector('.songrow').getBoundingClientRect(),a=document.querySelector('.sname[aria-selected=true]').parentElement.getBoundingClientRect();return {y:scrollY,inRow:a.left>=r.left-1&&a.right<=r.right+1}})()")
         rec("換段落、換風格、點按鈕：整頁停在原處，目前分頁橫向捲進分頁列", y0 > 0 and pos["y"] == y0 and pos["inRow"], (y0, pos))
         await pg.screenshot(path=str(OUT / "窄螢幕.png"))

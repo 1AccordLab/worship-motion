@@ -10,6 +10,7 @@
 body{margin:0;background:var(--page);color:var(--ink);font:15px/26px var(--sans)}
 .wrap{max-width:1440px;margin:0 auto;padding:16px 28px 48px}
 .eyebrow{font:600 11.5px/16px var(--mono);letter-spacing:.08em;color:var(--muted)}
+.eyebrow a{color:var(--accent)}
 h2{margin:0 0 8px;font-size:16px;line-height:24px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 h2 .m{font-weight:400;font-size:13px;color:var(--muted)}
 .top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
@@ -42,8 +43,13 @@ canvas{display:block;width:100%;aspect-ratio:16/9;border-radius:4px;background:v
 .panel{display:flex;flex-direction:column;gap:12px;min-width:0}
 .pane{display:flex;flex-direction:column;gap:12px}
 .sectabs{display:flex;gap:4px;flex-wrap:wrap;align-items:flex-end;border-bottom:1.5px solid var(--line);padding-bottom:0;margin-bottom:-6px}
-.sectabs button{border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;min-height:36px;padding:6px 16px;background:var(--surface);color:var(--muted)}
-.sectabs button[aria-selected=true]{color:var(--ink);border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.sectab{display:flex;align-items:center;border:1.5px solid var(--line);border-bottom:none;border-radius:10px 10px 0 0;background:var(--surface);-webkit-touch-callout:none;user-select:none}
+.sectab:has([aria-selected=true]){border-color:var(--accent);background:var(--accent-soft)}
+.sectab [role=tab]{border:none;background:none;border-radius:10px 10px 0 0;min-height:36px;padding:6px 16px;color:var(--muted);cursor:grab}
+.sectab [role=tab][aria-selected=true]{color:var(--ink);font-weight:700;padding-right:6px}
+.sectab .secx{border:none;background:none;min-height:28px;padding:0 8px;color:var(--muted);border-radius:6px;font-size:15px}
+.sectab .secx:hover{color:var(--bad);background:var(--line)}
+.sectabs .secadd{border-color:var(--line);border-bottom:none;border-radius:10px 10px 0 0;min-height:36px;padding:6px 14px;background:var(--surface);color:var(--muted)}
 .sectabs .lab{font-size:12.5px;color:var(--muted);margin-right:6px;align-self:center}
 .clips{display:flex;flex-direction:column;gap:6px}
 .clip{display:flex;align-items:center;gap:10px;text-align:left;width:100%;border-color:var(--line);border-left-width:4px;border-radius:6px;padding:6px 10px;min-height:38px}
@@ -97,14 +103,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .chips button{min-height:30px;padding:3px 10px;font-size:13px;border-color:var(--line);border-radius:999px}
 .check{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;line-height:21px;color:var(--muted);margin:6px 0}
 .check input{margin-top:4px;accent-color:var(--accent)}
-.sec{display:flex;align-items:center;gap:6px;padding:4px 8px;border:1.5px solid var(--line);border-radius:6px;margin:6px 0;cursor:pointer}
-.sec[aria-current=true]{border-color:var(--accent);background:var(--accent-soft)}
-.sec .n{flex:1;font-weight:600}
-.sec .m{font-size:12px;color:var(--muted)}
-.sec .grip{border:none;background:none;color:var(--muted);font-size:18px;line-height:1;padding:4px 4px;min-height:32px;cursor:grab;touch-action:none}
-.sec .grip:hover{color:var(--ink)}
-.sec.lift{background:var(--sunk);border-color:var(--ink);box-shadow:0 6px 20px rgba(10,10,8,.35)}
 body.dragging,body.dragging *{cursor:grabbing!important;user-select:none}
+.lift{opacity:.85;box-shadow:0 6px 20px rgba(10,10,8,.45);position:relative;z-index:5}
+body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單檔 HTML）";position:fixed;inset:12px;z-index:100;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ink);background:rgba(31,30,27,.86);border:2px dashed var(--accent);border-radius:var(--wobble-lg);pointer-events:none}
+.lyr2col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lyr2col textarea{white-space:pre;overflow:auto;height:210px;resize:none}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
@@ -128,12 +131,6 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none}
 .found.yes{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .warnline{flex-basis:100%;color:var(--warn)}
 .badline{flex-basis:100%;color:var(--bad)}
-.intro{border-color:var(--accent)}
-.intro .head{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;list-style:none;margin:6px 0 0;padding:0}
-.flow3 li{position:relative;display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:20px;color:var(--muted)}
-.flow3 li strong{color:var(--ink);font-size:14px;display:flex;align-items:center;gap:6px}
-.flow3 li:not(:last-child)::after{content:"→";position:absolute;right:-17px;top:2px;color:var(--accent);font-size:16px}
 .q{min-height:22px;width:22px;height:22px;padding:0;border-radius:50%;border:1.5px solid var(--muted);color:var(--muted);font:700 12px/1 var(--mono);background:transparent;flex:none}
 .q:hover,.q[aria-expanded=true]{border-color:var(--accent);color:var(--accent);background:transparent}
 .tipbox{position:fixed;z-index:50;width:280px;padding:10px 12px;background:var(--sunk);border:1.5px solid var(--ink);border-radius:var(--wobble-lg);font-size:13px;line-height:20px;color:var(--ink);font-weight:400;box-shadow:0 6px 20px rgba(10,10,8,.45);display:none}
@@ -145,13 +142,12 @@ dialog textarea{min-height:160px;margin-bottom:12px}
 .songbar{flex:1;min-width:240px}
 .songrow{display:flex;align-items:flex-end;gap:6px;overflow-x:auto;overflow-y:hidden;padding:6px 2px 0;scrollbar-width:thin}
 .songtabs{display:flex;gap:4px;flex-wrap:nowrap;align-items:flex-end}
-.stab{display:flex;align-items:center;flex:none;border:1.5px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;background:var(--surface);max-width:280px}
+.stab{-webkit-touch-callout:none;user-select:none;display:flex;align-items:center;flex:none;border:1.5px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;background:var(--surface);max-width:280px}
 .stab .sname{border:none;background:none;border-radius:12px 0 0 0;font:700 15px/22px var(--sans);color:var(--muted);padding:8px 12px;min-height:40px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .stab .sname[aria-selected=true]{color:var(--ink);font-size:18px}
 .stab:has(.sname[aria-selected=true]){border-color:var(--accent);background:var(--accent-soft)}
 .stab .smenu,.stab .sclose{border:none;background:none;min-height:32px;padding:2px 8px;color:var(--muted);border-radius:6px;font-size:15px}
 .stab .smenu:hover,.stab .sclose:hover{color:var(--ink);background:var(--line)}
-.stab.drag{opacity:.5}.stab.over{box-shadow:inset 3px 0 0 var(--accent)}
 .songrow #newSong{flex:none;min-height:36px;padding:4px 12px;font-size:13.5px;border-style:dashed;border-color:var(--muted);color:var(--muted);margin-bottom:4px}
 .songline{border-bottom:1.5px solid var(--line)}
 .songrow #closedBtn{flex:none;margin-bottom:4px;white-space:nowrap}
@@ -181,7 +177,7 @@ dialog input[type=text]{width:100%;margin-bottom:12px}
 textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
 button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:1180px){.exgrid{grid-template-columns:1fr}}
-@media (max-width:980px){.grid{grid-template-columns:1fr}.steps{flex-direction:column;position:static}.card,.frame{scroll-margin-top:8px}.steps .arr{display:none}.flow3{grid-template-columns:1fr}.flow3 li::after{display:none}.savemsg{text-align:left}}
+@media (max-width:980px){.grid{grid-template-columns:1fr;gap:12px}.left{display:contents}.panel{order:2}#exportCard{order:3}.steps{flex-direction:column;position:static}.card,.frame{scroll-margin-top:8px}.steps .arr{display:none}.savemsg{text-align:left}}
 </style>
 </head>
 <body>
@@ -218,22 +214,15 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
 
   <div class="grid" id="main">
     <section class="left" aria-label="預覽">
-      <div class="card intro" id="intro" hidden>
-        <div class="head"><h2>第一次用？三步驟做完一首歌</h2><button class="small" id="introClose">知道了，不再顯示</button></div>
-        <ol class="flow3">
-          <li><strong><span class="num">1</span>跟 AI 要設定</strong>「請 AI 改」分頁按「複製給 AI」→ 貼到 ChatGPT／Claude／Gemini → 回覆整則貼回來</li>
-          <li><strong><span class="num">2</span>預覽與微調</strong>點上面的段落、下面的影片看效果；小地方在「自己調」改</li>
-          <li><strong><span class="num">3</span>匯出</strong>下載 MP4 放進簡報軟體；這首歌按「存成單檔 HTML」留著</li>
-        </ol>
-      </div>
-
       <p class="songnote" id="songNote" hidden></p>
-      <div class="sectabs" id="secTabs" role="tablist" aria-label="段落"></div>
+      <div class="status" id="secMsg" role="status"></div>
+      <div class="sectabs" id="secTabs" role="tablist" aria-label="段落（點一下切換、按住拖曳排序、點兩下改名）"></div>
       <div class="frame"><canvas id="view" width="1920" height="1080" aria-label="影片預覽"></canvas></div>
       <div class="bar">
         <button class="small" id="play" aria-label="暫停">暫停</button>
         <input type="range" id="scrub" min="0" max="10" step="0.0333" value="0" aria-label="預覽時間">
         <span class="time" id="time">0.0 / 0.0 秒</span>
+        <span class="hint keys">空白鍵 播放／暫停・← → 換影片</span>
       </div>
       <div class="status" id="pvMsg" role="status"></div>
 
@@ -314,14 +303,9 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <div class="field"><label for="bpm">速度（BPM）</label><input type="number" id="bpm" min="40" max="220" step="1"><span class="hint">不知道就 120</span><button type="button" class="q" data-tip="每分鐘幾拍。背景的色塊跟著這個速度跳；對不準沒關係。">?</button></div>
           <p class="sub" id="bpmNote"></p>
           <div class="field"><span class="lab">配色</span><div class="swatches" id="swatches"></div></div>
-          <div class="status" id="selfMsg" role="status"></div>
-        </div>
-
-        <div class="card" id="lyrCard">
-          <h2>貼上整首歌詞<button type="button" class="q" data-tip="把整首歌詞貼進來，按「分到各段」：認得 [Verse 1]、Chorus、【主歌】、副歌、橋段… 這類段落標題（拼錯一點也認得），沒有標題就照空行分。會先給你看預覽，確定才套用。版權說明（詞、曲、©、CCLI）會自動拿掉。歌詞只在這台電腦的瀏覽器裡處理，不會送出去。">?</button></h2>
-          <textarea class="big" id="lyrAll" spellcheck="false" aria-label="整首歌詞" placeholder="例如：&#10;[Verse 1]&#10;這是第一行示意文字&#10;這是第二行示意文字&#10;&#10;[Chorus]&#10;這是第三行示意文字"></textarea>
-          <div class="row mt"><button class="strong" id="lyrSplit">分到各段</button><span class="hint">先預覽，確定才套用</span></div>
+          <div class="field"><span class="lab">歌詞</span><button type="button" class="small" id="lyrOpen">貼上整首歌詞（自動分段）</button></div>
           <div class="status" id="lyrAllMsg" role="status"></div>
+          <div class="status" id="selfMsg" role="status"></div>
         </div>
 
         <div class="card" id="secCard">
@@ -331,10 +315,10 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <div class="field"><span class="lab" id="lJump">色塊換位<button type="button" class="q" data-tip="背景裡的色塊多久跳一次位置。覺得太躁就調慢，不夠嗨就調快。">?</button></span><div class="seg" id="sJump" role="group" aria-labelledby="lJump"></div></div>
           <div class="field"><span class="lab" id="lSub">動態字幕<button type="button" class="q" data-tip="要不要把歌詞做成會動的字幕影片。選「不要」就只做背景，歌詞用簡報軟體自己打。">?</button></span><div class="seg" id="sSub" role="group" aria-labelledby="lSub"></div></div>
           <p class="sub" id="subDesc"></p>
-          <label class="lab" for="sLyrics">歌詞</label>
-          <textarea id="sLyrics" spellcheck="false"></textarea>
-          <label class="lab" for="sLyrics2">第二語言歌詞（小字，可留空）</label>
-          <textarea id="sLyrics2" spellcheck="false" rows="3" placeholder="例如英文歌詞：第 1 行配上面的第 1 行"></textarea>
+          <div class="lyr2col">
+            <div><label class="lab" for="sLyrics">歌詞</label><textarea id="sLyrics" spellcheck="false" wrap="off"></textarea></div>
+            <div><label class="lab" for="sLyrics2">第二語言歌詞（小字，可留空）</label><textarea id="sLyrics2" spellcheck="false" wrap="off" placeholder="例如英文歌詞：和左邊同一行配對"></textarea></div>
+          </div>
           <label class="check"><input type="checkbox" id="sSwap"><span>大小對調：第二語言大、第一語言小</span></label>
           <div class="row"><button class="small" type="button" id="s2tBtn">轉成繁體</button><button type="button" class="q" data-tip="把這一段兩個歌詞框裡的簡體字轉成繁體（台灣常用字形）。先看詞（例如 头发→頭髮），再看單字。少數一字多義的字請自己檢查。">?</button></div>
           <div class="status" id="lyrMsg" role="status"></div>
@@ -345,12 +329,6 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           </div>
         </div>
 
-        <div class="card">
-          <h2>段落 <span class="m">點一列切到那一段；按住 ⠿ 拖曳調整順序</span></h2>
-          <div id="secList"></div>
-          <div class="row"><button class="small" id="secAdd">＋ 新增段落</button></div>
-          <div class="status" id="secMsg" role="status"></div>
-        </div>
       </div>
 
       <div class="pane" role="tabpanel" id="pane-adv" aria-labelledby="tab-adv" hidden>
@@ -383,7 +361,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
         </div>
         <div class="card">
           <h2>設定檔</h2>
-          <p class="hint">設定檔是這首歌的設定（純文字），可以備份、傳給別人，或給不能貼長文的 AI 當附件。平常存檔用頂端「存成單檔 HTML」就好，它已經包含設定。</p>
+          <p class="hint">設定檔是這首歌的設定（純文字），可以備份、傳給別人，或給不能貼長文的 AI 當附件。平常存檔用頂端「存成單檔 HTML」就好，它已經包含設定。設定檔和存好的單檔 HTML 也可以直接拖進視窗打開。</p>
           <div class="row mt">
             <button class="small" id="exportCfg">下載設定檔（.json）</button>
             <button class="small" id="importCfg">打開設定檔</button>
@@ -401,6 +379,12 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
     <input type="text" id="dlgIn" hidden aria-label="輸入">
     <textarea class="code" id="dlgText" readonly hidden aria-label="要複製的文字"></textarea>
     <div class="row" id="dlgBtns"></div>
+  </dialog>
+  <dialog id="lyrInDlg" class="wide" aria-labelledby="lyrInT">
+    <h2 id="lyrInT">貼上整首歌詞<button type="button" class="q" data-tip="把整首歌詞貼進來，按「分到各段」：認得 [Verse 1]、Chorus、【主歌】、副歌、橋段… 這類段落標題（拼錯一點也認得），沒有標題就照空行分。會先給你看預覽，確定才套用。版權說明（詞、曲、©、CCLI）會自動拿掉。歌詞只在這台電腦的瀏覽器裡處理，不會送出去。">?</button></h2>
+    <textarea class="big" id="lyrAll" spellcheck="false" aria-label="整首歌詞" placeholder="例如：&#10;[Verse 1]&#10;這是第一行示意文字&#10;這是第二行示意文字&#10;&#10;[Chorus]&#10;這是第三行示意文字"></textarea>
+    <div class="status" id="lyrInMsg" role="status"></div>
+    <div class="row mt"><button class="primary" type="button" id="lyrSplit">分到各段</button><button type="button" id="lyrInCancel">取消</button><span class="hint">先預覽，確定才套用</span></div>
   </dialog>
   <dialog id="lyrDlg" class="wide" aria-labelledby="lyrT">
     <h2 id="lyrT">分到各段（預覽）</h2>

@@ -1,4 +1,5 @@
 // 注意：游標在文字框裡時讓瀏覽器自己的文字還原優先；離開文字框才是編輯器的還原
+const anyDialogOpen = () => [...document.querySelectorAll('dialog')].some(d => d.open);
 const isTextField = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'INPUT' && /^(text|number|search|url|email|tel|password)$/i.test(el.type)));
 function bindUI() {
   TABS.forEach((k, i) => {
@@ -15,24 +16,25 @@ function bindUI() {
   $('#exportCard').addEventListener('click', () => setStep(3));
   $('#sDur').onchange = () => { sec().clipSeconds = Math.max(2, Math.min(60, Number($('#sDur').value) || 6)); secRefresh('每支長度'); };
   $('#sEnter').oninput = () => { sec().enterSpeed = Number($('#sEnter').value); $('#sEnterV').textContent = sec().enterSpeed + '×'; save(`${sec().name}：進場速度`, 'enter:' + cur); deb(rebuild); };
-  $('#sName').oninput = () => { sec().name = $('#sName').value; $('#secTitle').textContent = sec().name; save('改段落名稱', 'name:' + cur); renderSecTabs(); renderSections(); renderClips(); };
-  $('#sLyrics').oninput = () => { sec().lyrics = $('#sLyrics').value; save(`${sec().name}：改歌詞`, 'lyr:' + cur); renderLyricHint(); deb(() => { renderClips(); renderSections(); rebuild(); }); };
-  $('#sLyrics2').oninput = () => { sec().lyrics2 = $('#sLyrics2').value; save(`${sec().name}：改第二語言歌詞`, 'lyr2:' + cur); renderLyricHint(); deb(() => { renderClips(); renderSections(); rebuild(); }); };
+  $('#sName').oninput = () => { sec().name = $('#sName').value; $('#secTitle').textContent = sec().name; save('改段落名稱', 'name:' + cur); renderSecTabs(); renderClips(); };
+  $('#sLyrics').oninput = () => { sec().lyrics = $('#sLyrics').value; save(`${sec().name}：改歌詞`, 'lyr:' + cur); renderLyricHint(); deb(() => { renderClips(); rebuild(); }); };
+  $('#sLyrics2').oninput = () => { sec().lyrics2 = $('#sLyrics2').value; save(`${sec().name}：改第二語言歌詞`, 'lyr2:' + cur); renderLyricHint(); deb(() => { renderClips(); rebuild(); }); };
   $('#sSwap').onchange = () => { sec().swapLang = $('#sSwap').checked; save(`${sec().name}：${sec().swapLang ? '大小對調' : '取消大小對調'}`); renderLyricHint(); rebuild(); };
   $('#s2tBtn').onclick = () => {
     const s = sec(), a = toTrad(s.lyrics || ''), b = toTrad(s.lyrics2 || ''), n = diffCount(s.lyrics || '', a) + diffCount(s.lyrics2 || '', b);
     if (!n) { say('#lyrMsg', '沒有要轉的簡體字。'); return; }
-    s.lyrics = a; s.lyrics2 = b; save(`${s.name}：轉成繁體`); renderSection(); renderClips(); renderSections(); rebuild();
+    s.lyrics = a; s.lyrics2 = b; save(`${s.name}：轉成繁體`); renderSection(); renderClips(); rebuild();
     say('#lyrMsg', `已轉成繁體（改了 ${n} 個字），請檢查少數一字多義的字（例如 发→發／髮）。`, 'ok');
   };
   $('#title').oninput = () => { P.title = $('#title').value; document.title = `${P.title}｜詩歌影片編輯器`; save('改歌名', 'title'); };
   $('#bpm').onchange = () => { const b = Number($('#bpm').value); if (b >= 40 && b <= 220) { P.bpm = b; say('#selfMsg', ''); save(`速度改成 ${b}`); refresh(); } else { $('#bpm').value = P.bpm; say('#selfMsg', '速度要在 40 到 220 之間（不知道就填 120）。', true); } };
   $('#palReset').onclick = () => { P.palette = {}; P.params = {}; save('配色與參數還原'); refresh(); };
   $('#style').onchange = () => applyStyle($('#style').value);
-  $('#secAdd').onclick = () => { addSection(); $('#sName').focus(); $('#sName').select(); };
-  $('#play').onclick = () => { playing = !playing; $('#play').textContent = playing ? '暫停' : '播放'; $('#play').setAttribute('aria-label', playing ? '暫停' : '播放'); };
-  $('#scrub').oninput = e => { t = +e.target.value; playing = false; $('#play').textContent = '播放'; };
+  $('#play').onclick = () => setPlaying(!playing);
+  $('#scrub').oninput = e => { t = +e.target.value; setPlaying(false); };
+  $('#lyrOpen').onclick = () => openLyricsInput();
   $('#lyrSplit').onclick = () => openLyricsDialog();
+  $('#lyrInCancel').onclick = () => closeDlg($('#lyrInDlg'));
   $('#lyrDlg').addEventListener('change', e => { if (e.target.name === 'lyrLang' || e.target.name === 'lyrTarget' || e.target.id === 'lyrTrad') renderLyrPlan(); });
   $('#lyrCancel').onclick = () => closeLyr();
   $('#lyrDlg').oncancel = e => { e.preventDefault(); closeLyr(); };
@@ -44,7 +46,7 @@ function bindUI() {
     const u = document.createElement('button'); u.className = 'small'; u.type = 'button'; u.textContent = '復原'; u.onclick = async () => { if (!lyrUndo) return; lyrUndo = null; await undo(); say('#lyrAllMsg', '已復原成貼上前的歌詞。'); };
     $('#lyrAllMsg').append(' ', u);
   };
-  $('#lyrFromAI').onclick = () => { showTab('self'); $('#lyrCard').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('#lyrAll').focus({ preventScroll: true }); };
+  $('#lyrFromAI').onclick = () => openLyricsInput();
   CHIPS.forEach(([label, fn]) => {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
     b.onclick = () => { const a = $('#askText'), v = fn(P ? sec().name : '這一段'); a.value = a.value.trim() ? a.value.replace(/\s*$/, '\n') + v : v; a.focus(); a.setSelectionRange(a.value.length, a.value.length); };
@@ -85,16 +87,44 @@ function bindUI() {
   document.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
     const k = e.key.toLowerCase(); if (k !== 'z' && k !== 'y') return;
-    if (isTextField(e.target) || $('#dlg').open || $('#lyrDlg').open) return;
+    if (isTextField(e.target) || anyDialogOpen()) return;
     e.preventDefault(); (k === 'y' || e.shiftKey) ? redo() : undo();
   });
+  document.addEventListener('keydown', previewKeys);
+  syncScroll($('#sLyrics'), $('#sLyrics2'));
+  bindFileDrop();
 
-  $('#intro').hidden = shared.get('intro') === 'off';
-  $('#introClose').onclick = () => { shared.set('intro', 'off'); $('#intro').hidden = true; };
   initTips(); showTab('ai'); renderDetect();
   $('#cancel').onclick = () => { cancel = true; };
   $('#exOne').onclick = () => runExport('one');
   $('#exSec').onclick = () => runExport('sec');
   $('#exSong').onclick = () => runExport('song');
   $('#exAll').onclick = () => runExport('all');
+}
+
+// 注意：按鈕上的空白鍵是瀏覽器的「按下按鈕」；分頁、下拉、滑桿上的方向鍵是它們自己的操作，都要讓給瀏覽器。
+function previewKeys(e) {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || exporting || anyDialogOpen()) return;
+  const el = e.target, tag = el && el.tagName, own = isTextField(el) || /^(SELECT|INPUT)$/.test(tag) || (el && el.getAttribute && el.getAttribute('role') === 'tab');
+  if (e.key === ' ' && !own && tag !== 'BUTTON' && tag !== 'A') { e.preventDefault(); setPlaying(!playing); }
+  else if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !own) { e.preventDefault(); stepClip(e.key === 'ArrowRight' ? 1 : -1); }
+}
+// 注意：兩個框行數不同時，短的那個捲不到同樣位置會回送 scroll，所以剛被同步的那一邊要略過一次。
+function syncScroll(a, b) {
+  let quiet = null;
+  const follow = (src, dst) => src.addEventListener('scroll', () => { if (quiet === src) { quiet = null; return; } if (dst.scrollTop !== src.scrollTop) { quiet = dst; dst.scrollTop = src.scrollTop; } });
+  follow(a, b); follow(b, a);
+}
+const OPENABLE = /\.(json|js|txt|html?)$/i;
+function bindFileDrop() {
+  const hasFiles = e => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  const off = () => document.body.classList.remove('filedrop');
+  addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); document.body.classList.add('filedrop'); });
+  addEventListener('dragleave', e => { if (!e.relatedTarget) off(); });
+  addEventListener('drop', async e => {
+    if (!hasFiles(e)) return; e.preventDefault(); off();
+    const f = e.dataTransfer.files[0]; if (!f) return;
+    if (!OPENABLE.test(f.name)) { say('#songMsg', `不認得「${f.name}」：可以拖進來的是設定檔（.json）或存好的單檔 HTML。`, true); return; }
+    await importText(await f.text(), '#songMsg');
+  });
 }

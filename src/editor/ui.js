@@ -123,68 +123,67 @@ function renderGlobal() {
   renderSaveState();
 }
 function renderSecTabs() {
-  const box = $('#secTabs'); box.innerHTML = '';
+  const box = $('#secTabs'), old = [...box.querySelectorAll('.sectab [role=tab]')];
+  if (old.length === P.sections.length && old.every((b, i) => b.textContent === P.sections[i].name && b.dataset.i === String(i))) { markSecTab(); return; }
+  box.innerHTML = '';
   const lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = '段落'; box.appendChild(lab);
   P.sections.forEach((s, i) => {
-    const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(i === cur)); b.textContent = s.name;
-    b.onclick = () => pickSec(i); box.appendChild(b);
+    const w = document.createElement('div'); w.className = 'sectab';
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.textContent = s.name; b.dataset.i = i;
+    b.title = '點一下切換；按住拖曳調整順序；點兩下改名';
+    b.onclick = () => { if (!justDragged() && i !== cur) pickSec(i); };
+    b.ondblclick = () => { showTab('self'); $('#sName').focus(); $('#sName').select(); };
+    b.onpointerdown = e => sortable(e, w, '.sectab', moveSecTo, renderSecTabsFresh);
+    b.onkeydown = e => { const d = altArrow(e); if (d && moveSecTo(i, i + d)) $('#secTabs').querySelectorAll('[role=tab]')[i + d].focus({ preventScroll: true }); };
+    w.append(b); box.appendChild(w);
   });
-  const add = document.createElement('button'); add.textContent = '＋'; add.title = '新增段落'; add.setAttribute('aria-label', '新增段落');
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'secadd'; add.textContent = '＋'; add.title = '新增段落'; add.setAttribute('aria-label', '新增段落');
   add.onclick = () => { addSection(); showTab('self'); $('#sName').focus(); $('#sName').select(); };
-  box.appendChild(add);
+  box.appendChild(add); markSecTab();
+}
+const renderSecTabsFresh = () => { $('#secTabs').innerHTML = ''; renderSecTabs(); };
+function markSecTab() {
+  const tabs = [...$('#secTabs').querySelectorAll('.sectab')];
+  tabs.forEach((w, i) => { w.firstChild.setAttribute('aria-selected', String(i === cur)); const x = w.querySelector('.secx'); if (x) x.remove(); });
+  const w = tabs[cur]; if (!w || P.sections.length <= 1) return;
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'secx'; x.textContent = '×'; x.title = '刪除這一段（可以復原）';
+  x.setAttribute('aria-label', `刪除「${P.sections[cur].name}」`); x.onclick = () => remove(cur); w.append(x);
 }
 function pickSec(i) { cur = i; clipIdx = 0; t = 0; setStep(2); return refresh(); }
-function renderSections() {
-  const box = $('#secList'); box.innerHTML = ''; const m = meta();
-  P.sections.forEach((s, i) => {
-    const d = document.createElement('div'); d.className = 'sec'; d.setAttribute('aria-current', i === cur ? 'true' : 'false'); d.tabIndex = 0;
-    const n = document.createElement('span'); n.className = 'n'; n.textContent = `${i + 1}. ${s.name}`;
-    const k = slidesOf(s).length;
-    const mm = document.createElement('span'); mm.className = 'm'; mm.textContent = `${m.backgrounds[s.background].label}・${s.subtitle === 'none' ? '無字幕' : `${m.subtitles[s.subtitle].label} ${k} 支`}`;
-    d.append(secGrip(s, i), n, mm, btn('刪除', `刪除「${s.name}」`, () => remove(i)));
-    d.onclick = e => { if (e.target.tagName !== 'BUTTON') pickSec(i); };
-    d.onkeydown = e => { if (e.key === 'Enter' && e.target === d) pickSec(i); };
-    box.appendChild(d);
-  });
-}
-function btn(txt, aria, fn) { const b = document.createElement('button'); b.className = 'small'; b.textContent = txt; b.setAttribute('aria-label', aria); b.onclick = e => { e.stopPropagation(); fn(); }; return b; }
 function moveSecTo(from, to) {
   if (from === to || to < 0 || to >= P.sections.length) return false;
   const [s] = P.sections.splice(from, 1); P.sections.splice(to, 0, s);
   if (cur === from) cur = to; else if (from < cur && to >= cur) cur--; else if (from > cur && to <= cur) cur++;
   save(`段落「${s.name}」移到第 ${to + 1} 段`); refresh(); return true;
 }
-function secGrip(s, i) {
-  const g = document.createElement('button'); g.type = 'button'; g.className = 'grip'; g.textContent = '⠿';
-  g.title = '按住拖曳調整順序'; g.setAttribute('aria-label', `調整「${s.name}」的順序：按住拖曳，或按 ↑ ↓`);
-  g.onclick = e => e.stopPropagation();
-  g.onpointerdown = e => dragSec(e, i);
-  g.onkeydown = e => {
-    const d = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0; if (!d) return;
-    e.preventDefault(); if (moveSecTo(i, i + d)) $('#secList').children[i + d].querySelector('.grip').focus({ preventScroll: true });
-  };
-  return g;
-}
-// 注意：被拖的列在 DOM 裡搬動會失去 pointer capture，所以在 window 上聽 pointermove／pointerup。
-function dragSec(e, from) {
-  if (e.button > 0) return; e.preventDefault();
-  const list = $('#secList'), row = list.children[from], mid = el => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
-  row.classList.add('lift'); document.body.classList.add('dragging');
+const altArrow = e => e.altKey && !e.ctrlKey && !e.metaKey ? (e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0) : 0;
+let dragEndAt = 0;
+const justDragged = () => performance.now() - dragEndAt < 350;
+// 注意：被拖的元素在 DOM 裡搬動會失去 pointer capture，所以在 window 上聽 pointermove／pointerup。
+// 注意：觸控要長按才開始拖，否則會搶走分頁列的左右滑動；開始拖之後要擋掉 touchmove，不然瀏覽器會改成捲動並送 pointercancel。
+function sortable(e, item, sel, onDrop, restore) {
+  if (e.button > 0 || exporting) return;
+  const list = item.parentElement, items = () => [...list.querySelectorAll(':scope>' + sel)], from = items().indexOf(item);
+  const x0 = e.clientX, y0 = e.clientY, touch = e.pointerType === 'touch';
+  let on = false, timer = 0;
+  const block = ev => ev.preventDefault();
+  const start = () => { on = true; item.classList.add('lift'); document.body.classList.add('dragging'); addEventListener('touchmove', block, { passive: false }); addEventListener('contextmenu', block); };
+  const nearest = (x, y) => items().map(el => { const r = el.getBoundingClientRect(); return { el, r, d: Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom)) }; }).sort((a, b) => a.d - b.d)[0];
   const onMove = ev => {
-    for (;;) {
-      const prev = row.previousElementSibling, next = row.nextElementSibling;
-      if (next && ev.clientY > mid(next)) list.insertBefore(next, row);
-      else if (prev && ev.clientY < mid(prev)) list.insertBefore(row, prev);
-      else break;
-    }
+    if (!on) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < (touch ? 10 : 5)) return; if (touch) return end(ev); start(); }
+    const n = nearest(ev.clientX, ev.clientY); if (!n || n.el === item) return;
+    if (ev.clientX > n.r.left + n.r.width / 2) n.el.after(item); else n.el.before(item);
   };
-  const onEnd = ev => {
-    removeEventListener('pointermove', onMove); removeEventListener('pointerup', onEnd); removeEventListener('pointercancel', onEnd);
-    document.body.classList.remove('dragging');
-    const to = [...list.children].indexOf(row);
-    if (ev.type === 'pointercancel' || !moveSecTo(from, to)) renderSections();
+  const end = ev => {
+    clearTimeout(timer); removeEventListener('pointermove', onMove); removeEventListener('pointerup', end); removeEventListener('pointercancel', end);
+    if (!on) return;
+    removeEventListener('touchmove', block); setTimeout(() => removeEventListener('contextmenu', block), 400);
+    item.classList.remove('lift'); document.body.classList.remove('dragging'); dragEndAt = performance.now();
+    const to = items().indexOf(item);
+    if (ev.type === 'pointercancel' || !onDrop(from, to)) restore();
   };
-  addEventListener('pointermove', onMove); addEventListener('pointerup', onEnd); addEventListener('pointercancel', onEnd);
+  if (touch) timer = setTimeout(start, 350);
+  addEventListener('pointermove', onMove); addEventListener('pointerup', end); addEventListener('pointercancel', end);
 }
 function remove(i) {
   if (P.sections.length <= 1) { say('#secMsg', '至少要留一段。', true); return false; }
@@ -240,7 +239,7 @@ function renderClips() {
     const n = document.createElement('span'); n.className = 'n'; n.textContent = clipLabel(s, i);
     const cm = document.createElement('span'); cm.className = 'cm'; cm.textContent = i ? `${s.clipSeconds} 秒` : `${Math.round(bgSec)} 秒・接回開頭`;
     b.append(n, cm); b.title = n.textContent;
-    b.onclick = () => { clipIdx = i; t = 0; playing = true; $('#play').textContent = '暫停'; setStep(2); renderClips(); rebuild(); };
+    b.onclick = () => { clipIdx = i; t = 0; setPlaying(true); setStep(2); renderClips(); rebuild(); };
     box.appendChild(b);
   }
   if (s.subtitle === 'none' || !sl.length) {
@@ -263,7 +262,14 @@ function renderClips() {
   $('#exAllD').textContent = SONGS.length > 1 ? `${SONGS.length} 首（全部分頁），依分頁順序、每首一個資料夾` : '只有這一首（多開幾個分頁就能一次匯出）';
 }
 const i0name = s => clipIdx === 0 ? '背景' : `字幕 ${clipIdx}`;
-function refresh() { renderSongTabs(); renderGlobal(); renderSecTabs(); renderSections(); renderSection(); renderClips(); return rebuild(); }
+function stepClip(d) {
+  const n = slidesOf(sec()).length + 1, i = clipIdx + d;
+  if (i >= 0 && i < n) { clipIdx = i; t = 0; setPlaying(true); setStep(2); renderClips(); return rebuild(); }
+  const j = cur + d; if (j < 0 || j >= P.sections.length) return;
+  cur = j; clipIdx = d > 0 ? 0 : slidesOf(P.sections[j]).length; t = 0; setPlaying(true); setStep(2); return refresh();
+}
+function setPlaying(on) { playing = on; $('#play').textContent = on ? '暫停' : '播放'; $('#play').setAttribute('aria-label', on ? '暫停' : '播放'); }
+function refresh() { renderSongTabs(); renderGlobal(); renderSecTabs(); renderSection(); renderClips(); return rebuild(); }
 let lyrPlan = null, lyrUndo = null;
 function lyrOpts() {
   const v = n => (document.querySelector(`input[name="${n}"]:checked`) || {}).value;
@@ -291,29 +297,32 @@ function renderLyrPlan() {
 }
 function openLyricsDialog() {
   const text = $('#lyrAll').value;
-  if (!text.trim()) { say('#lyrAllMsg', '先把整首歌詞貼到上面的框裡。', true); $('#lyrAll').focus(); return false; }
-  say('#lyrAllMsg', '');
+  if (!text.trim()) { say('#lyrInMsg', '先把整首歌詞貼到上面的框裡。', true); $('#lyrAll').focus(); return false; }
+  say('#lyrInMsg', ''); closeDlg($('#lyrInDlg'));
   renderLyrPlan(); const d = $('#lyrDlg');
   try { d.showModal(); } catch (e) { d.setAttribute('open', ''); }
   return true;
 }
-function closeLyr() { const d = $('#lyrDlg'); if (d.open) d.close(); else d.removeAttribute('open'); }
+function closeDlg(d) { if (d.open) d.close(); else d.removeAttribute('open'); }
+function closeLyr() { closeDlg($('#lyrDlg')); }
+function openLyricsInput() {
+  const d = $('#lyrInDlg'); say('#lyrInMsg', '');
+  try { d.showModal(); } catch (e) { d.setAttribute('open', ''); }
+  $('#lyrAll').focus();
+}
 function renderSongName() { const b = document.querySelector(`#songTabs .stab[data-i="${ACT}"] .sname`); if (b && P) b.textContent = P.title; }
 function renderSongTabs() {
   const box = $('#songTabs'); box.innerHTML = '';
   SONGS.forEach((s, i) => {
-    const on = i === ACT, d = document.createElement('div'); d.className = 'stab'; d.dataset.i = i; d.draggable = !exporting;
+    const on = i === ACT, d = document.createElement('div'); d.className = 'stab'; d.dataset.i = i;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'sname'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(on));
-    b.textContent = songTitle(i); b.title = on ? '目前這首（點兩下改名；可以拖曳排序）' : '切到這首（可以拖曳排序）'; b.disabled = exporting;
-    b.onclick = () => { if (!on) switchSong(i); }; b.ondblclick = () => renameSong(i);
+    b.textContent = songTitle(i); b.title = on ? '目前這首（點兩下改名；按住拖曳排序）' : '切到這首（按住拖曳排序）'; b.disabled = exporting;
+    b.onclick = () => { if (!on && !justDragged()) switchSong(i); }; b.ondblclick = () => renameSong(i);
+    b.onpointerdown = e => sortable(e, d, '.stab', moveSongTo, renderSongTabs);
+    b.onkeydown = e => { const k = altArrow(e); if (k && moveSongTo(i, i + k)) $('#songTabs').querySelectorAll('.sname')[i + k].focus({ preventScroll: true }); };
     d.append(b);
     if (on) { const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'smenu'; mb.textContent = '⋯'; mb.setAttribute('aria-label', '這一首的選項（改名、排序、還原到初始狀態、只存這一首、關閉）'); mb.setAttribute('aria-haspopup', 'menu'); mb.disabled = exporting; mb.onclick = e => { e.stopPropagation(); openSongMenu(mb); }; d.append(mb); }
     if (SONGS.length > 1) { const x = document.createElement('button'); x.type = 'button'; x.className = 'sclose'; x.textContent = '×'; x.setAttribute('aria-label', `關閉「${songTitle(i)}」`); x.disabled = exporting; x.onclick = e => { e.stopPropagation(); closeSong(i); }; d.append(x); }
-    d.ondragstart = e => { e.dataTransfer.setData('text/plain', String(i)); d.classList.add('drag'); };
-    d.ondragend = () => d.classList.remove('drag');
-    d.ondragover = e => { e.preventDefault(); d.classList.add('over'); };
-    d.ondragleave = () => d.classList.remove('over');
-    d.ondrop = e => { e.preventDefault(); d.classList.remove('over'); const from = +e.dataTransfer.getData('text/plain'); if (isFinite(from)) moveSongTo(from, i); };
     box.appendChild(d);
   });
   const a = box.querySelector('.sname[aria-selected=true]'); if (a) revealInRow(a.parentElement);
