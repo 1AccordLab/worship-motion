@@ -41,7 +41,8 @@ class Atlas {
     this.ca = this.a.getContext('2d', { willReadFrequently: true }); this.cb = this.b.getContext('2d', { willReadFrequently: true });
     this.reset();
   }
-  reset() { this.ca.clearRect(0, 0, AW, AH); this.cb.clearRect(0, 0, AW, AH); this.x = 2; this.y = 2; this.rowH = 0; this.map = new Map(); this.d0 = 1e9; this.d1 = -1; }
+  /* 注意：畫面那邊的圖集貼圖不會跟著清空；清空前用到多高記在 stale，下一次送出時把那一段一起蓋掉，新字的邊緣才不會取樣到上一批的字 */
+  reset() { this.stale = Math.max(this.stale || 0, this.used || 0); this.ca.clearRect(0, 0, AW, AH); this.cb.clearRect(0, 0, AW, AH); this.x = 2; this.y = 2; this.rowH = 0; this.used = 0; this.map = new Map(); this.d0 = 1e9; this.d1 = -1; }
   get(text, { px = 96, weight = 700, font = FONT_CJK, spacing = 0, blur = 0, stroke = 0 } = {}) {
     const key = px + '|' + weight + '|' + font + '|' + spacing + '|' + blur + '|' + stroke + '|' + text;
     let e = this.map.get(key); if (e) return e;
@@ -51,7 +52,7 @@ class Atlas {
     const w = Math.ceil(m.width) + pad * 2, h = Math.ceil(px * 1.36) + pad * 2;
     if (this.dry) return { u0: 0, v0: 0, u1: 0, v1: 0, w, h, pad, tw: m.width };
     if (this.x + w > AW) { this.x = 2; this.y += this.rowH + 2; this.rowH = 0; }
-    if (this.y + h > AH || w > AW) throw new Error('文字太多或太大，文字圖集放不下：' + text.slice(0, 12));
+    if (this.y + h > AH || w > AW) throw Object.assign(new Error('文字太多或太大，文字圖集放不下：' + text.slice(0, 12)), { atlasFull: true });
     const cx = this.x + w / 2, cy = this.y + h / 2;
     for (const [ctx, bl] of [[this.ca, 0], [this.cb, blur]]) {
       ctx.save(); ctx.font = f; ctx.letterSpacing = spacing + 'px';
@@ -63,12 +64,12 @@ class Atlas {
     }
     e = { u0: this.x / AW, v0: this.y / AH, u1: (this.x + w) / AW, v1: (this.y + h) / AH, w, h, pad, tw: m.width };
     this.d0 = Math.min(this.d0, this.y); this.d1 = Math.max(this.d1, this.y + h);
-    this.x += w + 2; this.rowH = Math.max(this.rowH, h);
+    this.x += w + 2; this.rowH = Math.max(this.rowH, h); this.used = Math.min(AH, this.y + this.rowH + 2);
     this.map.set(key, e); return e;
   }
   take(all) {
     let y0 = this.d0, y1 = Math.min(AH, this.d1);
-    if (all) { y0 = 0; y1 = Math.max(this.y + this.rowH + 2, 2); }
+    if (all || this.stale) { y0 = 0; y1 = Math.max(this.used, this.stale, 2); this.stale = 0; }
     if (y1 <= y0) return null;
     const hh = y1 - y0, out = { y: y0, h: hh, a: new Uint8Array(AW * hh), b: new Uint8Array(AW * hh) };
     for (const [ctx, arr] of [[this.ca, out.a], [this.cb, out.b]]) {
@@ -475,8 +476,13 @@ function bbox(o, buf, at) {
   for (let k = Math.ceil(a0 / (Math.PI / 2)); k * Math.PI / 2 <= a1; k++) pt(k * Math.PI / 2, R);
   buf[at] = x0; buf[at + 1] = y0; buf[at + 2] = x1; buf[at + 3] = y1;
 }
+/* 注意：文字圖集只進不出，字很大的字幕畫到一半就會滿。滿了就清空、這一格重畫；清空後單獨一格還放不下才是真的太多 */
+function itemsWithRoom(t) {
+  try { return placedItems(t); }
+  catch (e) { if (!e.atlasFull) throw e; atlas.reset(); return placedItems(t); }
+}
 function frame(t) {
-  const { f, items } = placedItems(t), x = CLIP.x, drawn = {}, boxes = {};
+  const { f, items } = itemsWithRoom(t), x = CLIP.x, drawn = {}, boxes = {};
   const n = items.length, buf = new Float32Array(Math.max(1, n) * ITEM_FLOATS), runs = [];
   const cz = SCENE.d.canvas ? (SCENE.d.canvas.z ?? .5) : null, sz = SCENE.d.shader ? (SCENE.d.shader.z ?? .5) : null;
   const marks = []; if (cz !== null) marks.push([cz, 3]); if (sz !== null) marks.push([sz, 4]); if (SCENE.d.world) marks.push([SCENE.d.world.z ?? .5, 5]); marks.sort((a, b) => a[0] - b[0]);
