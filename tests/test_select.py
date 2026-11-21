@@ -59,6 +59,8 @@ async def main():
             rec("E2 打開後游標移到橫條上：顯示外框和名稱「橫條」，還沒選取", h and h["id"] == "bar" and await shown("#hoverBox") and name == "橫條" and await sel() is None, (h, name))
             h = await hover(960, 540)
             rec("E2 移到空白處：外框消失", h is None and not await shown("#hoverBox"), h)
+            await hover(1500, 95); await p.ev("__app.select(1,0)"); await p.ev("__app.seek(1.0)"); await p.ev("__app.hover()")
+            rec("E2 游標停在橫條上時切到沒有橫條的段落：外框消失", not await shown("#hoverBox"), await p.ev("document.querySelector('#hoverName').textContent"))
         await safe("E2 游標移過的提示", e2)
 
         async def e3():
@@ -67,6 +69,13 @@ async def main():
             rec("E3 點圓環：選取它，沒有移動、沒有多歷史紀錄", s and s["ids"] == ["ring"] and not pj.get("elements") and len((await p.ev("__app.history()"))["labels"]) == n0, s and s["ids"])
             await click(960, 540); await drag((1690, 180), (1390, 380)); pj = await proj_now(); e = await els()
             rec("E3 沒選取時在圓環上按住拖：圓環沒有移動、沒有多歷史紀錄", not pj.get("elements") and near(e["ring"]["box"], [1563, 53, 1817, 307], 0.5) and len((await p.ev("__app.history()"))["labels"]) == n0, (pj.get("elements"), e["ring"]["box"]))
+            await at(0, 0, 1.0); await click(1690, 180); u = await unit()
+            await pg.keyboard.down("Shift"); await drag((1690, 180), (1890, 215)); await pg.keyboard.up("Shift"); adj = ((await proj_now()).get("elements") or {}).get("ring", {})
+            rec("E3 先按住 Shift 再拖選取中的圓環：只走水平的移動", near((adj.get("dx", 0),), (200,), 2 * u + 1) and adj.get("dy", 0) == 0 and await picked() == ["ring"], adj)
+            await at(0, 0, 1.0); await click(1690, 180); R = await view(); a = await cpt(1690, 180); c = await cpt(1490, 280)
+            await p.ev("pts=>{const o=document.querySelector('#stageOvl'),ev=(t,p,b)=>new PointerEvent(t,{clientX:p[0],clientY:p[1],button:0,buttons:b,bubbles:true,pointerId:1,isPrimary:true});o.dispatchEvent(ev('pointerdown',pts[0],1));window.dispatchEvent(ev('pointermove',pts[1],1));window.dispatchEvent(ev('pointerup',pts[1],0));}", [list(a), list(c)])
+            await p.ev("__app.selection()"); adj = ((await proj_now()).get("elements") or {}).get("ring", {})
+            rec("E3 按下、移動、放開一口氣送完（比判定點到誰還快）：還是算拖動", near((adj.get("dx", 0), adj.get("dy", 0)), (-200, 100), 2 * u + 1), adj)
         await safe("E3 先選取才能拖", e3)
 
         async def e4():
@@ -77,6 +86,8 @@ async def main():
             rec("E4 多選時選取框是兩個元素合起來的範圍，沒有把手", s and near(s["box"], [1240, 53, 1860, 307], 0.5) and handles == 0, (s and s["box"], handles))
             await at(1, 0, 1.0, "type"); await drag((20, 20), (1900, 1060)); ids = await picked(); e = await els()
             rec("E4 大字排版整個畫面框起來：鋪滿畫面的整面閃色沒被選到，其他有畫東西的元素都選到", "wash" not in ids and len(ids) >= 5 and all(i in e and not e[i]["fixed"] for i in ids), ids)
+            await at(0, 0, 1.0); await drag((20, 20), (1900, 1060)); many = await picked(); await click(960, 540)
+            rec("E4 整個畫面框起來選了很多元素之後，點空白處：取消選取", len(many) >= 5 and await picked() == [], (many, await picked()))
         await safe("E4 範圍選取", e4)
 
         async def e5():
@@ -108,6 +119,12 @@ async def main():
             await pg.click("#elList .elrow[data-id=ring] .ellock"); await p.wait("!((__app.project.elements||{}).ring||{}).locked"); await p.ev("__app.seek(1.0)")
             await click(1690, 180)
             rec("E7 解鎖後：又點得到", await picked() == ["ring"] and not (await proj_now()).get("elements"), (await picked(), (await proj_now()).get("elements")))
+            await pg.click("#elList .elrow[data-id=ring] .ellock"); await p.wait("((__app.project.elements||{}).ring||{}).locked===true")
+            await p.ev("__app.setElement('ring',{opacity:0.5})"); await pg.click("#elList .elrow[data-id=ring] .elreset"); await p.wait("((__app.project.elements||{}).ring||{}).opacity===undefined"); pj = await proj_now()
+            rec("E7 鎖定的元素按「還原」：調整還原，鎖定留著", pj["elements"].get("ring") == {"locked": True}, pj.get("elements"))
+            sec = proj("riso"); sec["sections"][0]["elements"] = {"ring": {"locked": True, "opacity": 0.5}}
+            ok = await p.ev("t=>__app.paste(t)", "```json\n" + json.dumps(sec, ensure_ascii=False) + "\n```"); st = await p.ev("__app.status()"); pj = await proj_now()
+            rec("E7 段落的 elements 寫 locked：略過並提醒（鎖定只記在整首歌），其他照套", ok and pj["sections"][0]["elements"]["ring"] == {"opacity": 0.5} and "locked" in st and "略過" in st, (pj["sections"][0].get("elements"), st[-100:]))
             cfg = proj("riso", elements={"ring": {"locked": True}})
             ok = await p.ev("t=>__app.paste(t)", "```json\n" + json.dumps(cfg, ensure_ascii=False) + "\n```"); pj = await proj_now()
             rec("E7 設定 JSON 的 locked 貼上會套用", ok and pj["elements"]["ring"] == {"locked": True}, pj.get("elements"))
@@ -119,6 +136,12 @@ async def main():
             await pg.click("#editToggle")
             rec("E8 關掉「調整畫面」：取消選取、選取框消失", await p.ev("__app.editMode()") is False and await sel() is None and not await shown("#selBox"), await sel())
             await pg.click("#editToggle")
+            await click(1690, 180); was = await p.ev("document.querySelector('#play').textContent"); await pg.keyboard.press("Space"); now = await p.ev("document.querySelector('#play').textContent")
+            rec("E8 用滑鼠按開「調整畫面」、在預覽上選取後按空白鍵：是播放／暫停，開關和選取都還在", was != now and await p.ev("__app.editMode()") is True and await picked() == ["ring"], (was, now, await p.ev("__app.editMode()"), await picked()))
+            await p.ev("__app.tab('el')")
+            if not await p.ev("document.querySelector('#elList .elrow[data-id=ring]').classList.contains('open')"): await pg.click("#elList .elrow[data-id=ring] .elmore")
+            await pg.focus("#elList .elrow[data-id=ring] .elnum[data-k=dx]"); await pg.keyboard.press("Escape")
+            rec("E8 游標在數字欄裡按 Esc：選取留著", await picked() == ["ring"], await picked())
             rec("E8 再按一次打開，按鈕狀態跟著變", await p.ev("__app.editMode()") is True and await p.ev("document.querySelector('#editToggle').getAttribute('aria-pressed')") == "true")
         await safe("E8 開關", e8)
 

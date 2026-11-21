@@ -168,6 +168,8 @@ async def main():
             await click(1690, 180); await drag((1690, 180), (1490, 180)); await pg.click("#elScope button:nth-child(1)"); await p.ev("__app.seek(1.0)")
             await drag((1490, 180), (1590, 180)); pj = await proj_now(); e = await els()
             rec("D9 這一段有自己的位置時改用「整首歌」拖：圓環跟著游標往右 100，位置記在整首歌，這一段改成跟著整首歌", near(center(e["ring"]["box"]), (1590, 180), 4 * u + 1) and near(((pj.get("elements") or {}).get("ring", {}).get("dx", 0),), (-100,), 4 * u + 1) and "dx" not in (pj["sections"][0].get("elements") or {}).get("ring", {}), (e["ring"]["box"], pj.get("elements"), pj["sections"][0].get("elements")))
+            h = await p.ev("__app.history()")
+            rec("D9 歷史紀錄寫明這一段改成跟著整首歌", "跟著整首歌" in h["labels"][-1], h["labels"][-2:])
             await p.shot(1, 0, 1.0); await p.ev("__app.seek(1.0)")
         await safe("D9 段落範圍", d9)
 
