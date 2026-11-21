@@ -5,7 +5,7 @@ P2 在字幕影片上點字選到「歌詞」、點底條選到底條；拖歌�
 P3 字幕的每個元素可以單獨隱藏；開場掃屏、開場快閃是固定的（選不到）。
 P4 調整對同一種字幕的每一句都生效。
 P5 雙語時，小字屬於「歌詞」，跟著一起移動。
-P6 字幕整個是一個函式的風格（剪紙拼貼）照常列出 背景、字幕。
+P6 字幕整個是一個函式的風格（examples/minimal.js 的「色帶」）照常列出 背景、字幕。
 P7 AI 可以用 use 寫字幕（examples/elements.js），清單裡的 under 代表段落選的背景；under 放在背景的 use、元素取名 under 都會擋下並說明。
 P8 字很大的字幕（大字排版的華麗字幕）整支從頭畫到尾都畫得出來，畫面和直接跳到那一格相同。
 另外用 python3 tests/test_golden.py --ref <實作前的 commit> 確認：沒有任何調整時，畫面和實作前一格不差。"""
@@ -15,6 +15,8 @@ from wm import *
 from PIL import ImageStat
 
 PARTS = (ROOT / "examples" / "elements.js").read_text()
+MIN = (ROOT / "examples" / "minimal.js").read_text()
+BARS = {"format": "worship-motion/1", "title": "測試", "style": "bars", "bpm": 120, "sections": [{"name": "主歌", "background": "calm", "subtitle": "none"}, {"name": "副歌", "background": "calm", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字"}]}
 PEAK = ["rays", "sun", "dot", "marks", "swatches"]
 BUILD = ["stripes", "discs", "tri", "ramp", "progress", "marks", "swatches"]
 TYPE_BUILD = ["giant", "wash", "panel", "para", "ibeam", "disc", "dot", "ellipsis", "progress"]
@@ -96,8 +98,9 @@ async def main():
         await safe("P5 雙語", p5)
 
         async def p6():
-            await at(2, 1, 4.0, "paper")
-            rec("P6 剪紙拼貼的字幕影片照常列出 背景、字幕", await ids() == ["bg", "text"], await ids())
+            assert await p.ev("c=>__app.pasteScene(c)", MIN) and await p.ev("x=>__app.load(x)", BARS)
+            await p.ev("__app.select(1,1)"); await p.ev("__app.seek(4.0)")
+            rec("P6 色帶（字幕整個是一個函式）的字幕影片照常列出 背景、字幕", await ids() == ["bg", "text"], await ids())
         await safe("P6 整塊的字幕", p6)
 
         async def p7():

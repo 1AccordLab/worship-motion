@@ -9,13 +9,14 @@ I6 改動寫錯（語法錯、執行錯、指到不存在的背景）會擋下�
 I7 「進階」分頁列出這首歌的改動，可以單獨拿掉；全部拿掉就回到風格原本的樣子；拿掉可以還原。
 I8 元素清單上 AI 加的元素可以刪除，內建的元素沒有刪除鈕。
 I9 存成單檔、重新載入後改動都還在。
-I10 整個背景是一個函式的風格（剪紙拼貼）也能加元素；原本「完整設定」「完整新風格」的貼法照常。"""
+I10 整個背景是一個函式的風格（examples/minimal.js 的「色帶」）也能加元素；原本「完整設定」「完整新風格」的貼法照常。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
 from PIL import ImageStat
 
 MIN = (ROOT / "examples" / "minimal.js").read_text()
+PARTS = (ROOT / "examples" / "elements.js").read_text()
 PEAK = ["rays", "sun", "dot", "marks", "swatches"]
 CROSS = "function cross(f, x, e) { f.add(rect(940, 300, 980, 620, RS.ink), rect(860, 400, 1060, 440, RS.ink)); }\npatchScene({ label: '加十字架', elements: { cross: { label: '十字架', colors: ['ink'], in: ['peak'], after: 'sun', draw: cross } } });"
 MOON = "patchScene({ label: '太陽改月亮', elements: { dot: null, sun: { label: '月亮', colors: ['yel'], draw(f, x, e) { f.add(circle(960, 760, 300, RS.yel)); } } } });"
@@ -134,13 +135,14 @@ async def main():
         await safe("I9 存檔與重新載入", i9)
 
         async def i10():
-            await fresh("paper"); base = await p.shot(0, 0, 1.0)
-            ok, st = await paste(fence("js", STAR)); pic = await p.shot(0, 0, 1.0, out / "paper_star.png"); e = await els()
-            rec("I10 剪紙拼貼加星星：清單是 背景、星星，星星畫在背景上面", ok and list(e) == ["bg", "star"] and e["star"]["drawn"] == 1 and e["bg"]["drawn"] > 0 and amount(base, pic) > 0, (st[:60], [(k, v["drawn"]) for k, v in e.items()]))
-            ok, st = await paste(fence("json", json.dumps(proj("paper", bpm=100), ensure_ascii=False)))
+            assert await p.ev("c=>__app.pasteScene(c)", MIN); base = await p.shot(0, 0, 1.0)
+            ok, st = await paste(fence("js", STAR)); pic = await p.shot(0, 0, 1.0, out / "bars_star.png"); e = await els()
+            rec("I10 整個背景是一個函式的風格（色帶）加星星：清單是 背景、星星，星星畫在背景上面", ok and list(e) == ["bg", "star"] and e["star"]["drawn"] == 1 and e["bg"]["drawn"] > 0 and amount(base, pic) > 0, (st[:60], [(k, v["drawn"]) for k, v in e.items()]))
+            pj = await proj_now(); pj["bpm"] = 100
+            ok, st = await paste(fence("json", json.dumps(pj, ensure_ascii=False)))
             rec("I10 貼完整的設定照常套用，改動留著", ok and (await proj_now())["bpm"] == 100 and await labels() == ["加星星"], (st[:40], await labels()))
-            ok = await p.ev("c=>__app.pasteScene(c)", MIN)
-            rec("I10 貼完整的新風格照常套用，是全新的風格（沒有改動）", ok and (await p.ev("__app.sceneInfo()"))["id"] == "bars" and await labels() == [], await labels())
+            ok = await p.ev("c=>__app.pasteScene(c)", PARTS)
+            rec("I10 貼完整的新風格照常套用，是全新的風格（沒有改動）", ok and (await p.ev("__app.sceneInfo()"))["id"] == "parts" and await labels() == [], await labels())
         await safe("I10 整塊的背景與原本的貼法", i10)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])

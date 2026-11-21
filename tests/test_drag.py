@@ -6,7 +6,7 @@ D3  拖動時按住 Shift 只走水平或垂直；靠近畫布中心會吸附並
 D4  拉角落把手等比縮放：倍率＝游標到軸心的距離比。
 D5  拖旋轉把手旋轉：角度＝游標繞軸心轉過的角度；按住 Shift 每 15 度一格。
 D6  位置、大小、旋轉作用在整個元素上：移動讓它這一格的範圍平移；縮放與旋轉以它整個活動範圍的中心為軸；其他元素照舊。
-D7  鋪滿畫面的元素（大字排版的整面閃色、剪紙拼貼的背景）選不到、不能移動；設定裡寫了位置會略過並提醒。
+D7  鋪滿畫面的元素（大字排版的整面閃色、整個背景是一個函式的風格的「背景」）選不到、不能移動；設定裡寫了位置會略過並提醒。
 D8  字幕整個是一塊的風格，字幕整體也能拖。
 D9  選「只有這一段」時，拖動記在段落上。
 D10 設定 JSON 的 dx、dy、scale、rotate：貼上會套用，超出範圍夾回範圍內，不是數字就不套用並說明哪一欄。
@@ -18,6 +18,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
 from PIL import ImageStat
 
+MIN = (ROOT / "examples" / "minimal.js").read_text()
+BARS = {"format": "worship-motion/1", "title": "測試", "style": "bars", "bpm": 120, "sections": [{"name": "主歌", "background": "calm", "subtitle": "none"}, {"name": "副歌", "background": "calm", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字"}]}
 def amount(a, b): return sum(ImageStat.Stat(ImageChops.difference(a, b)).sum)
 def fence(kind, body): return "```" + kind + "\n" + body + "\n```"
 def center(b): return ((b[0] + b[2]) / 2, (b[1] + b[3]) / 2)
@@ -38,6 +40,9 @@ async def main():
         async def at(si, ci, t, style="riso"):
             assert await p.ev("x=>__app.load(x)", proj(style))
             await p.ev("(()=>{const b=document.querySelector('#elScope button');if(b)b.click()})()")
+            await p.ev(f"__app.select({si},{ci})"); await p.ev(f"__app.seek({t})"); await p.ev("__app.editMode(true)")
+        async def bars(si, ci, t):
+            assert await p.ev("c=>__app.pasteScene(c)", MIN) and await p.ev("x=>__app.load(x)", BARS)
             await p.ev(f"__app.select({si},{ci})"); await p.ev(f"__app.seek({t})"); await p.ev("__app.editMode(true)")
         async def view():
             await p.ev("document.querySelector('#view').scrollIntoView({block:'center'})")
@@ -147,16 +152,16 @@ async def main():
             cfg = proj("type", elements={"wash": {"dx": 50, "opacity": 0.5}})
             ok = await p.ev("t=>__app.paste(t)", fence("json", json.dumps(cfg, ensure_ascii=False))); st = await p.ev("__app.status()"); pj = await proj_now()
             rec("D7 設定裡替整面閃色寫 dx：略過並提醒，透明度照常套用", ok and pj["elements"]["wash"] == {"opacity": 0.5} and "wash" in st and "略過" in st, (pj.get("elements"), st[-120:]))
-            await at(0, 0, 1.0, "paper"); e = await els(); await click(960, 540)
-            rec("D7 剪紙拼貼的背景是固定的，點預覽選不到", e["bg"]["fixed"] is True and await sel() is None, (e["bg"]["fixed"], await sel()))
+            await bars(0, 0, 1.0); e = await els(); await click(960, 220)
+            rec("D7 色帶（整個背景是一個函式）的背景是固定的，點預覽選不到", e["bg"]["fixed"] is True and await sel() is None, (e["bg"]["fixed"], await sel()))
         await safe("D7 鋪滿畫面的元素", d7)
 
         async def d8():
-            await at(2, 1, 4.0, "nave"); base = await p.grab(4.0); e0 = await els(); u = await unit()
-            await click(960, 459); s = await sel()
-            await pg.keyboard.down("Control"); await drag((960, 459), (960, 609)); await pg.keyboard.up("Control"); adj = ((await proj_now()).get("elements") or {}).get("text", {}); e = await els()
+            await bars(1, 1, 4.0); base = await p.grab(4.0); e0 = await els(); u = await unit()
+            await click(960, 480); s = await sel()
+            await pg.keyboard.down("Control"); await drag((960, 480), (960, 630)); await pg.keyboard.up("Control"); adj = ((await proj_now()).get("elements") or {}).get("text", {}); e = await els()
             moved = await p.grab(4.0, out / "text_moved.png")
-            rec("D8 在整塊字幕的風格（光柱）上點字：選到字幕；按住 Ctrl（不吸附）往下拖 150，設定記下 dy", s and s["id"] == "text" and near((adj.get("dy", 0),), (150,), 2 * u + 1) and abs(adj.get("dx", 0)) <= 2 * u + 1, (s and s["id"], adj))
+            rec("D8 在整塊字幕的風格（色帶）上點字：選到字幕；按住 Ctrl（不吸附）往下拖 150，設定記下 dy", s and s["id"] == "text" and near((adj.get("dy", 0),), (150,), 2 * u + 1) and abs(adj.get("dx", 0)) <= 2 * u + 1, (s and s["id"], adj))
             rec("D8 字幕的範圍往下移，畫面改變", near(center(e["text"]["box"]), (center(e0["text"]["box"])[0] + adj.get("dx", 0), center(e0["text"]["box"])[1] + adj.get("dy", 0)), 0.5) and amount(base, moved) > 0, e["text"]["box"])
         await safe("D8 字幕整體", d8)
 

@@ -7,7 +7,7 @@ AC4  元素有自己的參數（大圓的大小），超出範圍會夾回範圍
 AC5  元素可以單獨換色：只影響那個元素，用同一個顏色的其他東西照舊。
 AC6  調整可以只套用在一個段落；其他段落照舊。
 AC7  字幕影片的元素清單＝段落背景的元素＋字幕的元素；字幕的元素也能隱藏。
-AC8  整個背景是一個畫圖函式的風格（剪紙拼貼）照常能用，列出 背景、字幕 兩個元素，同樣能隱藏、調透明度。
+AC8  整個背景是一個畫圖函式的風格（examples/minimal.js 的「色帶」）照常能用，列出 背景、字幕 兩個元素，同樣能隱藏、調透明度。
 AC9  設定 JSON 的 elements 欄位：貼上會套用；不認得的元素略過並提醒；值不對就不套用並說明哪一欄。
 AC10 換風格會清掉元素調整；還原（undo）回到調整前；匯出的設定、存成的單檔都帶著調整，重新載入後一樣。
 AC11 「畫面元素」分頁有元素清單：上面的列是畫在上面的元素；勾選與滑桿會改設定。
@@ -20,6 +20,8 @@ from wm import *
 from PIL import ImageStat
 
 PARTS = (ROOT / "examples" / "elements.js").read_text()
+MIN = (ROOT / "examples" / "minimal.js").read_text()
+BARS = {"format": "worship-motion/1", "title": "測試", "style": "bars", "bpm": 120, "sections": [{"name": "主歌", "background": "calm", "subtitle": "none"}, {"name": "副歌", "background": "calm", "subtitle": "gentle", "lyrics": "這是第一行示意文字\n這是第二行示意文字"}]}
 CALM = ["discs", "bar", "ring", "ramp", "marks", "swatches"]
 CALM_LABELS = ["大圓", "橫條", "圓環", "網點漸層", "套準記號", "色票條"]
 PEAK = ["rays", "sun", "dot", "marks", "swatches"]
@@ -109,13 +111,13 @@ async def main():
         await safe("AC7 字幕影片的元素", ac7)
 
         async def ac8():
-            await fresh("paper"); base = await p.shot(0, 0, 1.0); e = await els()
-            rec("AC8 剪紙拼貼的背景列出一個元素「背景」", list(e) == ["bg"] and e["bg"]["label"] == "背景" and e["bg"]["drawn"] > 0, [(k, v["label"]) for k, v in e.items()])
-            await set_el("bg", {"opacity": 0.5}); half = await p.shot(0, 0, 1.0, out / "paper_bg_half.png")
-            await set_el("bg", {"visible": False}); hid = await p.shot(0, 0, 1.0, out / "paper_bg_hidden.png"); e1 = await els()
+            assert await p.ev("c=>__app.pasteScene(c)", MIN) and await p.ev("x=>__app.load(x)", BARS); base = await p.shot(0, 0, 1.0); e = await els()
+            rec("AC8 色帶（整個背景一個函式）的背景列出一個元素「背景」", list(e) == ["bg"] and e["bg"]["label"] == "背景" and e["bg"]["drawn"] > 0, [(k, v["label"]) for k, v in e.items()])
+            await set_el("bg", {"opacity": 0.5}); half = await p.shot(0, 0, 1.0, out / "bars_bg_half.png")
+            await set_el("bg", {"visible": False}); hid = await p.shot(0, 0, 1.0, out / "bars_bg_hidden.png"); e1 = await els()
             rec("AC8 「背景」能調透明度、能隱藏", 0 < amount(base, half) < amount(base, hid) and e1["bg"]["drawn"] == 0, (amount(base, half), amount(base, hid), e1["bg"]["drawn"]))
-            await fresh("paper"); await p.shot(2, 1, 4.0)
-            rec("AC8 剪紙拼貼的字幕影片列出 背景、字幕", await ids() == ["bg", "text"], await ids())
+            await p.ev("x=>__app.load(x)", BARS); await p.shot(1, 1, 4.0)
+            rec("AC8 色帶的字幕影片列出 背景、字幕", await ids() == ["bg", "text"], await ids())
         await safe("AC8 整個背景一個函式的風格", ac8)
 
         async def ac9():
