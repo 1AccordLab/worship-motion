@@ -7,7 +7,8 @@ E4 按住拖出一個範圍：碰到的元素都被選取（鋪滿畫面的、�
 E5 按住 Shift 點元素：加入選取或從選取中拿掉。
 E6 從選取範圍裡開始拖：選取的元素一起移動同樣的距離，是一筆歷史紀錄，還原後全部回到原位。
 E7 鎖定：清單上按鎖定後，設定記下 locked；在預覽上點不到、範圍選取選不到、點清單名稱也選不到；解鎖後恢復。
-E8 點清單上的名稱會自動打開「調整畫面」；關掉「調整畫面」會取消選取。"""
+E8 點清單上的名稱會自動打開「調整畫面」；關掉「調整畫面」會取消選取。
+E9 元素疊在一起的地方：點一下選最上面的；對已選取的元素在同一個位置再點一下（沒有拖），換選它底下的那一個，輪到最底再回到最上面；選到底下的元素後從那裡拖，移動的是它。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -144,6 +145,25 @@ async def main():
             rec("E8 游標在數字欄裡按 Esc：選取留著", await picked() == ["ring"], await picked())
             rec("E8 再按一次打開，按鈕狀態跟著變", await p.ev("__app.editMode()") is True and await p.ev("document.querySelector('#editToggle').getAttribute('aria-pressed')") == "true")
         await safe("E8 開關", e8)
+
+        async def e9():
+            spot = (706, 871)
+            await at(2, 0, 0); seen = []
+            for _ in range(3): await click(*spot); seen.append(await picked())
+            rec("E9 太陽蓋住光芒的地方：點一下選太陽，再點換成底下的光芒，再點回到太陽", seen == [["sun"], ["rays"], ["sun"]], seen)
+            await click(*spot); u = await unit()
+            await pg.keyboard.down("Control"); await drag(spot, (spot[0] + 150, spot[1] - 100)); await pg.keyboard.up("Control"); adj = (await proj_now()).get("elements") or {}
+            rec("E9 選到底下的光芒後從同一個位置拖：移動的是光芒，太陽沒動", await picked() == ["rays"] and near((adj.get("rays", {}).get("dx", 0), adj.get("rays", {}).get("dy", 0)), (150, -100), 2 * u + 1) and "sun" not in adj, adj)
+            await at(2, 0, 0); await click(250, 190); await click(250, 190)
+            rec("E9 底下沒有別的元素時再點一下：選取不變", await picked() == ["dot"], await picked())
+            await click(*spot, shift=True); both = await picked(); await click(*spot, shift=True)
+            rec("E9 按住 Shift 點的規則照舊：加進選取、再點拿掉", both == ["dot", "sun"] and await picked() == ["dot"], (both, await picked()))
+            await click(*spot); await view(); await pg.click("#selBox .h.nw")
+            rec("E9 在選取框的把手上點一下（沒有拖）：選取不變", await picked() == ["sun"], await picked())
+            await at(1, 1, 3.0, "type"); cx, cy = center((await els())["underline"]["box"]); seen = []
+            for _ in range(8): await click(cx, cy); seen.append(await picked())
+            rec("E9 大字排版被字蓋住的重點短線：在它上面連點，輪得到它", ["underline"] in seen, seen)
+        await safe("E9 再點一下選底下", e9)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
