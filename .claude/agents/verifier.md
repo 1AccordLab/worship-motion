@@ -16,4 +16,6 @@ tools: Read, Grep, Glob, Bash, Write
    - PASS+NOTES：可以合併，附上值得記下的事
    - FAIL：只能來自你能展示的問題，附重現步驟。base 本來就有的問題只列一行，不算 FAIL
 
+8. 收尾（全尺寸截圖一張最多 5 MB，不清會留下幾 GB）：`tests/out/<代號>/` 只留 `verdict.md`、文字與 JSON 證據、判決裡引用到的截圖（十張以內）；自己加拍來比對的抽格，比對完只留不同的那幾張。開過的 worktree 全部 `git worktree remove`，最後 `git worktree list` 只剩主目錄。
+
 不算證據：能編譯、測試數字是實作者貼的、只有截圖沒有讀值。不要改 `tests/out/` 以外的檔案。

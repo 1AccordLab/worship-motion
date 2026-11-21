@@ -22,9 +22,9 @@
 - 靜態規則（1 秒）：`python3 tests/check_repo.py`。Stop hook 每次結束前都會跑，沒過不能結束；check_repo 本身崩潰時會連 stderr 一起輸出。
 - 打包：`python3 build.py` → `dist/詩歌影片編輯器.html`。瀏覽器測試讀的是這個檔，改完 `src/` 先打包。`--s2t` 才重產簡轉繁表（需要 opencc、jieba）。
 - 瀏覽器測試：`python3 tests/test_<名稱>.py`，每支印「通過 N / M」，全過 exit 0。無頭 Chrome 用 SwiftShader 跑 WebGPU，旗標在 `tests/wm.py`；`WM_CHROME` 指定 Chrome 路徑，`WM_FORCE_FAIL=1` 驗證 exit code。
-- 純重構（不該改畫面）：`python3 tests/test_golden.py [--ref origin/main]` 把 ref 與工作目錄各打包、各拍 204 張抽格比對，**必須 0 張不同**。有意改畫面時用 `--expect 檔名樣式,…` 列出預期不同的圖。
+- 純重構（不該改畫面）：`python3 tests/test_golden.py [--ref origin/main]` 把 ref 與工作目錄各打包、各拍 229 張抽格比對，**必須 0 張不同**。比對完只留下不同的那幾張。有意改畫面時用 `--expect 檔名樣式,…` 列出預期不同的圖。
 - 教學截圖：`python3 tests/shots_guide.py`。新風格開發：`tests/shots_scene.py`。
-- 輸出與證據放 `tests/out/`（gitignore）。
+- 輸出與證據放 `tests/out/`（gitignore）。全尺寸截圖一張最多 5 MB，一個任務就能累積幾 GB：任務結束後整個資料夾可以刪，下次測試會重產；被中斷的抽格比對或驗證會留下 worktree，用 `git worktree prune` 清掉。
 - 宣告完成前，用 `verify-editor` skill 在真實編輯器上走一次受影響的操作，回覆附上指令和輸出。
 
 ## 程式在哪

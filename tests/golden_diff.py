@@ -16,6 +16,13 @@ def compare(a_dir, b_dir, expect=()):
         d = pixels_over_tolerance(a_dir / n, b)
         if d > 0: (expected if any(fnmatch.fnmatch(n, e) for e in expect) else bad).append((n, d))
     return len(names), bad, expected, missing
+def discard_identical(a_dir, b_dir, bad, expected, missing):
+    """比對完只留下不同與缺少的那幾張（兩個資料夾各一份），其餘刪掉；回傳 (刪掉幾個檔, 釋放幾 MB)"""
+    keep = {n for n, _ in bad} | {n for n, _ in expected} | set(missing); gone = size = 0
+    for d in (pathlib.Path(a_dir), pathlib.Path(b_dir)):
+        for f in d.glob("*.png"):
+            if f.name not in keep: size += f.stat().st_size; f.unlink(); gone += 1
+    return gone, round(size / 1e6)
 def report(total, bad, expected, missing):
     print(f"比對 {total} 張；不同 {len(bad)}；缺少 {len(missing)}；預期內的不同 {len(expected)}")
     for n, d in bad: print("  不同", n, d)

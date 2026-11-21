@@ -1,10 +1,11 @@
 """畫面比對：python3 tests/test_golden.py [--ref origin/main] [--expect 檔名樣式,…]
 把指定 git ref 和目前工作目錄各打包一份、各拍一次抽格再比對，0 張不同才通過。
+比對完只留下不同的那幾張在 tests/out/golden/（相同的全部刪掉，一輪抽格約 840 MB）；要全部留著加 --keep。
 有意改畫面時，用 --expect 列出預期會不同的檔名（可用 * 萬用字元）；ref 要有 build.py。"""
 import argparse, pathlib, shutil, subprocess, sys, tempfile
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import ROOT, OUT, rec, finish
-from golden_diff import compare, report
+from golden_diff import compare, report, discard_identical
 
 def run(*cmd, cwd=ROOT): subprocess.run(cmd, cwd=cwd, check=True)
 
@@ -17,7 +18,7 @@ def shoot(root, html, out):
     run(sys.executable, str(ROOT / "tests" / "golden.py"), str(out), str(html), "--examples", str(root / "examples"))
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--ref", default="origin/main"); ap.add_argument("--expect", default="")
+    ap = argparse.ArgumentParser(); ap.add_argument("--ref", default="origin/main"); ap.add_argument("--expect", default=""); ap.add_argument("--keep", action="store_true")
     a = ap.parse_args(); expect = [e for e in a.expect.split(",") if e]
     if subprocess.run(["git", "cat-file", "-e", a.ref + ":build.py"], cwd=ROOT, capture_output=True).returncode:
         sys.exit(f"{a.ref} 沒有 build.py，不能當比對基準")
@@ -33,6 +34,9 @@ def main():
         run("git", "worktree", "remove", "--force", str(wt)); shutil.rmtree(tmp, ignore_errors=True)
     ok = report(*(res := compare(ref_dir, cur_dir, expect)))
     for n, d in res[2]: print("  預期內的不同", n, d)
+    if not a.keep:
+        gone, mb = discard_identical(ref_dir, cur_dir, *res[1:])
+        print(f"已刪掉相同的抽格 {gone} 個檔（{mb} MB）；不同的留在 {ref_dir.parent}")
     rec(f"畫面比對：{a.ref} 與目前工作目錄 0 張非預期的不同（共 {res[0]} 張）", ok)
     finish()
 
