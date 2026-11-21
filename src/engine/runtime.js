@@ -189,7 +189,7 @@ const TEX_TYPES = { fiber: 1, grain: 2, halftone: 3, misreg: 4, bleed: 5, rough:
 const TEX_ON = { shapes: 1, text: 2, lines: 4, bg: 8 };
 const DESC_MAX = 80;
 const RESERVED = new Set(['constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', 'none']);
-const IMPLICIT_ELEMENTS = { bg: '背景', text: '字幕' };
+const IMPLICIT_ELEMENTS = { bg: '背景', text: '字幕' }, UNDER = 'under';
 function defineScene(d) {
   const bad = m => { throw new Error('defineScene：' + m); };
   if (SCENE) bad('一份新風格程式只能呼叫一次 defineScene');
@@ -214,18 +214,20 @@ function defineScene(d) {
   const elements = {};
   for (const [k, v] of Object.entries(d.elements || {})) {
     if (!NAME.test(k) || RESERVED.has(k)) bad(`elements 的名稱「${k}」要用英文字母開頭，只能有英文、數字、- 或 _（例如 sun、stripes）`);
-    if (IMPLICIT_ELEMENTS[k]) bad(`elements 的名稱「${k}」是保留的（bg 代表整個背景、text 代表字幕），請換一個名稱`);
+    if (IMPLICIT_ELEMENTS[k] || k === UNDER) bad(`elements 的名稱「${k}」是保留的（bg 代表整個背景、text 代表字幕、under 代表字幕底下的背景），請換一個名稱`);
     if (!v || typeof v.draw !== 'function') bad(`elements.${k} 缺少 draw(f, x, e) 函式`);
     const colors = v.colors || [];
     if (!Array.isArray(colors)) bad(`elements.${k}.colors 要是 palette 鍵的陣列，例如 ["main"]`);
     for (const c of colors) if (!d.palette[c]) bad(`elements.${k}.colors 的「${c}」不在 palette 裡`);
     elements[k] = { label: typeof v.label === 'string' && v.label.trim() ? v.label.trim().slice(0, 20) : k, draw: v.draw, fixed: !!v.fixed, colors: [...colors], params: paramDefs(v.params, `elements.${k}.params`) };
   }
-  const useList = (list, where) => {
+  const useList = (list, where, underOk) => {
     if (!Array.isArray(list) || !list.length) bad(`${where}.use 要是至少有一個元素的陣列，例如 ["sun", { el: "rays", count: 12 }]`);
     return list.map(u => {
       const id = typeof u === 'string' ? u : u && u.el;
-      if (typeof id !== 'string' || !elements[id]) bad(`${where}.use 的「${id}」不在 elements 裡（可用：${Object.keys(elements).join('、') || '還沒有定義任何元素'}）`);
+      if (id === UNDER && !underOk) bad(`${where}.use 不能放 "under"（它代表字幕底下的背景，只能用在 subtitles 的 use）`);
+      if (id === UNDER && u.bg !== undefined && (typeof u.bg !== 'string' || !d.backgrounds || !d.backgrounds[u.bg])) bad(`${where}.use 的 under 指定的背景「${u.bg}」不在 backgrounds 裡`);
+      if (id !== UNDER && (typeof id !== 'string' || !elements[id])) bad(`${where}.use 的「${id}」不在 elements 裡（可用：${Object.keys(elements).join('、') || '還沒有定義任何元素'}）`);
       const { el, ...args } = typeof u === 'string' ? {} : u;
       return { id, args };
     });
@@ -235,10 +237,10 @@ function defineScene(d) {
     const out = {};
     for (const [k, v] of Object.entries(o)) {
       if (!NAME.test(k) || RESERVED.has(k)) bad(`${what} 的名稱「${k}」要用英文字母開頭，只能有英文、數字、- 或 _（例如 calm、peak、verse1Text）`);
-      const composed = what === 'backgrounds' && v && v.use !== undefined;
-      if (!composed && (!v || typeof v.draw !== 'function')) bad(`${what}.${k} 缺少 draw(f, x) 函式` + (what === 'backgrounds' ? '（或 use 元素清單）' : ''));
+      const composed = !!v && v.use !== undefined;
+      if (!composed && (!v || typeof v.draw !== 'function')) bad(`${what}.${k} 缺少 draw(f, x) 函式（或 use 元素清單）`);
       if (what === 'subtitles' && v.split && !['line', 'block'].includes(v.split)) bad(`subtitles.${k}.split 只能是 "line" 或 "block"`);
-      out[k] = composed ? { ...v, use: useList(v.use, `backgrounds.${k}`) } : v;
+      out[k] = composed ? { ...v, use: useList(v.use, `${what}.${k}`, what === 'subtitles') } : v;
     }
     return out;
   };
@@ -259,8 +261,8 @@ function defineScene(d) {
   if (d.description !== undefined && (typeof d.description !== 'string' || d.description.length > DESC_MAX)) bad(`description 要是一句話的字串（${DESC_MAX} 字以內）`);
   SCENE = { d, id, backgrounds, subtitles, elements, textures, params, palette: d.palette, defaults: { ...d.palette } };
 }
-const usesOf = b => b.use ? [...new Set(b.use.map(u => u.id))] : ['bg'];
-const implicitInUse = () => ({ ...(Object.values(SCENE.backgrounds).some(b => !b.use) ? { bg: IMPLICIT_ELEMENTS.bg } : {}), ...(Object.keys(SCENE.subtitles).length ? { text: IMPLICIT_ELEMENTS.text } : {}) });
+const usesOf = (b, whole) => b.use ? [...new Set(b.use.map(u => u.id).filter(id => id !== UNDER))] : [whole];
+const implicitInUse = () => ({ ...(Object.values(SCENE.backgrounds).some(b => !b.use) ? { bg: IMPLICIT_ELEMENTS.bg } : {}), ...(Object.values(SCENE.subtitles).some(b => !b.use) ? { text: IMPLICIT_ELEMENTS.text } : {}) });
 const adjOf = id => (CLIP.els && CLIP.els[id]) || {};
 const isHidden = id => adjOf(id).visible === false;
 /* 注意：場景從同一個 palette 物件讀色，元素自己的顏色只能在它畫的期間原地換上、畫完換回 */
@@ -275,6 +277,14 @@ function drawBackground(f, x, name, o) {
   const b = SCENE.backgrounds[name];
   if (!b.use) return asElement(f, 'bg', () => b.draw(f, x, o));
   for (const u of b.use) asElement(f, u.id, () => SCENE.elements[u.id].draw(f, x, { id: u.id, p: CLIP.elParams[u.id], args: u.args, sub: o && o.sub }));
+}
+function drawSubtitle(f, x) {
+  const def = CLIP.def;
+  if (!def.use) return asElement(f, 'text', () => def.draw(f, x), true);
+  for (const u of def.use) {
+    if (u.id === UNDER) x.under(f, u.args.bg);
+    else asElement(f, u.id, () => SCENE.elements[u.id].draw(f, x, { id: u.id, p: CLIP.elParams[u.id], args: u.args }));
+  }
 }
 
 const isFixed = id => id === 'bg' || !!(SCENE.elements[id] && SCENE.elements[id].fixed);
@@ -314,10 +324,10 @@ function territory() {
 }
 function territoryFresh(x, bgName, key) {
   const boxes = {}, keepT = x.t, at = tt => { x.t = tt; x.beat = tt / BEAT; return new Frame(SCENE.palette); };
-  const collect = (f, only) => { for (const it of f.items) if (!only || it.el === only) boxes[it.el] = grow(boxes[it.el], itemBox(it)); };
+  const collect = (f, only) => { for (const it of f.items) if (!only || only.includes(it.el)) boxes[it.el] = grow(boxes[it.el], itemBox(it)); };
   try {
     if (bgName && SCENE.backgrounds[bgName].use) for (let i = 0; i < TERRITORY_SAMPLES; i++) { const f = at((i + .5) * CLIP.span / TERRITORY_SAMPLES); drawBackground(f, x, bgName); collect(f); }
-    if (x.kind === 'sub') { const f = at(x.dur); asElement(f, 'text', () => CLIP.def.draw(f, x), true); collect(f, 'text'); }
+    if (x.kind === 'sub') { const f = at(x.dur); drawSubtitle(f, x); collect(f, usesOf(CLIP.def, 'text')); }
   } finally { x.t = keepT; x.beat = keepT / BEAT; }
   for (const [k, box] of Object.entries(boxes)) {
     const inView = [Math.max(0, box[0]), Math.max(0, box[1]), Math.min(W, box[2]), Math.min(H, box[3])];
@@ -344,7 +354,7 @@ function placed(it, tr) {
 function placedItems(t) {
   const x = CLIP.x; x.t = t; x.beat = t / BEAT;
   const f = new Frame(SCENE.palette), trs = {};
-  if (x.kind === 'bg') drawBackground(f, x, x.type); else asElement(f, 'text', () => CLIP.def.draw(f, x), true);
+  if (x.kind === 'bg') drawBackground(f, x, x.type); else drawSubtitle(f, x);
   const items = f.items.filter(it => !isHidden(it.el)).sort((a, b) => a.z - b.z || a.i - b.i).map(it => {
     if (!(it.el in trs)) trs[it.el] = transformOf(it.el);
     return trs[it.el] ? { ...it, o: placed(it, trs[it.el]) } : it; });
@@ -471,8 +481,8 @@ function __wmReady() {
   postMessage({ ready: true, meta: {
     id: SCENE.id, name: d.name.trim().slice(0, 30), description: (d.description || '').trim(), palette: SCENE.defaults, labels: d.labels || null, params: SCENE.params,
     look: d.look || {}, textures: SCENE.textures,
-    backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4, uses: usesOf(v) })),
-    subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))) })),
+    backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4, uses: usesOf(v, 'bg') })),
+    subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))), uses: usesOf(v, 'text') })),
     elements: { ...list(implicitInUse(), (k, label) => ({ label, fixed: isFixed(k), colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, fixed: e.fixed, colors: e.colors, params: e.params })) },
     canvas: d.canvas ? { src: String(d.canvas.draw), z: d.canvas.z ?? .5, half: !!d.canvas.half } : null,
     shader: d.shader ? { code: d.shader.code, z: d.shader.z ?? .5 } : null,

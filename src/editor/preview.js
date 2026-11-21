@@ -16,7 +16,7 @@ let drawnByElement = {}, frameBoxes = {}, clipTerritory = {};
 const bgSpan = s => frames32() * s.loopBeats / 32 / FPS * K();
 async function loadBoxes() {
   if (!clip || !scene) { frameBoxes = {}; clipTerritory = {}; renderStage(); return; }
-  frameBoxes = (await scene.boxes(clip.map(t))).boxes; clipTerritory = (await scene.territory()).boxes; renderStage();
+  const now = await scene.boxes(clip.map(t)); frameBoxes = now.boxes; drawnByElement = now.drawn || {}; clipTerritory = (await scene.territory()).boxes; renderStage();
   if (hoverWant && !hoverBusy) runHover();
 }
 // 注意：拖曳時游標事件比 Worker 來回快得多，排隊中的那一次會讀到最新的調整，所以同時只排一次
@@ -26,7 +26,7 @@ function pushElements() {
   if (!elementsPush) elementsPush = serial(async () => { elementsPush = null; if (!clip || !scene) return; await scene.elements(clipElements(sec())); await loadBoxes(); }).catch(e => pvStatus('預覽錯誤：' + fmtErr(e), true));
   return elementsPush;
 }
-function clipElementIds(s, ci, m = meta()) { const ids = [...m.backgrounds[s.background].uses]; if (ci > 0) ids.push('text'); return ids; }
+function clipElementIds(s, ci, m = meta()) { const sub = ci > 0 && m.subtitles[s.subtitle]; return [...new Set([...m.backgrounds[s.background].uses, ...(sub ? sub.uses : [])])]; }
 function clipElements(s) {
   const out = {};
   for (const id of new Set([...Object.keys(P.elements || {}), ...Object.keys(s.elements || {})])) out[id] = mergeAdj((P.elements || {})[id], (s.elements || {})[id]);

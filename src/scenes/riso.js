@@ -88,53 +88,58 @@ function dot(f, x) {
   const K = x.step([[230, 200], [1690, 200], [300, 260], [1620, 240]], 2, mod(x.t, 16));
   f.add(ink(circle(K[0], K[1], 110, RS.teal)));
 }
-// 華麗字幕：每個字像蓋印章，一格一格印上去；關鍵字粉紅大字、網點陰影
-function flashy(f, x) {
-  const t = x.t, { chars, kw } = x, n = chars.length, size = Math.min(190, 1500 / n), x0 = 960 - size * (n - 1) / 2;
-  const cols = [RS.blue, RS.teal, RS.yel];
-  x.under(f, 'build');
+// 華麗字幕的排法：每個字一格、依序蓋上去，關鍵字放大
+function stampCells(x) {
+  const t = x.t, { chars, kw } = x, n = chars.length, size = Math.min(190, 1500 / n), x0 = 960 - size * (n - 1) / 2, cells = [];
   chars.forEach((ch, i) => {
     const ti = .15 + i * .1, si = seg(t, ti, ti + .18); if (si <= 0) return;
     const isK = i === kw, bounce = t > ti + .6 ? pulse(t, 7, BEAT, i * BEAT / n) : 0;
-    const sc = lerp(1.35, 1, E.out(si)) * (isK ? 1.3 : 1) * (1 + .05 * bounce), px = x0 + i * size, py = 520 - 8 * bounce;
-    f.add(ink(band(px + 10, py + 12, size * .92 * sc, size * .92 * sc, (hash(i * 3.1) - .5) * 14, isK ? RS.pink : cols[i % 3], isK ? .9 : .5)));
-    f.text(ch, px, py, { px: 132, weight: 900, scale: sc, col: RS.ink, blend: 'multiply' });
+    cells.push({ ch, i, isK, size, sc: lerp(1.35, 1, E.out(si)) * (isK ? 1.3 : 1) * (1 + .05 * bounce), px: x0 + i * size, py: 520 - 8 * bounce });
   });
-  const sub = x.small[0];
-  if (sub) {
-    const SM = { px: 60, weight: 700, spacing: 2 }, a = E.io(seg(t, .3 + n * .1, .7 + n * .1));
-    f.add(ink(rect(960 - 70 * a, 676, 960 + 70 * a, 684, RS.teal, a)));
-    f.text(sub, 960, 736 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 1300, SM), col: RS.ink, a: .72 * a, blend: 'multiply' });
-  }
-  const w = seg(t, 0, .4);
+  return cells;
+}
+// 印章色塊：每個字後面一塊歪歪的色塊，關鍵字是粉紅
+function stamps(f, x) {
+  const cols = [RS.blue, RS.teal, RS.yel];
+  for (const c of stampCells(x)) f.add(ink(band(c.px + 10, c.py + 12, c.size * .92 * c.sc, c.size * .92 * c.sc, (hash(c.i * 3.1) - .5) * 14, c.isK ? RS.pink : cols[c.i % 3], c.isK ? .9 : .5)));
+}
+// 歌詞（華麗）：每個字像蓋印章，一格一格印上去
+function chars(f, x) {
+  for (const c of stampCells(x)) f.text(c.ch, c.px, c.py, { px: 132, weight: 900, scale: c.sc, col: RS.ink, blend: 'multiply' });
+}
+// 第二語言：一小條青色橫線，下面一行小字
+function subline(f, x) {
+  const sub = x.small[0]; if (!sub) return;
+  const n = x.chars.length, SM = { px: 60, weight: 700, spacing: 2 }, a = E.io(seg(x.t, .3 + n * .1, .7 + n * .1));
+  f.add(ink(rect(960 - 70 * a, 676, 960 + 70 * a, 684, RS.teal, a)));
+  f.text(sub, 960, 736 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 1300, SM), col: RS.ink, a: .72 * a, blend: 'multiply' });
+}
+// 開場掃屏：一道粉紅色斜帶從右掃到左
+function wipe(f, x) {
+  const w = seg(x.t, 0, .4);
   if (w < 1) f.top(ink(band(lerp(W + 800, -800, E.io(w)), 540, 1100, 1500, 8, RS.pink, .6)));
 }
-// 收斂字幕：紙色橫條托住字，切下一句只有字在換
-function gentle(f, x) {
-  if (x.small.length) return gentle2(f, x);
-  const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 130, y0 = 500 - gap * (n - 1) / 2;
-  const top = y0 - 90, bot = y0 + (n - 1) * gap + 100, TX = { px: 84, weight: 900, spacing: 8 };
-  x.under(f, 'peak');
-  f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
-  lines.forEach((l, i) => {
-    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
-    f.text(l, 964, y + 5, { ...TX, col: RS.pink, a: .55 * a, blend: 'multiply' });
-    f.text(l, 960, y, { ...TX, col: RS.ink, a, blend: 'multiply' });
-  });
+// 收斂字幕的排法：最多三行置中；有第二語言時每行下面多一行小字，底條跟著加高
+function blockLayout(x) {
+  const two = x.small.length > 0, big = x.big.slice(0, 3), small = two ? x.small.slice(0, 3) : [], n = two ? Math.max(big.length, small.length) : big.length;
+  const gap = two ? 154 : 130, y0 = 500 - gap * (n - 1) / 2;
+  return { two, big, small, n, gap, y0, top: y0 - 90, bot: y0 + (n - 1) * gap + (two ? 128 : 100) };
 }
-
-// 收斂字幕（雙語）：紙色橫條加高，每行大字下面一行小字
-function gentle2(f, x) {
-  const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 154, y0 = 500 - gap * (n - 1) / 2;
-  const top = y0 - 90, bot = y0 + (n - 1) * gap + 128, TX = { px: 84, weight: 900, spacing: 8 }, SM = { px: 40, weight: 700, spacing: 3 };
-  x.under(f, 'peak');
+// 紙色底條：托住歌詞的紙色橫條，上緣藍線、下緣粉紅線
+function plate(f, x) {
+  const { top, bot } = blockLayout(x);
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
-  for (let i = 0; i < n; i++) {
-    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
-    if (big[i]) { const sc = f.fit(big[i], 1680, TX);
-      f.text(big[i], 964, y + 5, { ...TX, scale: sc, col: RS.pink, a: .55 * a, blend: 'multiply' });
-      f.text(big[i], 960, y, { ...TX, scale: sc, col: RS.ink, a, blend: 'multiply' }); }
-    if (small[i]) f.text(small[i], 960, y + 62, { ...SM, scale: f.fit(small[i], 1600, SM), col: RS.ink, a: .62 * a, blend: 'multiply' });
+}
+// 歌詞（收斂）：逐行淡入的粗字，後面一層粉紅色的錯位影；第二語言是每行下面的小字
+function lyrics(f, x) {
+  const t = x.t, L = blockLayout(x), TX = { px: 84, weight: 900, spacing: 8 }, SM = { px: 40, weight: 700, spacing: 3 };
+  for (let i = 0; i < L.n; i++) {
+    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = L.y0 + i * L.gap + (1 - E.out(s)) * 12, l = L.big[i];
+    if (l && !L.two) { f.text(l, 964, y + 5, { ...TX, col: RS.pink, a: .55 * a, blend: 'multiply' }); f.text(l, 960, y, { ...TX, col: RS.ink, a, blend: 'multiply' }); }
+    if (l && L.two) { const sc = f.fit(l, 1680, TX);
+      f.text(l, 964, y + 5, { ...TX, scale: sc, col: RS.pink, a: .55 * a, blend: 'multiply' });
+      f.text(l, 960, y, { ...TX, scale: sc, col: RS.ink, a, blend: 'multiply' }); }
+    if (L.small[i]) f.text(L.small[i], 960, y + 62, { ...SM, scale: f.fit(L.small[i], 1600, SM), col: RS.ink, a: .62 * a, blend: 'multiply' });
   }
 }
 
@@ -162,6 +167,12 @@ defineScene({
     rays: { label: '光芒', colors: ['blue', 'pink'], draw: rays },
     sun: { label: '太陽', colors: ['yel', 'pink', 'teal'], params: { size: { value: 1, min: .5, max: 1.5, label: '大小' } }, draw: sun },
     dot: { label: '小圓', colors: ['teal'], draw: dot },
+    stamps: { label: '印章色塊', colors: ['pink', 'blue', 'teal', 'yel'], draw: stamps },
+    chars: { label: '歌詞', colors: ['ink'], draw: chars },
+    subline: { label: '第二語言', colors: ['teal', 'ink'], draw: subline },
+    wipe: { label: '開場掃屏', fixed: true, colors: ['pink'], draw: wipe },
+    plate: { label: '紙色底條', colors: ['blue', 'pink'], draw: plate },
+    lyrics: { label: '歌詞', colors: ['pink', 'ink'], draw: lyrics },
   },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, use: [{ el: 'discs', pair: true }, 'bar', 'ring', { el: 'ramp', list: [[1620, 860, 220, 34, 6, 'teal']] }, { el: 'marks', at: [[90, 90], [1830, 990]] }, { el: 'swatches', at: [96, 1000] }] },
@@ -169,7 +180,7 @@ defineScene({
     peak: { label: '高潮', jumpBeats: 4, use: ['rays', 'sun', 'dot', { el: 'marks', at: [[90, 90], [1830, 90]] }, { el: 'swatches', at: [96, 60] }] },
   },
   subtitles: {
-    flashy: { label: '華麗', split: 'line', seconds: 6, draw: flashy },
-    gentle: { label: '收斂', split: 'block', seconds: 16, draw: gentle },
+    flashy: { label: '華麗', split: 'line', seconds: 6, use: [{ el: 'under', bg: 'build' }, 'stamps', 'chars', 'subline', 'wipe'] },
+    gentle: { label: '收斂', split: 'block', seconds: 16, use: [{ el: 'under', bg: 'peak' }, 'plate', 'lyrics'] },
   },
 });

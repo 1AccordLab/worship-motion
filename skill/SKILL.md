@@ -156,7 +156,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 | `sections[].elements` | 同上 | 空 | 只套用在這一段，蓋過整首歌的調整（例如只有副歌把光芒調淡） |
 
 內建風格配色鍵：swiss `bg org crm dim`｜paper `bg red yel crm pnk`｜type `bg tone org crm`｜bauhaus `bg red yel blu crm`｜riso `bg pink blue yel teal ink`｜ink `bg ink wash warm seal shade`｜nave `bg green win light gold`｜sky `bg blue warm far mid near hill light`。
-內建風格的元素（`elements` 的名稱）：riso `discs 大圓` `bar 橫條` `ring 圓環` `ramp 網點漸層` `marks 套準記號` `swatches 色票條` `stripes 斜條紋` `tri 三角形` `progress 進度條` `rays 光芒` `sun 太陽` `dot 小圓`｜type `giant 背景大字` `wash 整面閃色` `panel 側邊色塊` `para 段落剪影` `ibeam 直條` `disc 大圓點` `dot 小圓點` `rules 橫線` `ellipsis 刪節號` `progress 進度條` `corner 角落色塊` `ring 圓環` `block 大色塊`｜其他內建風格 `bg 背景`。每個風格的字幕都是 `text 字幕`。可調的參數：riso 的 `discs.size` `sun.size`、type 的 `giant.size`（都是 0.5–1.5，預設 1）。鋪滿畫面、不能移動的元素：type 的 `wash`，以及其他內建風格的 `bg`。例：`"elements": { "rays": { "opacity": 0.5 }, "sun": { "params": { "size": 1.2 }, "dx": -120, "dy": 40 } }`。
+內建風格的元素（`elements` 的名稱）：riso `discs 大圓` `bar 橫條` `ring 圓環` `ramp 網點漸層` `marks 套準記號` `swatches 色票條` `stripes 斜條紋` `tri 三角形` `progress 進度條` `rays 光芒` `sun 太陽` `dot 小圓`，字幕 `stamps 印章色塊` `chars 歌詞（華麗）` `subline 第二語言` `wipe 開場掃屏` `plate 紙色底條` `lyrics 歌詞（收斂）`｜type `giant 背景大字` `wash 整面閃色` `panel 側邊色塊` `para 段落剪影` `ibeam 直條` `disc 大圓點` `dot 小圓點` `rules 橫線` `ellipsis 刪節號` `progress 進度條` `corner 角落色塊` `ring 圓環` `block 大色塊`，字幕 `flash 開場快閃` `keyword 關鍵字` `words 其他的字` `underline 底線` `subline 第二語言` `plate 深色底條` `lyrics 歌詞（收斂）` `accent 重點短線`｜其他內建風格 `bg 背景`、`text 字幕`（整塊）。可調的參數：riso 的 `discs.size` `sun.size`、type 的 `giant.size`（都是 0.5–1.5，預設 1）。鋪滿畫面、不能移動的元素：type 的 `wash` `flash`、riso 的 `wipe`，以及其他內建風格的 `bg`。例：`"elements": { "rays": { "opacity": 0.5 }, "sun": { "params": { "size": 1.2 }, "dx": -120, "dy": 40 } }`。
 純 JSON：雙引號、無註解、無尾逗號；不確定就省略。編輯器會檢查，錯了列出哪段哪欄、不套用。
 
 ---
@@ -203,9 +203,10 @@ function bar(f, x, e) {                                    // 色帶：粗細是
 function dot(f, x, e) {                                    // 圓：半徑由各個背景在 use 裡指定
   f.add(circle(1640, 300, e.args.r * (1 + .06 * pulse(x.t)), C.soft, .9));
 }
-function gentle(f, x) {
-  x.under(f, 'calm');                                      // 畫段落選的背景（段落沒指定時用 calm）
+function plate(f) {                                        // 字幕的底條
   f.add(rect(0, 400, W, 680, C.bg, .92));
+}
+function lyrics(f, x) {                                    // 字幕的歌詞：逐行淡入
   x.lines.forEach((l, i) => f.text(l, 960, 480 + i * 120, { px: 84, col: C.soft, a: seg(x.t, i * .1, .5 + i * .1) }));
 }
 
@@ -215,12 +216,14 @@ defineScene({
   elements: {
     bar: { label: '色帶', colors: ['main'], params: { thick: { value: 1, min: .5, max: 4, label: '粗細' } }, draw: bar },
     dot: { label: '圓', colors: ['soft'], draw: dot },
+    plate: { label: '底條', draw: plate },
+    lyrics: { label: '歌詞', colors: ['soft'], draw: lyrics },
   },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, use: ['bar', { el: 'dot', r: 90 }] },
     peak: { label: '高潮', jumpBeats: 2, use: ['bar', { el: 'dot', r: 160 }] },
   },
-  subtitles: { gentle: { label: '收斂', split: 'block', seconds: 16, draw: gentle } },
+  subtitles: { gentle: { label: '收斂', split: 'block', seconds: 16, use: [{ el: 'under', bg: 'calm' }, 'plate', 'lyrics'] } },   // under＝段落選的背景（沒選時用 calm）
 });
 ```
 
@@ -232,7 +235,7 @@ defineScene({
 | `colors` | 這個元素用到的 palette 鍵，例如 `['main']`；同工可以只換這個元素的顏色。顏色要在 `draw` 裡從 palette 物件讀（`C.main`），不要先存成別的變數 |
 | `fixed` | `true`：鋪滿整個畫面的元素（整面底色、整面閃色）。同工只能隱藏、調透明度，不能在預覽上拖它 |
 
-背景的 `use`：元素名稱的陣列，每一項是 `'名稱'` 或 `{ el: '名稱', 其他資料 }`；同一個元素可以用在好幾種背景，各給不同的資料。元素之間不要互相依賴（一個元素被隱藏，其他的要照常畫）。元素名稱的規則和背景名稱一樣，不要用 `bg`、`text`（保留給「整個背景」和「字幕」）。背景寫成一個 `draw(f, x)` 也可以，這時整個背景在清單上是一個元素「背景」。
+背景的 `use`：元素名稱的陣列，每一項是 `'名稱'` 或 `{ el: '名稱', 其他資料 }`；同一個元素可以用在好幾種背景，各給不同的資料。元素之間不要互相依賴（一個元素被隱藏，其他的要照常畫）。元素名稱的規則和背景名稱一樣，不要用 `bg`、`text`（保留給「整個背景」和「字幕」）。字幕也用 `use` 組合：把歌詞、底條、開場效果各寫成一個元素，同工才能只拖歌詞、不動底條。字幕的 `use` 裡用 `'under'` 或 `{ el: 'under', bg: '背景名稱' }` 代表「段落選的背景」（沒選時用 `bg` 指定的那一種），通常放第一個。字幕元素的 `draw(f, x, e)` 一樣從 `x` 讀歌詞（`x.lines`、`x.chars`、`x.big`、`x.small`…）；幾個元素要用同一套排版時，把算位置的部分寫成一個共用函式。只在開頭閃一下、鋪滿畫面的效果標 `fixed: true`。背景或字幕寫成一個 `draw(f, x)` 也可以，這時它在清單上是一整個元素「背景」或「字幕」，同工只能整塊調。元素名稱不要用 `under`。
 
 ### `defineScene({...})`（整份程式只呼叫一次）
 
@@ -244,7 +247,7 @@ defineScene({
 | `labels` | | 面板可調的顏色 `{ 鍵: "名稱" }`（省略＝全部） |
 | `elements` | | `{ 名稱: { label, draw(f, x, e), params, colors } }`：畫面上可以單獨調整的元素，見上「把畫面拆成元素」 |
 | `backgrounds` | ✔ | `{ 名稱: { label, jumpBeats, draw(f, x) } }`，或用 `use: [元素…]` 取代 `draw`。可以做通用的 `calm` `build` `peak`，也可以每一段各設計一種背景（例如 `verse1`、`chorus1`、`bridge`）；`label` 寫中文，面板上會顯示 |
-| `subtitles` | | `{ 名稱: { label, split: 'line'或'block', seconds, draw(f, x) } }`。建議 `flashy`（line）`gentle`（block）。可以只做兩三種共用，也可以每一段各做一種（例如 `verse1Text`、`chorus1Text`…，七種也沒問題）；歌詞一律放在 JSON 的 `sections[].lyrics`，不要寫死在場景程式裡，改歌詞才不用改程式 |
+| `subtitles` | | `{ 名稱: { label, split: 'line'或'block', seconds, draw(f, x) } }`，或用 `use: ['under', 元素…]` 取代 `draw`。建議 `flashy`（line）`gentle`（block）。可以只做兩三種共用，也可以每一段各做一種（例如 `verse1Text`、`chorus1Text`…，七種也沒問題）；歌詞一律放在 JSON 的 `sections[].lyrics`，不要寫死在場景程式裡，改歌詞才不用改程式 |
 | `params` | | `{ 鍵: { value, min, max, label } }` → 面板滑桿；JS 讀 `x.params.鍵`，shader 讀 `param(第幾個)` |
 | `look` | | 後製 `{ grain: .035, vignette: .22, paper: .05, lift, cap }`；lift ≥ .015、cap ≤ .95 是固定下限上限 |
 | `textures` `canvas` `shader` | | 三層質感出口，見下 |
@@ -406,8 +409,8 @@ world: { z: .2,
 - [ ] JSON 是純 JSON；`format` 是 `worship-motion/1`；每段都有 `background`。
 - [ ] `flashy` 每行最多一個 `[ ]`；`gentle` 每支最多 3 行。
 - [ ] 背景的 `draw` 沒有 `f.text`（`type` 風格的大字紋理例外）。
-- [ ] 新風格的背景拆成元素（`elements`＋`use`）：每個看得出來的東西一個元素，有中文 `label`，會想調的值放 `params`。
-- [ ] 字幕的底用 `x.under(f, 某個背景)`，不要寫死成某一種背景：段落選平靜，字幕底下就要是平靜。
+- [ ] 新風格的背景和字幕都拆成元素（`elements`＋`use`）：每個看得出來的東西一個元素，有中文 `label`，會想調的值放 `params`；字幕至少把歌詞和底條分開。
+- [ ] 字幕的底用 `x.under(f, 某個背景)`（用 `use` 組合時是清單裡的 `under`），不要寫死成某一種背景：段落選平靜，字幕底下就要是平靜。
 - [ ] 沒有光暈、光斑、霓虹、漸層球、玻璃、3D 旋轉；沒有純白 `#ffffff`、純黑 `#000000`。
 - [ ] 背景在 16 秒頭尾接得上；位置變化用 `x.step` 跳，不是一直滑。
 - [ ] 歌詞區（x 420–1500、y 260–820）在背景影片裡保持乾淨。

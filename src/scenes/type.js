@@ -131,70 +131,80 @@ function blockEl(f, x, e) {
   const c = slotTime.peak(x, e), by = (c.line ? 930 : 760) - 26 * c.b;
   f.add(rect(1080, by, W, H, TY.org), rect(1080, by - 40, 1080 + 300 + 200 * hash(c.k * 1.3), by - 28, TY.crm));
 }
-// 華麗字幕：整句逐字快閃 → 關鍵字放大塞滿、殘影外框 → 其他字彈出
-function flashy(f, x) {
-  const t = x.t, { chars, kw } = x, n = chars.length, kwCh = chars[kw], before = chars.slice(0, kw), after = chars.slice(kw + 1);
-  const KX = 1080, KY = 560, BIG = { px: 700, weight: 900 };
-  x.under(f, 'build');
-  const FL = .08, flashEnd = n * FL;
-  if (t < flashEnd) {
-    const i = Math.min(n - 1, Math.floor(t / FL)), odd = i % 2;
-    f.add(rect(0, 0, W, H, odd ? TY.org : TY.bg));
-    f.text(chars[i], 960, 540, { px: 520, weight: 900, col: odd ? TY.bg : TY.org, scale: 1.4 * (1 + .15 * (1 - mod(t, FL) / FL)) });
-    return;
-  }
-  const tt = t - flashEnd, s = seg(tt, 0, .35), sc = lerp(1.7, 1, E.out5(s)), b = tt > .6 ? pulse(t, 4) : 0;
-  if (tt > .3) {
+// 華麗字幕的時間：先整句逐字快閃，快閃完才換成關鍵字放大的排法
+function flashTiming(x) {
+  const FL = .08, n = x.chars.length, flashEnd = n * FL, tt = x.t - flashEnd;
+  return { FL, n, flashing: x.t < flashEnd, tt, b: tt > .6 ? pulse(x.t, 4) : 0 };
+}
+const KEY_AT = [1080, 560], KEY_STYLE = { px: 700, weight: 900 };
+// 開場快閃：整個畫面底色與重點色交替，整句一個字一個字閃過
+function flashEl(f, x) {
+  const c = flashTiming(x); if (!c.flashing) return;
+  const i = Math.min(c.n - 1, Math.floor(x.t / c.FL)), odd = i % 2;
+  f.add(rect(0, 0, W, H, odd ? TY.org : TY.bg));
+  f.text(x.chars[i], 960, 540, { px: 520, weight: 900, col: odd ? TY.bg : TY.org, scale: 1.4 * (1 + .15 * (1 - mod(x.t, c.FL) / c.FL)) });
+}
+// 關鍵字：放大塞滿畫面的那個字，後面兩層空心殘影跟著拍子晃
+function keywordEl(f, x) {
+  const c = flashTiming(x); if (c.flashing) return;
+  const t = x.t, kwCh = x.chars[x.kw], [KX, KY] = KEY_AT, s = seg(c.tt, 0, .35), sc = lerp(1.7, 1, E.out5(s));
+  if (c.tt > .3) {
     const side = Math.floor(t / BEAT) % 2 ? 1 : -1;
-    f.text(kwCh, KX - 36 - 20 * b * side, KY - 28 - 10 * b, { ...BIG, stroke: 5, col: TY.org, a: .75 });
-    f.text(kwCh, KX - 72 + 14 * b * side, KY - 56 - 6 * b, { ...BIG, stroke: 5, col: TY.org, a: .4 });
+    f.text(kwCh, KX - 36 - 20 * c.b * side, KY - 28 - 10 * c.b, { ...KEY_STYLE, stroke: 5, col: TY.org, a: .75 });
+    f.text(kwCh, KX - 72 + 14 * c.b * side, KY - 56 - 6 * c.b, { ...KEY_STYLE, stroke: 5, col: TY.org, a: .4 });
   }
-  f.text(kwCh, KX, KY, { ...BIG, scale: sc * (1 + .02 * b), col: TY.org });
+  f.text(kwCh, KX, KY, { ...KEY_STYLE, scale: sc * (1 + .02 * c.b), col: TY.org });
+}
+// 其他的字：關鍵字前面的字排在左上、後面的字排在右下，一個一個彈出來
+function wordsEl(f, x) {
+  const c = flashTiming(x); if (c.flashing) return;
+  const t = x.t, before = x.chars.slice(0, x.kw), after = x.chars.slice(x.kw + 1);
   const pop = (ch, px, py, i) => {
-    const si = seg(tt, .12 + i * .05, .34 + i * .05); if (si <= 0) return;
-    const kick = tt > 1 ? .08 * pulse(t, 7, BEAT, i * BEAT / n) : 0;
+    const si = seg(c.tt, .12 + i * .05, .34 + i * .05); if (si <= 0) return;
+    const kick = c.tt > 1 ? .08 * pulse(t, 7, BEAT, i * BEAT / c.n) : 0;
     f.text(ch, px, py + (1 - E.out(si)) * 40, { px: 128, weight: 900, scale: lerp(.2, 1, E.back(si)) * (1 + kick), col: TY.crm });
   };
   before.forEach((ch, i) => pop(ch, 150 + i * 142, 250, i));
   after.forEach((ch, i) => pop(ch, 1800 - (after.length - 1 - i) * 142, 910, before.length + i));
-  const u = E.out5(seg(tt, .2, .6));
+}
+// 底線：左上那排字下面長出來的一條橫線
+function underlineEl(f, x) {
+  const c = flashTiming(x); if (c.flashing) return;
+  const u = E.out5(seg(c.tt, .2, .6));
   if (u > 0) f.add(rect(80, 336, 80 + 760 * u, 350, TY.crm));
-  const sub = x.small[0];
-  if (sub) {
-    const SM = { px: 56, weight: 600, spacing: 2 }, a = E.io(seg(tt, .35, .75));
-    f.text(sub, 86, 404 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 560, SM), align: 'left', col: TY.crm, a: .7 * a });
+}
+// 第二語言：底線下面一行靠左的小字
+function sublineEl(f, x) {
+  const c = flashTiming(x), sub = x.small[0]; if (c.flashing || !sub) return;
+  const SM = { px: 56, weight: 600, spacing: 2 }, a = E.io(seg(c.tt, .35, .75));
+  f.text(sub, 86, 404 + (1 - a) * 10, { ...SM, scale: f.fit(sub, 560, SM), align: 'left', col: TY.crm, a: .7 * a });
+}
+// 收斂字幕的排法：最多三行置中；有第二語言時每行下面多一行小字，底條跟著加高
+function blockLayout(x) {
+  const two = x.small.length > 0, big = x.big.slice(0, 3), small = two ? x.small.slice(0, 3) : [], n = two ? Math.max(big.length, small.length) : big.length;
+  const gap = two ? 160 : 136, y0 = (two ? 505 : 515) - gap * (n - 1) / 2;
+  return { two, big, small, n, gap, y0, top: y0 - (two ? 96 : 100), bot: y0 + (n - 1) * gap + (two ? 136 : 112) };
+}
+// 深色底條：托住歌詞的深色橫條，上緣重點色、下緣一條細線
+function plateEl(f, x) {
+  const { top, bot } = blockLayout(x);
+  f.add(rect(0, top, W, bot, TY.panel, .95), rect(0, top - 10, W, top, TY.org), rect(0, bot, W, bot + 4, TY.crm, .6));
+}
+// 歌詞（收斂）：逐行淡入的粗字帶柔和的影子；第二語言是每行下面的小字
+function lyricsEl(f, x) {
+  const t = x.t, L = blockLayout(x), TX = { px: 90, weight: 900, spacing: 16, blur: 12 }, SM = { px: 42, weight: 600, spacing: 4 };
+  for (let i = 0; i < L.n; i++) {
+    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = L.y0 + i * L.gap + (1 - E.out(s)) * 14, l = L.big[i];
+    if (l && !L.two) { f.text(l, 960, y + 5, { ...TX, shadow: true, col: TY.ink, a: .6 * a }); f.text(l, 960, y, { ...TX, col: TY.crm, a }); }
+    if (l && L.two) { const sc = f.fit(l, 1680, TX);
+      f.text(l, 960, y + 5, { ...TX, scale: sc, shadow: true, col: TY.ink, a: .6 * a });
+      f.text(l, 960, y, { ...TX, scale: sc, col: TY.crm, a }); }
+    if (L.small[i]) f.text(L.small[i], 960, y + 66, { ...SM, scale: f.fit(L.small[i], 1600, SM), col: TY.crm, a: .6 * a });
   }
 }
-// 收斂字幕：深色底從第一格就在，切下一句只有字在換
-function gentle(f, x) {
-  if (x.small.length) return gentle2(f, x);
-  const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 136, y0 = 515 - gap * (n - 1) / 2;
-  const top = y0 - 100, bot = y0 + (n - 1) * gap + 112, TX = { px: 90, weight: 900, spacing: 16, blur: 12 };
-  x.under(f, 'peak');
-  f.add(rect(0, top, W, bot, TY.panel, .95), rect(0, top - 10, W, top, TY.org), rect(0, bot, W, bot + 4, TY.crm, .6));
-  lines.forEach((l, i) => {
-    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 14;
-    f.text(l, 960, y + 5, { ...TX, shadow: true, col: TY.ink, a: .6 * a });
-    f.text(l, 960, y, { ...TX, col: TY.crm, a });
-  });
-  const r = E.out(seg(t, .2, .8)), uw = 140 * r * (1 + .06 * pulse(t, 3)), uy = y0 + (n - 1) * gap + 76;
-  if (uw > 1) f.add(rect(960 - uw / 2, uy - 4, 960 + uw / 2, uy + 4, TY.org));
-}
-
-// 收斂字幕（雙語）：深色底加高，每行大字下面一行小字
-function gentle2(f, x) {
-  const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 160, y0 = 505 - gap * (n - 1) / 2;
-  const top = y0 - 96, bot = y0 + (n - 1) * gap + 136, TX = { px: 90, weight: 900, spacing: 16, blur: 12 }, SM = { px: 42, weight: 600, spacing: 4 };
-  x.under(f, 'peak');
-  f.add(rect(0, top, W, bot, TY.panel, .95), rect(0, top - 10, W, top, TY.org), rect(0, bot, W, bot + 4, TY.crm, .6));
-  for (let i = 0; i < n; i++) {
-    const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 14;
-    if (big[i]) { const sc = f.fit(big[i], 1680, TX);
-      f.text(big[i], 960, y + 5, { ...TX, scale: sc, shadow: true, col: TY.ink, a: .6 * a });
-      f.text(big[i], 960, y, { ...TX, scale: sc, col: TY.crm, a }); }
-    if (small[i]) f.text(small[i], 960, y + 66, { ...SM, scale: f.fit(small[i], 1600, SM), col: TY.crm, a: .6 * a });
-  }
-  const r = E.out(seg(t, .2, .8)), uw = 140 * r * (1 + .06 * pulse(t, 3)), uy = y0 + (n - 1) * gap + 110;
+// 重點短線：歌詞下面一小段重點色的線，跟著拍子微微伸縮
+function accentEl(f, x) {
+  const L = blockLayout(x), r = E.out(seg(x.t, .2, .8)), uw = 140 * r * (1 + .06 * pulse(x.t, 3)), uy = L.y0 + (L.n - 1) * L.gap + (L.two ? 110 : 76);
   if (uw > 1) f.add(rect(960 - uw / 2, uy - 4, 960 + uw / 2, uy + 4, TY.org));
 }
 
@@ -217,6 +227,14 @@ defineScene({
     corner: { label: '角落色塊', colors: ['org', 'crm'], draw: cornerEl },
     ring: { label: '圓環', colors: ['crm'], draw: ringEl },
     block: { label: '大色塊', colors: ['org', 'crm'], draw: blockEl },
+    flash: { label: '開場快閃', fixed: true, colors: ['org'], draw: flashEl },
+    keyword: { label: '關鍵字', colors: ['org'], draw: keywordEl },
+    words: { label: '其他的字', colors: ['crm'], draw: wordsEl },
+    underline: { label: '底線', colors: ['crm'], draw: underlineEl },
+    subline: { label: '第二語言', colors: ['crm'], draw: sublineEl },
+    plate: { label: '深色底條', colors: ['org', 'crm'], draw: plateEl },
+    lyrics: { label: '歌詞', colors: ['crm'], draw: lyricsEl },
+    accent: { label: '重點短線', colors: ['org'], draw: accentEl },
   },
   backgrounds: {
     calm: { label: '平靜', jumpBeats: 4, use: inBackground('calm', ['giant', 'panel', 'para', 'disc', 'rules', { el: 'ellipsis', at: [1700, 1000, 4, 14, 12, 'crm'] }]) },
@@ -224,7 +242,7 @@ defineScene({
     peak: { label: '高潮', jumpBeats: 4, use: inBackground('peak', ['giant', 'wash', 'para', 'corner', 'ring', 'progress', 'disc', 'rules', 'block', 'dot', { el: 'ellipsis', at: [1180, 1000, 8, 16, 10, 'bg'] }]) },
   },
   subtitles: {
-    flashy: { label: '華麗', split: 'line', seconds: 6, draw: flashy },
-    gentle: { label: '收斂', split: 'block', seconds: 16, draw: gentle },
+    flashy: { label: '華麗', split: 'line', seconds: 6, use: [{ el: 'under', bg: 'build' }, 'flash', 'keyword', 'words', 'underline', 'subline'] },
+    gentle: { label: '收斂', split: 'block', seconds: 16, use: [{ el: 'under', bg: 'peak' }, 'plate', 'lyrics', 'accent'] },
   },
 });
