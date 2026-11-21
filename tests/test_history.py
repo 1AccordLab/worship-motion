@@ -22,9 +22,9 @@ async def main():
         n0 = (await p.ev("__app.history()"))["pos"]
         await pg.keyboard.press("Control+z"); await pg.wait_for_timeout(300)  # 注意：要確認「沒有發生」只能等一小段時間
         rec("游標在文字框裡按 Ctrl+Z：不走編輯器還原（瀏覽器自己的文字還原）", (await p.ev("__app.history()"))["pos"] == n0)
-        await pg.click("#secCard h2"); await pg.keyboard.press("Control+z"); await p.wait(f"__app.history().pos === {n0 - 1}")
+        await pg.click("#secCard h2"); await pg.keyboard.press("Control+z"); await p.wait(f"__app.history().pos === {n0 - 1} && __app.project.title === '示意歌'")
         rec("離開文字框按 Ctrl+Z：編輯器還原（歌名回去）", (await pj())["title"] == "示意歌", (await pj())["title"])
-        await pg.keyboard.press("Control+Shift+z"); await p.wait(f"__app.history().pos === {n0}")
+        await pg.keyboard.press("Control+Shift+z"); await p.wait(f"__app.history().pos === {n0} && __app.project.title !== '示意歌'")
         rec("Ctrl+Shift+Z 重做", (await pj())["title"].startswith("示意歌") and (await pj())["title"] != "示意歌", (await pj())["title"])
         async def act(label, js, check):
             before = await pj(); await p.ev(js); await p.wait(f"JSON.stringify(__app.project)!=={json.dumps(json.dumps(before))}"); after = await pj()
