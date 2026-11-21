@@ -124,7 +124,14 @@ function applyDrag(drag) {
   syncElementRows(); pushElements();
 }
 function clickSelect(drag) {
-  if (drag.mode === 'move') { if (drag.hit && drag.add) setSelection(selEls.filter(id => id !== drag.hit)); else if (drag.hit && selEls.length > 1) setSelection([drag.hit]); return; }
+  if (drag.mode !== 'move' && drag.mode !== 'marquee') return;
+  if (drag.mode === 'move') {
+    if (!drag.hit) return;
+    if (drag.add) setSelection(selEls.filter(id => id !== drag.hit));
+    else if (selEls.length > 1) setSelection([drag.hit]);
+    else setSelection([drag.stack[(drag.stack.indexOf(drag.hit) + 1) % drag.stack.length]]);
+    return;
+  }
   if (drag.hit) setSelection(drag.add ? (isSelected(drag.hit) ? selEls.filter(id => id !== drag.hit) : [...selEls, drag.hit]) : [drag.hit]);
   else if (!drag.add) setSelection([]);
 }
@@ -144,12 +151,13 @@ function finishDrag(drag, keep) {
   syncElementRows();
 }
 // 注意：點到哪個元素要問 Worker（形狀在那邊），是非同步的；這段時間的游標移動先記在 drag.last，問到結果才決定是移動還是範圍選取
+// 注意：按下的位置疊著好幾個元素時，已選取的那個優先（被蓋住也能拖）；沒拖就放開則換選它底下的那一個
 function onStageDown(ev) {
   if (!editOn || ev.button > 0 || exporting || !clip || !scene || stageDrag) return;
   ev.preventDefault();
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   const handle = ev.target.closest('.h'), p0 = stagePoint(ev);
-  const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, add: ev.shiftKey, free: ev.ctrlKey || ev.metaKey, hit: null };
+  const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, add: ev.shiftKey, free: ev.ctrlKey || ev.metaKey, hit: null, stack: [] };
   drag.onMove = e => { drag.last = stagePoint(e); drag.shift = e.shiftKey; drag.free = e.ctrlKey || e.metaKey; applyDrag(drag); };
   drag.onUp = () => { if (drag.armed) finishDrag(drag, true); else drag.released = true; };
   drag.onCancel = () => { if (drag.armed) finishDrag(drag, false); else { drag.released = true; drag.cancelled = true; } };
@@ -157,8 +165,8 @@ function onStageDown(ev) {
   document.body.classList.add('stagedrag'); setHover(null);
   if (handle) { if (!armTransform(drag)) finishDrag(drag, false); return; }
   serial(async () => {
-    const hit = drag.hit = (await scene.hit(clip.map(t), p0.x, p0.y)).el, sel = selectionNow();
-    const onSelection = hit ? isSelected(hit) : !drag.add && !!sel && hardToHit(sel.box) && inBox(shownBox(sel.box), p0);
+    const stack = drag.stack = (await scene.hit(clip.map(t), p0.x, p0.y)).els, held = stack.find(isSelected), hit = drag.hit = held || stack[0] || null, sel = selectionNow();
+    const onSelection = hit ? !!held : !drag.add && !!sel && hardToHit(sel.box) && inBox(shownBox(sel.box), p0);
     if (onSelection) { if (!armTransform(drag)) { finishDrag(drag, false); return; } }
     else { drag.mode = 'marquee'; drag.armed = true; }
     applyDrag(drag);

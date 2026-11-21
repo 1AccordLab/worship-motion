@@ -418,10 +418,10 @@ function placedItems(t) {
     return trs[it.el] ? { ...it, o: placed(it, trs[it.el]) } : it; });
   return { f, items };
 }
-function hitAt(t, px, py) {
-  const { items } = measuring(() => placedItems(t));
-  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (pickable(it) && itemContains(it, px, py)) return it.el; }
-  return null;
+function hitsAt(t, px, py) {
+  const { items } = measuring(() => placedItems(t)), ids = [];
+  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (!ids.includes(it.el) && pickable(it) && itemContains(it, px, py)) ids.push(it.el); }
+  return ids;
 }
 const pickable = it => !isFixed(it.el) && !adjOf(it.el).locked && it.o.col[3] * (adjOf(it.el).opacity ?? 1) >= HIT_MIN_ALPHA;
 function touching(t, x0, y0, x1, y1) {
@@ -526,7 +526,7 @@ self.onmessage = ev => {
     if (m.op === 'boxes') { const fr = measuring(() => frame(m.t)); postMessage({ id: m.id, ok: true, boxes: fr.boxes, drawn: fr.drawn }); return; }
     if (m.op === 'territory') { postMessage({ id: m.id, ok: true, boxes: territory() }); return; }
     if (m.op === 'touching') { postMessage({ id: m.id, ok: true, els: touching(m.t, ...m.rect) }); return; }
-    if (m.op === 'hit') { postMessage({ id: m.id, ok: true, el: hitAt(m.t, m.x, m.y) }); return; }
+    if (m.op === 'hit') { const els = hitsAt(m.t, m.x, m.y); postMessage({ id: m.id, ok: true, el: els[0] || null, els }); return; }
     if (m.op === 'clip') { setClip(m.clip); if (SCENE.d.world) worldFor(CLIP.x); postMessage({ id: m.id, ok: true }); return; }
     if (m.op === 'frame') {
       const r = frame(m.t), at = atlas.take(!SENT_ALL || m.fullAtlas); SENT_ALL = true;
