@@ -1,6 +1,6 @@
 """預覽上直接拖（階段 2）：python3 tests/test_drag.py（示意文字）
 驗收條件：
-D1  在預覽上點元素會選到最上面那一個，出現選取框與把手，元素清單那一列標成選取中；點空白處取消選取。
+D1  打開「調整畫面」後，在預覽上點元素會選到最上面那一個，出現選取框與把手，元素清單那一列標成選取中；點空白處取消選取。
 D2  拖動元素：位置改變（dx、dy 等於拖的距離，單位是 1920×1080 的座標）、畫面改變；一次拖曳是一筆歷史紀錄，還原回到原位。
 D3  拖動時按住 Shift 只走水平或垂直；靠近畫布中心會吸附並顯示吸附線。
 D4  拉角落把手等比縮放：倍率＝游標到軸心的距離比。
@@ -38,7 +38,7 @@ async def main():
         async def at(si, ci, t, style="riso"):
             assert await p.ev("x=>__app.load(x)", proj(style))
             await p.ev("(()=>{const b=document.querySelector('#elScope button');if(b)b.click()})()")
-            await p.ev(f"__app.select({si},{ci})"); await p.ev(f"__app.seek({t})")
+            await p.ev(f"__app.select({si},{ci})"); await p.ev(f"__app.seek({t})"); await p.ev("__app.editMode(true)")
         async def view():
             await p.ev("document.querySelector('#view').scrollIntoView({block:'center'})")
             return await p.ev("(()=>{const r=document.querySelector('#view').getBoundingClientRect();return [r.left,r.top,r.width,r.height]})()")
@@ -205,7 +205,7 @@ async def main():
             if not await p.ev("document.querySelector('#elList .elrow[data-id=ring]').classList.contains('open')"): await pg.click("#elList .elrow[data-id=ring] .elmore")
             await pg.fill("#elList .elrow[data-id=ring] .elnum[data-k=dx]", "-120"); await p.wait("((__app.project.elements||{}).ring||{}).dx===-120")
             await pg.wait_for_timeout(600); await p.ev("__app.seek(1.0)"); u = await unit()
-            await drag((1570, 180), (1370, 180)); adj = (await proj_now())["elements"]["ring"]
+            await click(1570, 180); await drag((1570, 180), (1370, 180)); adj = (await proj_now())["elements"]["ring"]
             shown = await p.ev("document.querySelector('#elList .elrow[data-id=ring] .elnum[data-k=dx]').value")
             rec("D11 游標還在數字欄裡就到預覽上拖：欄位跟著顯示拖完的位置", near((adj.get("dx", 0),), (-320,), 2 * u + 1) and float(shown) == adj.get("dx"), (adj, shown))
         await safe("D11 畫面元素分頁", d11)
