@@ -152,9 +152,8 @@ function camera(t, x) {
   return { ...cam, eye: [1.8 * Math.sin(p), 3.4 + .35 * Math.sin(2 * p), 14], at: [0, 11, -120] };
 }
 function night(f) { f.bg = OIL.bg; }
-// 字幕：淺色字、逐行慢慢淡入；字下有陰影，壓在筆觸上也清楚
-function gentle(f, x) {
-  x.under(f, night);
+// 歌詞（收斂）：淺色字逐行慢慢淡入，字下有陰影，壓在筆觸上也清楚；第二語言是每行下面的小字
+function lyrics(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
   const gap = two ? 150 : 124, y0 = 520 - gap * (n - 1) / 2, TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
   for (let i = 0; i < n; i++) {
@@ -163,11 +162,15 @@ function gentle(f, x) {
     if (small[i]) f.text(small[i], 960, y + 60, { ...SM, scale: f.fit(small[i], 1440, SM), col: OIL.text, a: .75 * E.io(seg(t, .7 + i * .4, 2.2 + i * .4)), shadow: true });
   }
 }
-function flashy(f, x) {
-  x.under(f, night);
-  const t = x.t, big = x.big[0] || '', sub = x.small[0] || '', cy = sub ? 500 : 540, TX = { px: 96, weight: 600, spacing: 6 }, SM = { px: 42, weight: 500, spacing: 3 };
-  if (big) f.text(big, 960, cy, { ...TX, scale: f.fit(big, 1500, TX), col: OIL.text, a: E.io(seg(t, .3, 1.8)), shadow: true });
-  if (sub) f.text(sub, 960, cy + 92, { ...SM, scale: f.fit(sub, 1440, SM), col: OIL.text, a: .75 * E.io(seg(t, 1, 2.5)), shadow: true });
+// 歌詞（華麗）：一行淺色字慢慢淡入，字下有陰影
+function line(f, x) {
+  const big = x.big[0] || '', cy = x.small[0] ? 500 : 540, TX = { px: 96, weight: 600, spacing: 6 };
+  if (big) f.text(big, 960, cy, { ...TX, scale: f.fit(big, 1500, TX), col: OIL.text, a: E.io(seg(x.t, .3, 1.8)), shadow: true });
+}
+// 第二語言：歌詞下面一行小字，晚一點淡入
+function subline(f, x) {
+  const sub = x.small[0] || '', SM = { px: 42, weight: 500, spacing: 3 };
+  if (sub) f.text(sub, 960, 500 + 92, { ...SM, scale: f.fit(sub, 1440, SM), col: OIL.text, a: .75 * E.io(seg(x.t, 1, 2.5)), shadow: true });
 }
 
 defineScene({
@@ -176,13 +179,18 @@ defineScene({
   palette: OIL, labels: { bg: '夜色', deep: '群青', sky: '鈷藍', swirl: '漩渦亮藍', teal: '青綠', moon: '月', star: '星', far: '遠山', snow: '雪', hill: '近山', wheat: '麥田', meadow: '草地', road: '小徑', tree: '柏樹', wall: '牆', lamp: '燈火', text: '字' },
   look: { grain: .02, vignette: .18, paper: .03 },
   world: { z: .2, build, camera },
+  elements: {
+    lyrics: { label: '歌詞', colors: ['text'], draw: lyrics },
+    line: { label: '歌詞', colors: ['text'], draw: line },
+    subline: { label: '第二語言', colors: ['text'], draw: subline },
+  },
   backgrounds: {
     calm: { label: '平靜（左右輕移）', jumpBeats: 8, draw: night },
     build: { label: '累積（往前推近）', jumpBeats: 4, draw: night },
     peak: { label: '高潮（升高看星空）', jumpBeats: 4, draw: night },
   },
   subtitles: {
-    gentle: { label: '收斂', split: 'block', seconds: 16, draw: gentle },
-    flashy: { label: '華麗（一行）', split: 'line', seconds: 7, draw: flashy },
+    gentle: { label: '收斂', split: 'block', seconds: 16, use: ['under', 'lyrics'] },
+    flashy: { label: '華麗（一行）', split: 'line', seconds: 7, use: ['under', 'line', 'subline'] },
   },
 });

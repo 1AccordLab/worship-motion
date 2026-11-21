@@ -163,7 +163,7 @@ function cameraAt(t, x) {
 
 /* 注意：照呼叫順序疊；z 小的在下（形狀與線 0、字 1、top 2） */
 class Frame {
-  constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.items = []; this.el = null; }
+  constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.gridEl = null; this.items = []; this.el = null; }
   _push(t, z, o) { this.items.push({ t, z, i: this.items.length, o, el: this.el }); }
   add(...ss) { for (const s of ss.flat(9)) if (s) this._push(0, s.z ?? 0, s); return this; }
   top(...ss) { for (const s of ss.flat(9)) if (s) this._push(0, s.z ?? 2, s); return this; }
@@ -323,12 +323,13 @@ const implicitInUse = () => ({ ...(wholeIn(SCENE.backgrounds) ? { bg: IMPLICIT_E
 const adjOf = id => (CLIP.els && CLIP.els[id]) || {};
 const isHidden = id => adjOf(id).visible === false;
 /* 注意：場景從同一個 palette 物件讀色，元素自己的顏色只能在它畫的期間原地換上、畫完換回 */
+/* 注意：網格線是整格畫面的設定、沒有形狀可以乘透明度；記下是哪個元素設定它的（裡層的元素優先），出圖時用那個元素的透明度 */
 function asElement(f, id, fn, alwaysRun) {
   if (!alwaysRun && isHidden(id)) return;
-  const pal = SCENE.palette, own = adjOf(id).colors || {}, was = {}, outer = f.el;
+  const pal = SCENE.palette, own = adjOf(id).colors || {}, was = {}, outer = f.el, gridWas = f.grid.alpha + f.grid.flash, gridElWas = f.gridEl;
   for (const k of Object.keys(own)) { was[k] = pal[k]; pal[k] = own[k]; }
   f.el = id;
-  try { return fn(); } finally { f.el = outer; Object.assign(pal, was); }
+  try { return fn(); } finally { f.el = outer; Object.assign(pal, was); if (f.gridEl === gridElWas && f.grid.alpha + f.grid.flash !== gridWas) f.gridEl = id; }
 }
 function drawBackground(f, x, name, o) {
   const b = SCENE.backgrounds[name];
@@ -512,7 +513,8 @@ function frame(t) {
   }
   while (mi < marks.length) runs.push([marks[mi++][1], 0, n, 0]);
   const g = f.grid, gc = color(g.col), bg = color(f.bg);
-  const out = { buf, n, runs, bg, drawn, boxes, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
+  const gridOp = adjOf(f.gridEl).opacity, gridA = typeof gridOp === 'number' && gridOp !== 1 ? (g.alpha + g.flash) * gridOp : g.alpha + g.flash;
+  const out = { buf, n, runs, bg, drawn, boxes, grid: [g.w, g.h, gridA, g.line, gc[0], gc[1], gc[2]] };
   if (SCENE.d.world) {
     const wo = worldFor(x); out.world = { key: wo.key, n: wo.n, keep: wo.keep, cam: cameraAt(t, x) };
   }

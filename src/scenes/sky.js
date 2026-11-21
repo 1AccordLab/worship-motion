@@ -1,4 +1,4 @@
-/* 天空：藍灰底，切紙雲三層緩慢橫移，高潮雲往兩側退開、落下暖金光束；中間歌詞區保持乾淨 */
+/* 天空：藍灰底，切紙雲三層緩慢橫移，高潮雲往兩側退開、落下暖金光束；中間歌詞區保持乾淨；背景與字幕由一個個元素疊起來 */
 const SK = { bg: '#34445a', blue: '#4a6a8c', warm: '#d9ab66', far: '#56667a', mid: '#8d98a4', near: '#c9c6ba', hill: '#1f2a36', light: '#ecdcb6' };
 const rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
 const mixc = (a, b, k) => { const x = rgb(a), y = rgb(b); k = clamp01(k); return [lerp(x[0], y[0], k), lerp(x[1], y[1], k), lerp(x[2], y[2], k)]; };
@@ -21,82 +21,86 @@ function drift(f, t, list, P, k, col, a) {
     cloud(f, cx, y, s, col, a, sd);
   }
 }
-function skyBands(f, warm) {
+const FARC = [[150, 90, 70, 1], [700, 60, 60, 2], [1250, 110, 80, 3], [1700, 70, 60, 4]];
+const MIDC = [[300, 170, 95, 5], [1100, 140, 85, 6], [1800, 190, 100, 7]];
+const LOWC = [[200, 860, 90, 8], [900, 880, 70, 9], [1500, 850, 95, 10]];
+
+// 天色漸層：分 8 階平塗；warm＝高潮時上方換成暖金
+function skyBands(f, x, e) {
+  const warm = e.args.warm;
   f.bg = SK.bg;
   for (let i = 0; i < 8; i++) f.add(rect(0, i * 135, W, i * 135 + 136, warm ? mixc(SK.warm, SK.blue, i / 6) : mixc(SK.bg, SK.blue, i / 9)));
 }
-function hills(f) { f.add(circle(300, 1520, 620, SK.hill, 1, P0), circle(1080, 1640, 720, SK.hill, 1, P0), circle(1720, 1500, 560, SK.hill, 1, P0)); }
-// 兩側的雲堆（不橫移，只慢慢起伏）；push＝往外退（peak 雲開）
-function banks(f, t, grow, push) {
-  const b = Math.sin(TAU * t / LOOP), c = Math.sin(TAU * t / LOOP + 2);
-  [[60 - push, 560, 150], [170 - push, 380, 120], [-40 - push, 760, 170]].forEach(([x, y, s], i) => cloud(f, x, y + 10 * (i % 2 ? b : c), s * (1 + grow * (.06 + .04 * b)), SK.near, 1, 20 + i));
-  [[1860 + push, 520, 150], [1750 + push, 340, 110], [1960 + push, 740, 170]].forEach(([x, y, s], i) => cloud(f, x, y + 10 * (i % 2 ? c : b), s * (1 + grow * (.06 + .04 * c)), SK.near, 1, 30 + i));
+// 一層飄動的雲：layers 每一層＝雲的清單、循環長度、16 秒飄幾圈、顏色、濃度
+function clouds(f, x, e) {
+  const t = mod(x.t, LOOP);
+  for (const [list, P, k, col, a] of e.args.layers) drift(f, t, list, P, k, SK[col], a);
 }
-// 平塗光束：從上方雲開的地方落下的長條（硬邊、半透明），慢慢淡入淡出
-function rays(f, t, n, a) {
+// 山稜：畫面下緣三座深色的圓弧山
+function hills(f) {
+  f.add(circle(300, 1520, 620, SK.hill, 1, P0), circle(1080, 1640, 720, SK.hill, 1, P0), circle(1720, 1500, 560, SK.hill, 1, P0));
+}
+// 兩側雲堆：左右兩堆近雲只慢慢起伏；grow＝脹大多少、push＝往外退多少（高潮時雲開）
+function banks(f, x, e) {
+  const t = mod(x.t, LOOP), { grow, push } = e.args, b = Math.sin(TAU * t / LOOP), c = Math.sin(TAU * t / LOOP + 2);
+  [[60 - push, 560, 150], [170 - push, 380, 120], [-40 - push, 760, 170]].forEach(([cx, cy, s], i) => cloud(f, cx, cy + 10 * (i % 2 ? b : c), s * (1 + grow * (.06 + .04 * b)), SK.near, 1, 20 + i));
+  [[1860 + push, 520, 150], [1750 + push, 340, 110], [1960 + push, 740, 170]].forEach(([cx, cy, s], i) => cloud(f, cx, cy + 10 * (i % 2 ? c : b), s * (1 + grow * (.06 + .04 * c)), SK.near, 1, 30 + i));
+}
+// 光束：從上方雲開的地方落下七道平塗的長條（硬邊、半透明），慢慢淡入淡出
+function rays(f, x) {
+  const t = mod(x.t, LOOP), n = 7, a = .13;
   for (let i = 0; i < n; i++) {
     const ang = 90 + (i - (n - 1) / 2) * 9, al = a * (.6 + .4 * Math.pow(Math.sin(Math.PI * mod(t / LOOP + i * .17, 1)), 2));
     const r = ang * Math.PI / 180, L = 1500, cx = 960 + Math.cos(r) * L / 2, cy = 40 + Math.sin(r) * L / 2;
     f.add(band(cx, cy, L, 70 + 30 * (i % 3), ang, SK.light, al, { tex: false }));
   }
 }
-const FARC = [[150, 90, 70, 1], [700, 60, 60, 2], [1250, 110, 80, 3], [1700, 70, 60, 4]];
-const MIDC = [[300, 170, 95, 5], [1100, 140, 85, 6], [1800, 190, 100, 7]];
-const LOWC = [[200, 860, 90, 8], [900, 880, 70, 9], [1500, 850, 95, 10]];
 
-function calm(f, x) {
-  const t = mod(x.t, LOOP);
-  skyBands(f, 0);
-  drift(f, t, FARC, 1920, 1, SK.far, 1); drift(f, t, MIDC, 2100, 1, SK.mid, 1);
-  hills(f); drift(f, t, LOWC, 1920, 1, SK.far, .9);
-  banks(f, t, 0, 60);
-}
-function build(f, x) {
-  const t = mod(x.t, LOOP);
-  skyBands(f, 0);
-  drift(f, t, FARC, 1920, 1, SK.far, 1); drift(f, t, FARC.map(([a, b, c, d]) => [a + 400, b + 70, c * .8, d + 40]), 1920, 2, SK.far, .9);
-  drift(f, t, MIDC, 2100, 2, SK.mid, 1);
-  hills(f); drift(f, t, LOWC, 1920, 2, SK.mid, .9);
-  banks(f, t, 1, 0);
-}
-function peak(f, x) {
-  const t = mod(x.t, LOOP);
-  skyBands(f, 1);
-  rays(f, t, 7, .13);
-  drift(f, t, FARC.map(([a, b, c, d]) => [a, b - 40, c, d]), 1920, 1, SK.mid, 1);
-  hills(f); drift(f, t, LOWC, 1920, 1, SK.mid, .8);
-  banks(f, t, .6, 140);
-}
-
-// 字幕：淺色字、逐行慢慢淡入（約 1.5 秒）；雙語時每行下面一行小字
+// 華麗字幕的排法：一行字置中，逐字慢慢淡入；有標 [關鍵字] 時它加粗、暖金、最後才出來
 const hasMark = x => /\[.+?\]/.test(x.swap ? x.text2 : x.text);
-function gentle(f, x) {
-  x.under(f, calm);
-  const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0;
-  const gap = two ? 150 : 124, y0 = 520 - gap * (n - 1) / 2, TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
-  for (let i = 0; i < n; i++) {
-    const a = E.io(seg(t, .3 + i * .4, 1.8 + i * .4)), y = y0 + i * gap;
-    if (big[i]) f.text(big[i], 960, y, { ...TX, scale: f.fit(big[i], 1500, TX), col: SK.light, a });
-    if (small[i]) f.text(small[i], 960, y + 60, { ...SM, scale: f.fit(small[i], 1440, SM), col: SK.light, a: .62 * E.io(seg(t, .7 + i * .4, 2.2 + i * .4)) });
-  }
-  const r = E.io(seg(t, 1.2 + n * .4, 3 + n * .4)), uy = y0 + (n - 1) * gap + (two ? 116 : 80);
-  if (r > .004) f.add(rect(960 - 90, uy - 2, 960 + 90, uy + 2, SK.warm, .9 * r));
-}
-function flashy(f, x) {
-  x.under(f, build);
-  const t = x.t, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1, chars = x.chars, n = chars.length;
-  const ST = { px: 100, weight: 500 }, KS = { px: 100, weight: 900 };
+const ST = { px: 100, weight: 500 }, KS = { px: 100, weight: 900 };
+function rowLayout(f, x) {
+  const chars = x.chars, n = chars.length, sub = x.small[0] || '', cy = sub ? 500 : 540, kw = hasMark(x) ? x.kw : -1;
   const ws = chars.map((c, i) => f.measure(c, i === kw ? KS : ST).tw), total = ws.reduce((a, b) => a + b, 0) + 6 * Math.max(0, n - 1), sc = Math.min(1, 1500 / Math.max(1, total));
-  let cx = 960 - total * sc / 2;
-  chars.forEach((c, i) => {
-    const w = ws[i] * sc, isK = i === kw, ti = isK ? .3 + n * .08 + .35 : .3 + i * .08, a = E.io(seg(t, ti, ti + (isK ? 1.8 : 1.3)));
-    if (a > .003) f.text(c, cx + w / 2, cy, { ...(isK ? KS : ST), scale: sc, col: isK ? SK.warm : SK.light, a });
-    cx += w + 6 * sc;
+  return { chars, n, sub, cy, kw, ws, total, sc, end: .3 + n * .08 + 1.3 };
+}
+// 歌詞（華麗）：一行字逐字慢慢淡入
+function chars(f, x) {
+  const L = rowLayout(f, x); let cx = 960 - L.total * L.sc / 2;
+  L.chars.forEach((c, i) => {
+    const w = L.ws[i] * L.sc, isK = i === L.kw, ti = isK ? .3 + L.n * .08 + .35 : .3 + i * .08, a = E.io(seg(x.t, ti, ti + (isK ? 1.8 : 1.3)));
+    if (a > .003) f.text(c, cx + w / 2, L.cy, { ...(isK ? KS : ST), scale: L.sc, col: isK ? SK.warm : SK.light, a });
+    cx += w + 6 * L.sc;
   });
-  const end = .3 + n * .08 + 1.3;
-  if (sub) { const SM = { px: 44, weight: 500, spacing: 3 }; f.text(sub, 960, cy + 96, { ...SM, scale: f.fit(sub, 1440, SM), col: SK.light, a: .62 * E.io(seg(t, end, end + 1.5)) }); }
-  const r = E.io(seg(t, end + .4, end + 2.2)), uy = cy + (sub ? 150 : 92);
+}
+// 第二語言：歌詞下面一行小字，等歌詞出完才淡入
+function subline(f, x) {
+  const L = rowLayout(f, x), SM = { px: 44, weight: 500, spacing: 3 };
+  if (L.sub) f.text(L.sub, 960, L.cy + 96, { ...SM, scale: f.fit(L.sub, 1440, SM), col: SK.light, a: .62 * E.io(seg(x.t, L.end, L.end + 1.5)) });
+}
+// 金線（華麗）：歌詞下面一條暖金短線，最後才淡入
+function goldline(f, x) {
+  const L = rowLayout(f, x), r = E.io(seg(x.t, L.end + .4, L.end + 2.2)), uy = L.cy + (L.sub ? 150 : 92);
   if (r > .004) f.add(rect(960 - 70, uy - 2, 960 + 70, uy + 2, SK.warm, .9 * r));
+}
+// 收斂字幕的排法：最多三行置中；有第二語言時每行下面多一行小字
+function blockLayout(x) {
+  const big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(1, big.length, small.length), two = small.length > 0, gap = two ? 150 : 124;
+  return { big, small, n, two, gap, y0: 520 - gap * (n - 1) / 2 };
+}
+// 歌詞（收斂）：淺色字逐行慢慢淡入（約 1.5 秒）；第二語言是每行下面的小字
+function lyrics(f, x) {
+  const t = x.t, L = blockLayout(x), TX = { px: 82, weight: 600, spacing: 8 }, SM = { px: 38, weight: 500, spacing: 3 };
+  for (let i = 0; i < L.n; i++) {
+    const a = E.io(seg(t, .3 + i * .4, 1.8 + i * .4)), y = L.y0 + i * L.gap;
+    if (L.big[i]) f.text(L.big[i], 960, y, { ...TX, scale: f.fit(L.big[i], 1500, TX), col: SK.light, a });
+    if (L.small[i]) f.text(L.small[i], 960, y + 60, { ...SM, scale: f.fit(L.small[i], 1440, SM), col: SK.light, a: .62 * E.io(seg(t, .7 + i * .4, 2.2 + i * .4)) });
+  }
+}
+// 金線（收斂）：歌詞下面一條暖金短線，最後才淡入
+function underline(f, x) {
+  const L = blockLayout(x), r = E.io(seg(x.t, 1.2 + L.n * .4, 3 + L.n * .4)), uy = L.y0 + (L.n - 1) * L.gap + (L.two ? 116 : 80);
+  if (r > .004) f.add(rect(960 - 90, uy - 2, 960 + 90, uy + 2, SK.warm, .9 * r));
 }
 
 defineScene({
@@ -105,13 +109,27 @@ defineScene({
   palette: SK, labels: { bg: '天色', blue: '藍', warm: '暖金', far: '遠雲', mid: '中雲', near: '近雲', hill: '山稜', light: '光' },
   look: { grain: .025, vignette: .14, paper: .06 },
   textures: [{ type: 'fiber', on: 'shapes,bg', amount: .08 }],
+  elements: {
+    sky: { label: '天色漸層', fixed: true, colors: ['bg', 'blue', 'warm'], draw: skyBands },
+    rays: { label: '光束', colors: ['light'], draw: rays },
+    high: { label: '高處的雲', colors: ['far', 'mid'], draw: clouds },
+    hills: { label: '山稜', colors: ['hill'], draw: hills },
+    low: { label: '低處的雲', colors: ['far', 'mid'], draw: clouds },
+    banks: { label: '兩側雲堆', colors: ['near'], draw: banks },
+    chars: { label: '歌詞', colors: ['light', 'warm'], draw: chars },
+    subline: { label: '第二語言', colors: ['light'], draw: subline },
+    goldline: { label: '金線', colors: ['warm'], draw: goldline },
+    lyrics: { label: '歌詞', colors: ['light'], draw: lyrics },
+    underline: { label: '金線', colors: ['warm'], draw: underline },
+  },
   backgrounds: {
-    calm: { label: '平靜（雲很慢）', jumpBeats: 8, draw: calm },
-    build: { label: '累積（雲層翻湧）', jumpBeats: 4, draw: build },
-    peak: { label: '高潮（雲開、光束落下）', jumpBeats: 4, draw: peak },
+    calm: { label: '平靜（雲很慢）', jumpBeats: 8, use: [{ el: 'sky', warm: 0 }, { el: 'high', layers: [[FARC, 1920, 1, 'far', 1], [MIDC, 2100, 1, 'mid', 1]] }, 'hills', { el: 'low', layers: [[LOWC, 1920, 1, 'far', .9]] }, { el: 'banks', grow: 0, push: 60 }] },
+    build: { label: '累積（雲層翻湧）', jumpBeats: 4, use: [{ el: 'sky', warm: 0 }, { el: 'high', layers: [[FARC, 1920, 1, 'far', 1], [FARC.map(([a, b, c, d]) => [a + 400, b + 70, c * .8, d + 40]), 1920, 2, 'far', .9], [MIDC, 2100, 2, 'mid', 1]] },
+      'hills', { el: 'low', layers: [[LOWC, 1920, 2, 'mid', .9]] }, { el: 'banks', grow: 1, push: 0 }] },
+    peak: { label: '高潮（雲開、光束落下）', jumpBeats: 4, use: [{ el: 'sky', warm: 1 }, 'rays', { el: 'high', layers: [[FARC.map(([a, b, c, d]) => [a, b - 40, c, d]), 1920, 1, 'mid', 1]] }, 'hills', { el: 'low', layers: [[LOWC, 1920, 1, 'mid', .8]] }, { el: 'banks', grow: .6, push: 140 }] },
   },
   subtitles: {
-    flashy: { label: '華麗（克制）', split: 'line', seconds: 7, draw: flashy },
-    gentle: { label: '收斂', split: 'block', seconds: 16, draw: gentle },
+    flashy: { label: '華麗（克制）', split: 'line', seconds: 7, use: [{ el: 'under', bg: 'build' }, 'chars', 'subline', 'goldline'] },
+    gentle: { label: '收斂', split: 'block', seconds: 16, use: [{ el: 'under', bg: 'calm' }, 'lyrics', 'underline'] },
   },
 });
