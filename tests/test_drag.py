@@ -7,7 +7,7 @@ D4  拉角落把手等比縮放：倍率＝游標到軸心的距離比。
 D5  拖旋轉把手旋轉：角度＝游標繞軸心轉過的角度；按住 Shift 每 15 度一格。
 D6  位置、大小、旋轉作用在整個元素上：移動讓它這一格的範圍平移；縮放與旋轉以它整個活動範圍的中心為軸；其他元素照舊。
 D7  鋪滿畫面的元素（大字排版的整面閃色、剪紙拼貼的背景）選不到、不能移動；設定裡寫了位置會略過並提醒。
-D8  字幕整體也能拖。
+D8  字幕整個是一塊的風格，字幕整體也能拖。
 D9  選「只有這一段」時，拖動記在段落上。
 D10 設定 JSON 的 dx、dy、scale、rotate：貼上會套用，超出範圍夾回範圍內，不是數字就不套用並說明哪一欄。
 D11 元素清單在「畫面元素」分頁（和預覽並排）；點名稱會選取；「細部」的位置、大小、旋轉欄位會改設定。
@@ -152,12 +152,12 @@ async def main():
         await safe("D7 鋪滿畫面的元素", d7)
 
         async def d8():
-            await at(2, 1, 4.0); base = await p.grab(4.0); e0 = await els()
-            await click(960, 500); s = await sel()
-            await drag((960, 500), (960, 650)); adj = ((await proj_now()).get("elements") or {}).get("text", {}); e = await els(); u = await unit()
+            await at(2, 1, 4.0, "nave"); base = await p.grab(4.0); e0 = await els(); u = await unit()
+            await click(960, 459); s = await sel()
+            await pg.keyboard.down("Control"); await drag((960, 459), (960, 609)); await pg.keyboard.up("Control"); adj = ((await proj_now()).get("elements") or {}).get("text", {}); e = await els()
             moved = await p.grab(4.0, out / "text_moved.png")
-            rec("D8 在字幕影片上點字：選到字幕；往下拖 150，設定記下 dy", s and s["id"] == "text" and near((adj.get("dy", 0),), (150,), 2 * u + 1) and abs(adj.get("dx", 0)) <= 2 * u + 1, (s and s["id"], adj))
-            rec("D8 字幕的範圍往下移，背景的元素照舊，畫面改變", near(center(e["text"]["box"]), (center(e0["text"]["box"])[0] + adj.get("dx", 0), center(e0["text"]["box"])[1] + adj.get("dy", 0)), 0.5) and e["sun"]["box"] == e0["sun"]["box"] and amount(base, moved) > 0, e["text"]["box"])
+            rec("D8 在整塊字幕的風格（光柱）上點字：選到字幕；按住 Ctrl（不吸附）往下拖 150，設定記下 dy", s and s["id"] == "text" and near((adj.get("dy", 0),), (150,), 2 * u + 1) and abs(adj.get("dx", 0)) <= 2 * u + 1, (s and s["id"], adj))
+            rec("D8 字幕的範圍往下移，畫面改變", near(center(e["text"]["box"]), (center(e0["text"]["box"])[0] + adj.get("dx", 0), center(e0["text"]["box"])[1] + adj.get("dy", 0)), 0.5) and amount(base, moved) > 0, e["text"]["box"])
         await safe("D8 字幕整體", d8)
 
         async def d9():

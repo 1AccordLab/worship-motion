@@ -6,7 +6,7 @@ AC3  每個元素可以單獨調透明度：畫面介於「全顯示」和「隱
 AC4  元素有自己的參數（大圓的大小），超出範圍會夾回範圍內。
 AC5  元素可以單獨換色：只影響那個元素，用同一個顏色的其他東西照舊。
 AC6  調整可以只套用在一個段落；其他段落照舊。
-AC7  字幕影片的元素清單＝段落背景的元素＋字幕；字幕也能隱藏。
+AC7  字幕影片的元素清單＝段落背景的元素＋字幕的元素；字幕的元素也能隱藏。
 AC8  整個背景是一個畫圖函式的風格（剪紙拼貼）照常能用，列出 背景、字幕 兩個元素，同樣能隱藏、調透明度。
 AC9  設定 JSON 的 elements 欄位：貼上會套用；不認得的元素略過並提醒；值不對就不套用並說明哪一欄。
 AC10 換風格會清掉元素調整；還原（undo）回到調整前；匯出的設定、存成的單檔都帶著調整，重新載入後一樣。
@@ -103,9 +103,9 @@ async def main():
 
         async def ac7():
             await fresh("riso"); base = await p.shot(2, 1, 4.0); e = await els()
-            rec("AC7 字幕影片的元素＝背景的元素＋字幕", list(e) == PEAK + ["text"] and e["text"]["label"] == "字幕" and e["text"]["drawn"] > 0, [(k, v["label"], v["drawn"]) for k, v in e.items()])
-            await set_el("text", {"visible": False}); hid = await p.shot(2, 1, 4.0, out / "riso_text_hidden.png"); e1 = await els()
-            rec("AC7 隱藏字幕：字幕沒畫、背景的元素照舊、畫面改變", e1["text"]["drawn"] == 0 and all(e1[k]["drawn"] == e[k]["drawn"] for k in PEAK) and amount(base, hid) > 0, {k: v["drawn"] for k, v in e1.items()})
+            rec("AC7 字幕影片的元素＝背景的元素＋字幕的元素（紙色底條、歌詞）", list(e) == PEAK + ["plate", "lyrics"] and e["lyrics"]["label"] == "歌詞" and e["lyrics"]["drawn"] > 0, [(k, v["label"], v["drawn"]) for k, v in e.items()])
+            await set_el("lyrics", {"visible": False}); hid = await p.shot(2, 1, 4.0, out / "riso_text_hidden.png"); e1 = await els()
+            rec("AC7 隱藏歌詞：歌詞沒畫、底條與背景的元素照舊、畫面改變", e1["lyrics"]["drawn"] == 0 and all(e1[k]["drawn"] == e[k]["drawn"] for k in PEAK + ["plate"]) and amount(base, hid) > 0, {k: v["drawn"] for k, v in e1.items()})
         await safe("AC7 字幕影片的元素", ac7)
 
         async def ac8():
