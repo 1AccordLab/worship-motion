@@ -139,7 +139,7 @@ async def main():
             rec("AC10 存成的單檔帶著元素調整", '"elements"' in html and '"discs"' in html, len(html))
             await fresh("swiss"); assert await p.ev("x=>__app.load(x)", pj); back = await proj_now()
             rec("AC10 匯出的設定重新載入後，元素調整一樣", back.get("elements") == pj.get("elements") and back["sections"][0].get("elements") == pj["sections"][0].get("elements") and pj["elements"]["discs"]["visible"] is False, (back.get("elements"), back["sections"][0].get("elements")))
-            await p.pg.select_option("#style", "swiss"); await p.wait("__app.project.style==='swiss'"); pj = await proj_now()
+            await p.ev("__app.tab('self')"); await p.pg.select_option("#style", "swiss"); await p.wait("__app.project.style==='swiss'"); pj = await proj_now()
             rec("AC10 換風格會清掉元素調整（整首歌與各段落）", not pj.get("elements") and not any(s.get("elements") for s in pj["sections"]), (pj.get("elements"), [s.get("elements") for s in pj["sections"]]))
         await safe("AC10 換風格、還原、存檔", ac10)
 
