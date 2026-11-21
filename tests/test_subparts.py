@@ -7,6 +7,7 @@ P4 調整對同一種字幕的每一句都生效。
 P5 雙語時，小字屬於「歌詞」，跟著一起移動。
 P6 字幕整個是一個函式的風格（剪紙拼貼）照常列出 背景、字幕。
 P7 AI 可以用 use 寫字幕（examples/elements.js），清單裡的 under 代表段落選的背景；under 放在背景的 use、元素取名 under 都會擋下並說明。
+P8 字很大的字幕（大字排版的華麗字幕）整支從頭畫到尾都畫得出來，畫面和直接跳到那一格相同。
 另外用 python3 tests/test_golden.py --ref <實作前的 commit> 確認：沒有任何調整時，畫面和實作前一格不差。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -111,6 +112,17 @@ async def main():
             sk = await p.ev("__app.skill()")
             rec("P7 給 AI 的說明寫了字幕的 use 與 under", "`'under'`" in sk and "字幕也用 `use` 組合" in sk, len(sk))
         await safe("P7 AI 用元素寫字幕", p7)
+
+        async def p8():
+            await at(1, 1, 0, "type")
+            last = None
+            for i in range(40): last = await p.grab(i / 30)
+            rec("P8 大字排版的華麗字幕（九個字）從頭一格一格畫到第 40 格都畫得出來", last is not None, last and last.size)
+            await p.ev("__app.select(1,0)"); await p.ev("__app.select(1,1)")
+            fresh = await p.grab(39 / 30)
+            worst = max(hi for _, hi in ImageChops.difference(last, fresh).getextrema())
+            rec("P8 一路畫過來的第 40 格和直接跳到那一格相同（每個通道差 2 以內）", worst <= 2, worst)
+        await safe("P8 整支字幕每一格都畫得出來", p8)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
