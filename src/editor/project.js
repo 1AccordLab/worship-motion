@@ -12,6 +12,7 @@ const PLACEMENT = {
   scale: { rest: 1, fit: v => Math.round(Math.max(.1, Math.min(5, v)) * 1000) / 1000 },
   rotate: { rest: 0, fit: wrapDegrees },
 };
+const numOf = v => typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
 const boolOf = v => v === true || v === 'true' ? true : v === false || v === 'false' ? false : null;
 /* 注意：只留和基準不同的值，存檔與給 AI 的設定才不會塞滿預設值。整首歌的基準是元素預設。段落只在同工動手調的當下和整首歌比（調回一樣就拿掉）；讀設定時不比，因為之後整首歌再改，這一段要照自己的 */
 function pruneElements(adj, m, base = {}) {
@@ -39,13 +40,13 @@ function readElements(src, m, at, errors, warnings) {
     if (!isObj(a)) { errors.push(`${path} 要是物件，例如 {"visible":false,"opacity":0.6}。`); continue; }
     const o = out[id] = {};
     if (a.visible !== undefined) { const v = boolOf(a.visible); if (v === null) errors.push(`${path}.visible 要是 true 或 false（收到 ${a.visible}）。`); else o.visible = v; }
-    if (a.opacity !== undefined) { const v = typeof a.opacity === 'string' && !a.opacity.trim() ? NaN : Number(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
+    if (a.opacity !== undefined) { const v = numOf(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
     for (const [k, pl] of Object.entries(PLACEMENT)) { if (a[k] === undefined) continue;
       if (def.fixed) { warnings.push(`${path}.${k}：「${def.label}」鋪滿畫面，不能移動、縮放、旋轉，已略過。`); continue; }
-      const v = typeof a[k] === 'string' && !a[k].trim() ? NaN : Number(a[k]); if (!isFinite(v)) errors.push(`${path}.${k} 要是數字（收到 ${a[k]}）。`); else o[k] = pl.fit(v); }
+      const v = numOf(a[k]); if (!isFinite(v)) errors.push(`${path}.${k} 要是數字（收到 ${JSON.stringify(a[k])}）。`); else o[k] = pl.fit(v); }
     if (a.params !== undefined) { if (!isObj(a.params)) errors.push(`${path}.params 要是物件。`); else for (const [k, v] of Object.entries(a.params)) {
       const d = ownProp(def.params, k); if (!d) { warnings.push(`${path}.params 的「${k}」這個元素沒有，已略過。`); continue; }
-      const n = Number(v); if (!isFinite(n)) { errors.push(`${path}.params.${k} 要是數字。`); continue; }
+      const n = numOf(v); if (!isFinite(n)) { errors.push(`${path}.params.${k} 要是數字。`); continue; }
       (o.params = o.params || {})[k] = Math.max(d.min, Math.min(d.max, n)); } }
     if (a.colors !== undefined) { if (!isObj(a.colors)) errors.push(`${path}.colors 要是物件。`); else for (const [k, v] of Object.entries(a.colors)) {
       if (!def.colors.includes(k)) { warnings.push(`${path}.colors 的「${k}」不是這個元素的顏色，已略過（可用：${def.colors.join('、') || '沒有'}）。`); continue; }

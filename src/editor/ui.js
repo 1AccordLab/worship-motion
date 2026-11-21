@@ -298,7 +298,19 @@ function writeElement(id, patch, scope = elScope) {
   const host = scopeHost(scope), next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
   const { [id]: before, ...others } = host.elements || {};
   setOrDrop(host, { ...others, ...pruneElements({ [id]: next }, m, scope === 'section' ? P.elements : {}) });
+  if (scope === 'song') followSong(id, patch, m);
   return d;
+}
+// 注意：這一段自己有同一項調整時，整首歌的值在這一段看不到；在「整首歌」調的那一項要從這一段拿掉，畫面才會跟著動
+function followSong(id, patch, m) {
+  const own = ownProp(sec().elements || {}, id); if (!own) return;
+  const left = { ...own };
+  for (const [k, v] of Object.entries(patch)) {
+    if (!isObj(v)) { delete left[k]; continue; }
+    left[k] = Object.fromEntries(Object.entries(own[k] || {}).filter(([sub]) => !(sub in v)));
+  }
+  const { [id]: was, ...others } = sec().elements;
+  setOrDrop(sec(), { ...others, ...pruneElements({ [id]: left }, m, null) });
 }
 function applyElement(id, patch, scope = elScope) {
   const d = writeElement(id, patch, scope); if (!d) return false;
@@ -313,7 +325,9 @@ function resetElement(id, scope = elScope) {
   save(`${scope === 'section' ? sec().name + '：' : ''}元素「${d.label}」還原`); renderElements(); return rebuild();
 }
 function syncElementRows() {
-  const now = Object.fromEntries(elementsNow().map(e => [e.id, e])), own = (elScope === 'section' ? sec() : P).elements || {}, other = elScope === 'section' ? {} : sec().elements || {};
+  const now = Object.fromEntries(elementsNow().map(e => [e.id, e]));
+  if (selEl && !(now[selEl] && now[selEl].visible)) { selEl = null; renderStage(); }
+  const own = (elScope === 'section' ? sec() : P).elements || {}, other = elScope === 'section' ? {} : sec().elements || {};
   document.querySelectorAll('#elList .elrow').forEach(row => {
     const e = now[row.dataset.id]; if (!e) return;
     row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible); row.classList.toggle('sel', selEl === e.id);

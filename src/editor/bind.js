@@ -104,7 +104,7 @@ function bindUI() {
 }
 
 // 注意：一般按鈕上的空白鍵是瀏覽器的「按下按鈕」，下拉、滑桿上的方向鍵是它們自己的操作，都要讓給瀏覽器；
-// 注意：分頁按鈕點過就已經選好，空白鍵留給播放。右邊三個分頁自己處理 ← →（會 preventDefault）。
+// 注意：分頁按鈕點過就已經選好，空白鍵留給播放。右邊的分頁自己處理 ← →（會 preventDefault）。
 function previewKeys(e) {
   if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || exporting || anyDialogOpen()) return;
   const el = e.target, tag = el && el.tagName, own = isTextField(el) || /^(SELECT|INPUT)$/.test(tag);

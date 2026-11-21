@@ -117,7 +117,8 @@ body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單�
 #selBox .h{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:var(--surface);border:1.5px solid var(--accent);pointer-events:auto}
 #selBox .h.nw{left:0;top:0;cursor:nwse-resize}#selBox .h.ne{left:100%;top:0;cursor:nesw-resize}#selBox .h.sw{left:0;top:100%;cursor:nesw-resize}#selBox .h.se{left:100%;top:100%;cursor:nwse-resize}
 #selBox .h.rot{left:50%;top:-26px;border-radius:50%;cursor:grab}
-#selBox.low .h.rot{top:16px}
+#selBox.rotbelow .h.rot{top:calc(100% + 26px)}
+#selBox.rotinside .h.rot{top:16px}
 #selPivot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;background:linear-gradient(var(--warn),var(--warn)) 50% 0/2px 100% no-repeat,linear-gradient(var(--warn),var(--warn)) 0 50%/100% 2px no-repeat}
 .snap{position:absolute;background:var(--warn);pointer-events:none}
 .snap.v{top:0;bottom:0;width:2px;margin-left:-1px}.snap.h{left:0;right:0;height:2px;margin-top:-1px}
@@ -371,7 +372,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <p class="hint" id="elDesc"></p>
           <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
           <div id="elList"></div>
-          <p class="hint">在預覽上點元素可以選取、拖動；按住 Shift 拖只走水平或垂直。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。</p>
+          <p class="hint">在預覽上點元素可以選取、拖動；按住 Shift 拖只走水平或垂直，靠近畫面中心或邊緣會吸附（按住 Ctrl 或 ⌘ 就不吸附）。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。「套用在」選整首歌時，這一段原本自己的同一項調整會改成跟著整首歌。</p>
         </div>
       </div>
 

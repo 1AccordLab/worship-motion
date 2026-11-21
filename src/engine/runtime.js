@@ -49,6 +49,7 @@ class Atlas {
     this.ca.font = f; this.ca.letterSpacing = spacing + 'px';
     const m = this.ca.measureText(text), pad = Math.ceil(blur * 2.5 + 6 + stroke);
     const w = Math.ceil(m.width) + pad * 2, h = Math.ceil(px * 1.36) + pad * 2;
+    if (this.dry) return { u0: 0, v0: 0, u1: 0, v1: 0, w, h, pad, tw: m.width };
     if (this.x + w > AW) { this.x = 2; this.y += this.rowH + 2; this.rowH = 0; }
     if (this.y + h > AH || w > AW) throw new Error('文字太多或太大，文字圖集放不下：' + text.slice(0, 12));
     const cx = this.x + w / 2, cy = this.y + h / 2;
@@ -79,6 +80,8 @@ class Atlas {
   }
 }
 let atlas = null;
+/* 注意：量範圍、判定點擊時也會跑場景的畫圖函式，但不能把字放進圖集：字進圖集的先後會改變它的位置，匯出的畫面會差幾個像素 */
+function measuring(fn) { const was = atlas.dry; atlas.dry = true; try { return fn(); } finally { atlas.dry = was; } }
 
 const WORLD_FLOATS = 20;  // 注意：和 gpu.js 的 WORLD_FLOATS 一致
 const WORLD_MAX = 400000, BRUSH = { oil: 0, flat: 1 };
@@ -307,6 +310,9 @@ function territory() {
   const x = CLIP.x, bgName = x.kind === 'bg' ? x.type : x.bg;
   const key = JSON.stringify([SCENE.id, x.kind, x.type, bgName, CLIP.jump, CLIP.span, x.dur, x.text, x.text2, x.swap, CLIP.elParams, Object.keys(CLIP.els).filter(isHidden)]);
   if (TERRITORY && TERRITORY.key === key) return TERRITORY.boxes;
+  return measuring(() => territoryFresh(x, bgName, key));
+}
+function territoryFresh(x, bgName, key) {
   const boxes = {}, keepT = x.t, at = tt => { x.t = tt; x.beat = tt / BEAT; return new Frame(SCENE.palette); };
   const collect = (f, only) => { for (const it of f.items) if (!only || it.el === only) boxes[it.el] = grow(boxes[it.el], itemBox(it)); };
   try {
@@ -345,8 +351,8 @@ function placedItems(t) {
   return { f, items };
 }
 function hitAt(t, px, py) {
-  const { items } = placedItems(t);
-  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (!isFixed(it.el) && it.o.col[3] >= HIT_MIN_ALPHA && itemContains(it, px, py)) return it.el; }
+  const { items } = measuring(() => placedItems(t));
+  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (!isFixed(it.el) && it.o.col[3] * (adjOf(it.el).opacity ?? 1) >= HIT_MIN_ALPHA && itemContains(it, px, py)) return it.el; }
   return null;
 }
 
@@ -438,7 +444,7 @@ self.onmessage = ev => {
   const m = ev.data;
   try {
     if (m.op === 'els') { setElements(m.els || {}); postMessage({ id: m.id, ok: true }); return; }
-    if (m.op === 'boxes') { const fr = frame(m.t); postMessage({ id: m.id, ok: true, boxes: fr.boxes, drawn: fr.drawn }); return; }
+    if (m.op === 'boxes') { const fr = measuring(() => frame(m.t)); postMessage({ id: m.id, ok: true, boxes: fr.boxes, drawn: fr.drawn }); return; }
     if (m.op === 'territory') { postMessage({ id: m.id, ok: true, boxes: territory() }); return; }
     if (m.op === 'hit') { postMessage({ id: m.id, ok: true, el: hitAt(m.t, m.x, m.y) }); return; }
     if (m.op === 'clip') { setClip(m.clip); if (SCENE.d.world) worldFor(CLIP.x); postMessage({ id: m.id, ok: true }); return; }

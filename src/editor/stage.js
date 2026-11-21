@@ -1,5 +1,5 @@
 let selEl = null, stageDrag = null;
-const SNAP_CSS_PX = 6, DRAG_START_CSS_PX = 3, ROTATE_STEP = 15, BOX_MIN = 24, ROTATE_HANDLE_ROOM_CSS_PX = 34;
+const SNAP_CSS_PX = 6, DRAG_START_CSS_PX = 3, ROTATE_STEP = 15, BOX_MIN_CSS_PX = 48, ROTATE_HANDLE_ROOM_CSS_PX = 34;
 const boxCenter = box => [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
 const inBox = (box, p) => p.x >= box[0] && p.x <= box[2] && p.y >= box[1] && p.y <= box[3];
 const elementState = id => elementsNow().find(e => e.id === id) || null;
@@ -21,17 +21,22 @@ function showGuides(gx, gy) {
   v.hidden = gx === null; if (gx !== null) v.style.left = pc(gx, W);
   h.hidden = gy === null; if (gy !== null) h.style.top = pc(gy, H);
 }
-// 注意：選取框與把手只畫在畫面範圍內（元素可以超出畫面，把手要抓得到、不能蓋住預覽外面的控制列）；上方沒空間時旋轉把手改放在框內
+// 注意：選取框與把手只畫在畫面範圍內（元素可以超出畫面，把手要抓得到、不能蓋住預覽外面的控制列），而且至少留一塊抓得到的中間；旋轉把手上方沒空間就放下方，都沒有才放框內
+function shownBox(box) {
+  const min = BOX_MIN_CSS_PX * W / Math.max(1, $('#view').clientWidth);
+  const x0 = Math.min(Math.max(0, box[0]), W - min), x1 = Math.max(Math.min(W, box[2]), x0 + min);
+  const y0 = Math.min(Math.max(0, box[1]), H - min), y1 = Math.max(Math.min(H, box[3]), y0 + min);
+  return [x0, y0, x1, y1];
+}
 function renderStage() {
   const box = $('#selBox'); if (!box) return;
   const s = exporting ? null : selectionNow(), pivot = $('#selPivot');
   box.hidden = !s; pivot.hidden = !s;
   if (!stageDrag) showGuides(null, null);
   if (!s) return;
-  const x0 = Math.min(Math.max(0, s.box[0]), W - BOX_MIN), x1 = Math.max(Math.min(W, s.box[2]), x0 + BOX_MIN);
-  const y0 = Math.min(Math.max(0, s.box[1]), H - BOX_MIN), y1 = Math.max(Math.min(H, s.box[3]), y0 + BOX_MIN);
+  const [x0, y0, x1, y1] = shownBox(s.box), css = $('#view').clientHeight / H, above = y0 * css >= ROTATE_HANDLE_ROOM_CSS_PX, below = (H - y1) * css >= ROTATE_HANDLE_ROOM_CSS_PX;
   box.style.left = pc(x0, W); box.style.top = pc(y0, H); box.style.width = pc(x1 - x0, W); box.style.height = pc(y1 - y0, H);
-  box.classList.toggle('low', y0 / H * $('#view').clientHeight < ROTATE_HANDLE_ROOM_CSS_PX);
+  box.classList.toggle('rotbelow', !above && below); box.classList.toggle('rotinside', !above && !below);
   pivot.style.left = pc(Math.max(0, Math.min(W, s.anchor[0])), W); pivot.style.top = pc(Math.max(0, Math.min(H, s.anchor[1])), H);
   box.setAttribute('aria-label', `選取中：${s.label}`);
 }
@@ -94,6 +99,7 @@ function cancelStageDrag() { if (stageDrag) { if (stageDrag.armed) endDrag(stage
 function onStageDown(ev) {
   if (ev.button > 0 || exporting || !clip || !scene || stageDrag) return;
   ev.preventDefault();
+  if (document.activeElement && document.activeElement.closest('#elList')) document.activeElement.blur();
   const handle = ev.target.closest('.h'), p0 = stagePoint(ev);
   const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, free: ev.ctrlKey || ev.metaKey };
   drag.onMove = e => { drag.last = stagePoint(e); drag.shift = e.shiftKey; drag.free = e.ctrlKey || e.metaKey; applyDrag(drag); };
@@ -104,7 +110,7 @@ function onStageDown(ev) {
   if (handle) { if (!armDrag(drag, selEl)) endDrag(drag, false); return; }
   serial(async () => {
     const hit = (await scene.hit(clip.map(t), p0.x, p0.y)).el, sel = selectionNow();
-    const target = hit || (sel && inBox(sel.box, p0) ? sel.id : null);
+    const target = hit || (sel && inBox(shownBox(sel.box), p0) ? sel.id : null);
     if (!target) { selectElement(null); endDrag(drag, false); return; }
     if (target !== selEl) { selectElement(target); showTab('el'); }
     if (drag.released || !armDrag(drag, target)) { endDrag(drag, false); return; }
