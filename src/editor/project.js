@@ -3,6 +3,46 @@ const keyNorm = k => String(k).toLowerCase().replace(/[\s_-]+/g, '');
 const pickKey = (obj, k) => { if (k == null) return null; if (Object.prototype.hasOwnProperty.call(obj, k)) return k; const n = keyNorm(k); return Object.keys(obj).find(x => keyNorm(x) === n) || null; };
 const NAME_ZH = { calm: '平靜', build: '累積', peak: '高潮', flashy: '華麗', gentle: '收斂', none: '不要' };
 const nameOf = (tbl, k) => (tbl && tbl[k] && tbl[k].label) || NAME_ZH[k] || k;
+const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const boolOf = v => v === true || v === 'true' ? true : v === false || v === 'false' ? false : null;
+/* 注意：只留和基準不同的值（整首歌的基準是元素預設，段落的基準是整首歌的調整），存檔與給 AI 的設定才不會塞滿預設值 */
+function pruneElements(adj, m, base = {}) {
+  const out = {};
+  for (const [id, a] of Object.entries(adj || {})) {
+    const def = m.elements[id], b = base[id] || {}, o = {}; if (!def || !isObj(a)) continue;
+    if (typeof a.visible === 'boolean' && a.visible !== (b.visible ?? true)) o.visible = a.visible;
+    if (typeof a.opacity === 'number' && a.opacity !== (b.opacity ?? 1)) o.opacity = a.opacity;
+    const params = Object.fromEntries(Object.entries(a.params || {}).filter(([k, v]) => def.params[k] && v !== ((b.params || {})[k] ?? def.params[k].value)));
+    const colors = Object.fromEntries(Object.entries(a.colors || {}).filter(([k, v]) => def.colors.includes(k) && v !== (b.colors || {})[k]));
+    if (Object.keys(params).length) o.params = params;
+    if (Object.keys(colors).length) o.colors = colors;
+    if (Object.keys(o).length) out[id] = o;
+  }
+  return out;
+}
+function readElements(src, m, at, errors, warnings) {
+  const out = {};
+  if (!isObj(src)) { errors.push(`${at}elements 要是物件，例如 {"sun":{"visible":false}}。`); return out; }
+  for (const [id, a] of Object.entries(src)) {
+    const def = m.elements[id], path = `${at}elements.${id}`;
+    if (!def) { warnings.push(`${at}elements 的「${id}」不是「${m.name}」的元素，已略過（可用：${Object.keys(m.elements).join('、')}）。`); continue; }
+    if (!isObj(a)) { errors.push(`${path} 要是物件，例如 {"visible":false,"opacity":0.6}。`); continue; }
+    const o = out[id] = {};
+    if (a.visible !== undefined) { const v = boolOf(a.visible); if (v === null) errors.push(`${path}.visible 要是 true 或 false（收到 ${a.visible}）。`); else o.visible = v; }
+    if (a.opacity !== undefined) { const v = typeof a.opacity === 'string' && !a.opacity.trim() ? NaN : Number(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
+    if (a.params !== undefined) { if (!isObj(a.params)) errors.push(`${path}.params 要是物件。`); else for (const [k, v] of Object.entries(a.params)) {
+      const d = def.params[k]; if (!d) { warnings.push(`${path}.params 的「${k}」這個元素沒有，已略過。`); continue; }
+      const n = Number(v); if (!isFinite(n)) { errors.push(`${path}.params.${k} 要是數字。`); continue; }
+      (o.params = o.params || {})[k] = Math.max(d.min, Math.min(d.max, n)); } }
+    if (a.colors !== undefined) { if (!isObj(a.colors)) errors.push(`${path}.colors 要是物件。`); else for (const [k, v] of Object.entries(a.colors)) {
+      if (!def.colors.includes(k)) { warnings.push(`${path}.colors 的「${k}」不是這個元素的顏色，已略過（可用：${def.colors.join('、') || '沒有'}）。`); continue; }
+      if (typeof v !== 'string' || !HEX.test(v)) { errors.push(`${path}.colors.${k} 要是 #RRGGBB 色碼（收到 ${v}）。`); continue; }
+      (o.colors = o.colors || {})[k] = v.toLowerCase(); } }
+  }
+  return out;
+}
+const mergeAdj = (a = {}, b = {}) => ({ ...a, ...b, params: { ...a.params, ...b.params }, colors: { ...a.colors, ...b.colors } });
+const setOrDrop = (host, adj) => { if (Object.keys(adj).length) host.elements = adj; else delete host.elements; };
 function normalize(raw, m, styleId) {
   const errors = [], warnings = [];
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { errors: ['設定不是一個 JSON 物件（要用 { } 包起來）。'], warnings };
@@ -25,6 +65,7 @@ function normalize(raw, m, styleId) {
     const n = Number(v); if (!isFinite(n)) { errors.push(`params.${k} 要是數字。`); continue; }
     p.params[k] = Math.max(d.min, Math.min(d.max, n));
   }
+  if (raw.elements !== undefined) setOrDrop(p, pruneElements(readElements(raw.elements, m, '', errors, warnings), m));
   const bgs = Object.keys(m.backgrounds), subs = Object.keys(m.subtitles);
   if (!Array.isArray(raw.sections) || !raw.sections.length) errors.push('sections 要是至少有一段的陣列。');
   else raw.sections.slice(0, SECTION_MAX).forEach((s, i) => {
@@ -43,6 +84,7 @@ function normalize(raw, m, styleId) {
     if (s.lyrics !== undefined) { if (typeof s.lyrics === 'string') o.lyrics = s.lyrics.replace(/\r/g, ''); else errors.push(`${at} lyrics 要是文字（換行用 \\n）。`); }
     if (s.lyrics2 !== undefined && s.lyrics2 !== null) { if (typeof s.lyrics2 === 'string') o.lyrics2 = s.lyrics2.replace(/\r/g, ''); else errors.push(`${at} lyrics2 要是文字（換行用 \\n）。`); }
     if (s.swapLang !== undefined) o.swapLang = s.swapLang === true || s.swapLang === 'true' || s.swapLang === 1;
+    if (s.elements !== undefined) setOrDrop(o, pruneElements(readElements(s.elements, m, `${at} `, errors, warnings), m, p.elements));
     if (o.subtitle !== 'none' && !slidesOf(o, m).length) warnings.push(`${at}「${o.name}」選了動態字幕但沒有歌詞，只會有背景。`);
     p.sections.push(o);
   });
@@ -50,8 +92,9 @@ function normalize(raw, m, styleId) {
 }
 function adapt(p, m) {
   const notes = [], bgs = Object.keys(m.backgrounds), subs = Object.keys(m.subtitles);
-  p.palette = {}; p.params = {}; p.style = m.id;
+  p.palette = {}; p.params = {}; p.style = m.id; delete p.elements;
   for (const s of p.sections) {
+    delete s.elements;
     if (!m.backgrounds[s.background]) { notes.push(`「${s.name}」的背景「${nameOf(m.backgrounds, s.background)}」這個風格沒有，改成「${nameOf(m.backgrounds, bgs[0])}」`); s.background = bgs[0]; }
     if (s.subtitle !== 'none' && !m.subtitles[s.subtitle]) { const n = subs[0] || 'none'; notes.push(`「${s.name}」的字幕「${nameOf(m.subtitles, s.subtitle)}」這個風格沒有，改成「${nameOf(m.subtitles, n)}」`); s.subtitle = n; }
   }
@@ -96,6 +139,7 @@ function changes(a, b, mOld, mNew) {
   if (a.bpm !== b.bpm) out.push(`速度：${a.bpm} → ${b.bpm}`);
   if (a.style === b.style && JSON.stringify(a.palette || {}) !== JSON.stringify(b.palette || {})) out.push('配色');
   if (a.style === b.style && JSON.stringify(a.params || {}) !== JSON.stringify(b.params || {})) out.push('質感參數');
+  if (a.style === b.style && JSON.stringify(a.elements || {}) !== JSON.stringify(b.elements || {})) out.push('畫面元素');
   b.sections.forEach((s, i) => {
     const o = a.sections[i]; if (!o) { out.push(`新增一段「${s.name}」`); return; }
     const c = [];
@@ -109,6 +153,7 @@ function changes(a, b, mOld, mNew) {
     if (o.lyrics !== s.lyrics) c.push('歌詞');
     if ((o.lyrics2 || '') !== (s.lyrics2 || '')) c.push('第二語言歌詞');
     if (!!o.swapLang !== !!s.swapLang) c.push(s.swapLang ? '大小對調（第二語言大）' : '取消大小對調');
+    if (a.style === b.style && JSON.stringify(o.elements || {}) !== JSON.stringify(s.elements || {})) c.push('畫面元素');
     if (c.length) out.push(`${o.name}：${c.join('、')}`);
   });
   if (a.sections.length > b.sections.length) out.push(`刪掉：${a.sections.slice(b.sections.length).map(s => s.name).join('、')}`);

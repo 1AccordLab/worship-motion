@@ -47,6 +47,7 @@ function testApi() {
     history: () => { const h = histOf(SONGS[ACT]); return { pos: h.pos, labels: h.stack.map(e => e.label) }; }, goHist, flushHist: () => writeHist(), moveSong, moveSongTo, renameSong, importText, bookJSON, allSongsPlan: async () => (await allSongsFiles({ encode: false })).map(f => f.name),
     headerOf, readSong: (t, o) => readSong(t, o || {}), isFresh, histPanel: () => $('#histCard').innerText,
     resetSong, slides: () => slidesOf(sec()),
+    elements: elementsNow, setElement: (id, patch, scope) => setElement(id, patch, scope || 'song'), resetElement,
     toTrad, planSplit: (text, o) => planSplit(text, o || {}), applySplitText: (text, o) => { applySplit(planSplit(text, o || {})); save('貼上整首歌詞'); return refresh().then(() => clone(P)); },
     openLyrics: () => openLyricsDialog(), lyricsDialog: () => ({ open: $('#lyrDlg').open, text: $('#lyrBody').innerText }),
   };

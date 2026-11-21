@@ -111,6 +111,20 @@ body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單�
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
+.elbox{margin-top:14px;padding-top:10px;border-top:1.5px dashed var(--muted)}
+.elboxhead{display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px}
+.elrow{padding:6px 0;border-top:1.5px solid var(--line)}
+.elrow.off .elname{color:var(--muted);text-decoration:line-through}
+.elhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.elshow{display:flex;align-items:center;gap:8px;min-width:118px;font-size:14px}
+.elshow input{accent-color:var(--accent)}
+.elop{flex:1;min-width:90px}
+.elopv{min-width:44px;text-align:right;font-size:13px}
+.elnote{flex-basis:100%;font-size:12px;color:var(--warn)}
+.elnote:empty{display:none}
+.eldetail{margin:6px 0 2px 26px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.eldetail .field{flex-basis:100%;margin:0}
+.elcolor{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .count{margin:4px 0 0;font-size:13px;line-height:20px}
 .count b{color:var(--accent)}
 .progress{height:8px;background:var(--sunk);border-radius:999px;overflow:hidden;margin-top:10px}
@@ -326,6 +340,12 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <div id="subOpts">
             <div class="field"><label for="sDur">每支長度</label><input type="number" id="sDur" min="2" max="60" step="1"><span class="hint">秒</span></div>
             <div class="field"><label for="sEnter">進場速度</label><span class="hint">慢</span><input type="range" id="sEnter" min="0.5" max="2" step="0.1" class="grow"><span class="hint">快</span><b id="sEnterV" style="min-width:40px;text-align:right;font-size:13px"></b></div>
+          </div>
+          <div class="elbox" id="elBox">
+            <div class="elboxhead">畫面元素<button type="button" class="q" data-tip="畫面是一個一個元素疊起來的。每個元素可以單獨隱藏、調透明度；按「細部」可以換它自己的顏色、調它自己的參數。調整會跟著存檔，也會帶給 AI。">?</button></div>
+            <p class="hint" id="elDesc"></p>
+            <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
+            <div id="elList"></div>
           </div>
         </div>
 

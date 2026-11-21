@@ -1,79 +1,98 @@
-/* 網點印刷（Risograph）：米色紙、螢光粉／藍／黃／青油墨，疊印、網點、套色錯位 */
+/* 網點印刷（Risograph）：米色紙、螢光粉／藍／黃／青油墨，疊印、網點、套色錯位；背景由一個個元素疊起來 */
 const RS = { bg: '#d6cab0', pink: '#e2536e', blue: '#3b5ca8', yel: '#e9b23c', teal: '#2c8a86', ink: '#2f2b35', paper: '#e2d6bd' };
 const ink = s => Object.assign(s, { blend: 'multiply' });
 const flat = { tex: false };
 
-// 套準記號：印刷品角落的十字圓圈
-function marks(f, mx, my, s = 26) {
-  f.add(arc(mx, my, s * .55, 2.5, 0, 7, RS.ink, .75, flat), rect(mx - s, my - 1.2, mx + s, my + 1.2, RS.ink, .75, flat), rect(mx - 1.2, my - s, mx + 1.2, my + s, RS.ink, .75, flat));
-}
-// 色票條：四色、濃度不同（半透明＝網點），每拍滿版一格
-function swatches(f, t, sx, sy) {
-  const cols = [RS.pink, RS.blue, RS.yel, RS.teal], k = Math.floor(t / BEAT) % 8;
-  for (let i = 0; i < 8; i++) f.add(ink(rect(sx + i * 34, sy, sx + i * 34 + 26, sy + 26, cols[i % 4], i === k ? 1 : .3 + .08 * (i % 4))));
-}
-// 網點漸層：同一個墨色，濃度一格一格變
-function ramp(f, rx, ry, w, h, n, col, vertical = false) {
-  for (let i = 0; i < n; i++) {
-    const a = .12 + .88 * i / (n - 1);
-    f.add(ink(vertical ? rect(rx, ry + i * h / n, rx + w, ry + (i + 1) * h / n, col, a) : rect(rx + i * w / n, ry, rx + (i + 1) * w / n, ry + h, col, a)));
+const CALM_A = [[230, 900], [1700, 180], [260, 160], [1680, 880], [150, 560], [1760, 540], [420, 980], [1500, 110]];
+const CALM_B = [[460, 980], [1500, 300], [430, 330], [1480, 1000], [330, 760], [1580, 360], [640, 1060], [1320, 240]];
+const BUILD_A = [[180, 180], [1740, 900], [1700, 170], [200, 880], [140, 540], [1780, 560], [400, 120], [1520, 980]];
+
+// 大圓：疊印在角落的大圓，跟著換位跳位置（pair＝藍、粉紅兩個；否則一個藍圓）
+function discs(f, x, e) {
+  const tt = mod(x.t, 16), size = e.p.size;
+  if (e.args.pair) {
+    const b = pulse(tt, 3, BAR), A = x.step(CALM_A, 2, tt), B = x.step(CALM_B, 2, tt);
+    f.add(ink(circle(A[0], A[1], 330 * (1 + .03 * b) * size, RS.blue, .5)));
+    f.add(ink(circle(B[0], B[1], 230 * size, RS.pink)));
+  } else {
+    const b = pulse(tt, 5), A = x.step(BUILD_A, 1, tt);
+    f.add(ink(circle(A[0], A[1], 210 * (1 + .06 * b) * size, RS.blue)));
   }
 }
-
-// 平靜：兩個大圓疊印在角落，每 2 秒跳位置
-function calm(f, x) {
-  const tt = mod(x.t, 16), b = pulse(tt, 3, BAR);
-  const A = x.step([[230, 900], [1700, 180], [260, 160], [1680, 880], [150, 560], [1760, 540], [420, 980], [1500, 110]], 2, tt);
-  const B = x.step([[460, 980], [1500, 300], [430, 330], [1480, 1000], [330, 760], [1580, 360], [640, 1060], [1320, 240]], 2, tt);
-  f.add(ink(circle(A[0], A[1], 330 * (1 + .03 * b), RS.blue, .5)));
-  f.add(ink(circle(B[0], B[1], 230, RS.pink)));
-  const Y = x.step([[1240, 70, 1860, 120], [60, 960, 700, 1010], [1300, 980, 1880, 1030], [80, 60, 760, 110]], 4, tt);
+// 橫條：黃色長條，每 4 秒換一個邊
+function bar(f, x) {
+  const Y = x.step([[1240, 70, 1860, 120], [60, 960, 700, 1010], [1300, 980, 1880, 1030], [80, 60, 760, 110]], 4, mod(x.t, 16));
   f.add(ink(rect(...Y, RS.yel)));
-  f.add(ink(arc(W - A[0], H - A[1], 120, 14, 0, 7, RS.teal)));
-  ramp(f, 1620, 860, 220, 34, 6, RS.teal);
-  marks(f, 90, 90); marks(f, 1830, 990);
-  swatches(f, tt, 96, 1000);
 }
-// 累積：斜向網點條紋往右推、色塊每 1 秒跳
-function build(f, x) {
-  const tt = mod(x.t, 16), b = pulse(tt, 5);
-  const off = mod(tt * 60, 120);
+// 圓環：青色圓環，待在藍色大圓的對角
+function ring(f, x) {
+  const A = x.step(CALM_A, 2, mod(x.t, 16));
+  f.add(ink(arc(W - A[0], H - A[1], 120, 14, 0, 7, RS.teal)));
+}
+// 網點漸層：同一個墨色，濃度一格一格變（list 每一項＝位置、寬高、格數、墨色、是否直排）
+function ramp(f, x, e) {
+  for (const [rx, ry, w, h, n, col, vertical] of e.args.list)
+    for (let i = 0; i < n; i++) {
+      const a = .12 + .88 * i / (n - 1);
+      f.add(ink(vertical ? rect(rx, ry + i * h / n, rx + w, ry + (i + 1) * h / n, RS[col], a) : rect(rx + i * w / n, ry, rx + (i + 1) * w / n, ry + h, RS[col], a)));
+    }
+}
+// 套準記號：印刷品角落的十字圓圈（at＝每個記號的位置）
+function marks(f, x, e) {
+  const s = 26;
+  for (const [mx, my] of e.args.at)
+    f.add(arc(mx, my, s * .55, 2.5, 0, 7, RS.ink, .75, flat), rect(mx - s, my - 1.2, mx + s, my + 1.2, RS.ink, .75, flat), rect(mx - 1.2, my - s, mx + 1.2, my + s, RS.ink, .75, flat));
+}
+// 色票條：四色、濃度不同（半透明＝網點），每拍滿版一格
+function swatches(f, x, e) {
+  const [sx, sy] = e.args.at, cols = [RS.pink, RS.blue, RS.yel, RS.teal], k = Math.floor(mod(x.t, 16) / BEAT) % 8;
+  for (let i = 0; i < 8; i++) f.add(ink(rect(sx + i * 34, sy, sx + i * 34 + 26, sy + 26, cols[i % 4], i === k ? 1 : .3 + .08 * (i % 4))));
+}
+// 斜條紋：斜向網點條紋往右推，中間留給歌詞
+function stripes(f, x) {
+  const off = mod(mod(x.t, 16) * 60, 120);
   for (let i = -2; i < 18; i++) {
     const cx = i * 120 + off;
     if (cx > 420 && cx < 1500) continue;
     f.add(ink(band(cx, 540, 1400, 46, 70, i % 3 ? RS.teal : RS.pink, .38)));
   }
-  const A = x.step([[180, 180], [1740, 900], [1700, 170], [200, 880], [140, 540], [1780, 560], [400, 120], [1520, 980]], 1, tt);
-  f.add(ink(circle(A[0], A[1], 210 * (1 + .06 * b), RS.blue)));
-  const T = x.step([[1650, 300, 0], [260, 760, Math.PI], [1500, 900, .5], [320, 260, -.4]], 1, tt);
-  f.add(ink(tri(T[0], T[1], 150, T[2], RS.yel)));
-  ramp(f, 60, 380, 40, 320, 6, RS.pink, true); ramp(f, 1820, 380, 40, 320, 6, RS.blue, true);
-  f.add(ink(rect(96, 1050, 96 + 520 * mod(tt, BAR) / BAR, 1060, RS.ink)));
-  marks(f, 90, 90); marks(f, 1830, 90); marks(f, 1830, 990);
-  swatches(f, tt, 1520, 1000);
 }
-// 高潮：底部大太陽、放射網點光芒慢慢轉、青色圓疊印
-function peak(f, x) {
-  const tt = mod(x.t, 16), b = pulse(tt, 5), SX = 960, SY = 1180, N = 16, rot = (TAU / N) * tt / 16;
+// 三角形：黃色三角形，每 1 秒跳位置、換角度
+function tri3(f, x) {
+  const T = x.step([[1650, 300, 0], [260, 760, Math.PI], [1500, 900, .5], [320, 260, -.4]], 1, mod(x.t, 16));
+  f.add(ink(tri(T[0], T[1], 150, T[2], RS.yel)));
+}
+// 進度條：底部一條細線，每小節從頭長一次
+function progress(f, x) {
+  f.add(ink(rect(96, 1050, 96 + 520 * mod(mod(x.t, 16), BAR) / BAR, 1060, RS.ink)));
+}
+// 光芒：從底部太陽放射的網點光芒，慢慢轉
+function rays(f, x) {
+  const tt = mod(x.t, 16), SX = 960, SY = 1180, N = 16, rot = (TAU / N) * tt / 16;
   for (let i = 0; i < N; i++) {
     const a = Math.PI + (i + .5) * Math.PI / N + rot;
     if (Math.sin(a) > -.05) continue;
     const deg = a * 180 / Math.PI, up = mod(deg, 360); if (up > 252 && up < 288) continue;
     f.add(ink(band(SX + Math.cos(a) * 900, SY + Math.sin(a) * 900, 1100, 70, deg, i % 2 ? RS.blue : RS.pink, .42)));
   }
-  f.add(ink(circle(SX, SY, 420 * (1 + .02 * b), RS.yel)));
-  f.add(ink(circle(SX + 160, SY - 60, 300, RS.pink, .55)));
-  f.add(ink(arc(SX, SY, 480, 10, Math.PI + .2, Math.PI - .4, RS.teal)));
-  const K = x.step([[230, 200], [1690, 200], [300, 260], [1620, 240]], 2, tt);
+}
+// 太陽：底部的黃色大圓、疊印的粉紅圓、青色弧線
+function sun(f, x, e) {
+  const b = pulse(mod(x.t, 16), 5), SX = 960, SY = 1180, size = e.p.size;
+  f.add(ink(circle(SX, SY, 420 * (1 + .02 * b) * size, RS.yel)));
+  f.add(ink(circle(SX + 160 * size, SY - 60 * size, 300 * size, RS.pink, .55)));
+  f.add(ink(arc(SX, SY, 480 * size, 10, Math.PI + .2, Math.PI - .4, RS.teal)));
+}
+// 小圓：上方的青色圓，每 2 秒跳位置
+function dot(f, x) {
+  const K = x.step([[230, 200], [1690, 200], [300, 260], [1620, 240]], 2, mod(x.t, 16));
   f.add(ink(circle(K[0], K[1], 110, RS.teal)));
-  marks(f, 90, 90); marks(f, 1830, 90);
-  swatches(f, tt, 96, 60);
 }
 // 華麗字幕：每個字像蓋印章，一格一格印上去；關鍵字粉紅大字、網點陰影
 function flashy(f, x) {
   const t = x.t, { chars, kw } = x, n = chars.length, size = Math.min(190, 1500 / n), x0 = 960 - size * (n - 1) / 2;
   const cols = [RS.blue, RS.teal, RS.yel];
-  x.under(f, build);
+  x.under(f, 'build');
   chars.forEach((ch, i) => {
     const ti = .15 + i * .1, si = seg(t, ti, ti + .18); if (si <= 0) return;
     const isK = i === kw, bounce = t > ti + .6 ? pulse(t, 7, BEAT, i * BEAT / n) : 0;
@@ -95,7 +114,7 @@ function gentle(f, x) {
   if (x.small.length) return gentle2(f, x);
   const t = x.t, lines = x.big.slice(0, 3), n = lines.length, gap = 130, y0 = 500 - gap * (n - 1) / 2;
   const top = y0 - 90, bot = y0 + (n - 1) * gap + 100, TX = { px: 84, weight: 900, spacing: 8 };
-  x.under(f, peak);
+  x.under(f, 'peak');
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
   lines.forEach((l, i) => {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
@@ -108,7 +127,7 @@ function gentle(f, x) {
 function gentle2(f, x) {
   const t = x.t, big = x.big.slice(0, 3), small = x.small.slice(0, 3), n = Math.max(big.length, small.length), gap = 154, y0 = 500 - gap * (n - 1) / 2;
   const top = y0 - 90, bot = y0 + (n - 1) * gap + 128, TX = { px: 84, weight: 900, spacing: 8 }, SM = { px: 40, weight: 700, spacing: 3 };
-  x.under(f, peak);
+  x.under(f, 'peak');
   f.add(rect(0, top, W, bot, RS.paper, 1, flat), ink(rect(0, top - 8, W, top, RS.blue)), ink(rect(0, bot, W, bot + 8, RS.pink)));
   for (let i = 0; i < n; i++) {
     const s = seg(t, i * .1, .5 + i * .1), a = E.io(s), y = y0 + i * gap + (1 - E.out(s)) * 12;
@@ -130,10 +149,24 @@ defineScene({
     { type: 'rough', on: 'shapes', amount: 2.5, voids: .1 },
     { type: 'fiber', on: 'bg', amount: .16 },
   ],
+  elements: {
+    discs: { label: '大圓', colors: ['blue', 'pink'], params: { size: { value: 1, min: .5, max: 1.5, label: '大小' } }, draw: discs },
+    bar: { label: '橫條', colors: ['yel'], draw: bar },
+    ring: { label: '圓環', colors: ['teal'], draw: ring },
+    ramp: { label: '網點漸層', colors: ['teal', 'pink', 'blue'], draw: ramp },
+    marks: { label: '套準記號', colors: ['ink'], draw: marks },
+    swatches: { label: '色票條', colors: ['pink', 'blue', 'yel', 'teal'], draw: swatches },
+    stripes: { label: '斜條紋', colors: ['teal', 'pink'], draw: stripes },
+    tri: { label: '三角形', colors: ['yel'], draw: tri3 },
+    progress: { label: '進度條', colors: ['ink'], draw: progress },
+    rays: { label: '光芒', colors: ['blue', 'pink'], draw: rays },
+    sun: { label: '太陽', colors: ['yel', 'pink', 'teal'], params: { size: { value: 1, min: .5, max: 1.5, label: '大小' } }, draw: sun },
+    dot: { label: '小圓', colors: ['teal'], draw: dot },
+  },
   backgrounds: {
-    calm: { label: '平靜', jumpBeats: 4, draw: calm },
-    build: { label: '累積', jumpBeats: 2, draw: build },
-    peak: { label: '高潮', jumpBeats: 4, draw: peak },
+    calm: { label: '平靜', jumpBeats: 4, use: [{ el: 'discs', pair: true }, 'bar', 'ring', { el: 'ramp', list: [[1620, 860, 220, 34, 6, 'teal']] }, { el: 'marks', at: [[90, 90], [1830, 990]] }, { el: 'swatches', at: [96, 1000] }] },
+    build: { label: '累積', jumpBeats: 2, use: ['stripes', 'discs', 'tri', { el: 'ramp', list: [[60, 380, 40, 320, 6, 'pink', true], [1820, 380, 40, 320, 6, 'blue', true]] }, 'progress', { el: 'marks', at: [[90, 90], [1830, 90], [1830, 990]] }, { el: 'swatches', at: [1520, 1000] }] },
+    peak: { label: '高潮', jumpBeats: 4, use: ['rays', 'sun', 'dot', { el: 'marks', at: [[90, 90], [1830, 90]] }, { el: 'swatches', at: [96, 60] }] },
   },
   subtitles: {
     flashy: { label: '華麗', split: 'line', seconds: 6, draw: flashy },

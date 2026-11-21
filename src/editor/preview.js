@@ -12,6 +12,13 @@ const serial = fn => { const p = queue.then(fn, fn); queue = p.catch(() => { });
 function canvasInfo(st) { return { beat: st / BEAT, W, H, pal: resolvedPal(), params: paramsNow(), kind: clip.kind, type: clip.type, text: clip.text || '', text2: clip.text2 || '', swap: !!clip.swap, dur: clip.dur || 0 }; }
 const paramsNow = () => Object.fromEntries(Object.entries(meta().params).map(([k, d]) => [k, (P && P.params && P.params[k]) ?? d.value]));
 let worldData = null, previewDensity = 1, worldMs = 0;
+let drawnByElement = {};
+function clipElementIds(s, ci, m = meta()) { const ids = [...m.backgrounds[s.background].uses]; if (ci > 0) ids.push('text'); return ids; }
+function clipElements(s) {
+  const out = {};
+  for (const id of new Set([...Object.keys(P.elements || {}), ...Object.keys(s.elements || {})])) out[id] = mergeAdj((P.elements || {})[id], (s.elements || {})[id]);
+  return out;
+}
 // 注意：預覽跟不上時少畫一些筆觸（洗牌過，少畫是均勻變稀）；匯出一律畫滿
 function worldDensityFor(target) {
   if (target === 'out') return 1;
@@ -31,6 +38,7 @@ async function drawAt(tt, idx, target) {
   let cv = null;
   let [fr] = await Promise.all([scene.frame(st, fa), canvasHost ? canvasHost.frame(st, canvasInfo(st)).then(x => { cv = x; }, e => canvasFail(e)) : null]);
   if (fr.atlas) r.uploadAtlas(fr.atlas);
+  drawnByElement = fr.frame.drawn || {};
   const fwk = fr.frame.world && fr.frame.world.key;
   if (fwk && !fr.world && (!worldData || worldData.key !== fwk)) fr = await scene.frame(st, false, true);
   syncWorld(fr, target);
@@ -233,7 +241,7 @@ async function makeClip(si, ci) {
     out = { kind: 'sub', type: s.subtitle, loop: false, frames, duration: frames / FPS, map: tt => k * warp(tt, s.enterSpeed), text: pr.a, text2: pr.b, swap: !!s.swapLang, dur: k * warp(s.clipSeconds, s.enterSpeed) };
   }
   out.jump = jump;
-  await scene.clip({ kind: out.kind, type: out.type, bg: s.background, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, pal: P.palette, params: paramsNow() });
+  await scene.clip({ kind: out.kind, type: out.type, bg: s.background, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, pal: P.palette, params: paramsNow(), els: clipElements(s) });
   sceneToRenderer(r);
   return out;
 }

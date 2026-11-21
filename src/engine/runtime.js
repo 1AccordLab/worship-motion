@@ -159,8 +159,8 @@ function cameraAt(t, x) {
 
 /* 注意：照呼叫順序疊；z 小的在下（形狀與線 0、字 1、top 2） */
 class Frame {
-  constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.items = []; }
-  _push(t, z, o) { this.items.push({ t, z, i: this.items.length, o }); }
+  constructor(pal) { this.bg = pal.bg || '#2b2a27'; this.grid = { alpha: 0, flash: 0, col: '#ece2cf', w: 160, h: 180, line: 1.5 }; this.items = []; this.el = null; }
+  _push(t, z, o) { this.items.push({ t, z, i: this.items.length, o, el: this.el }); }
   add(...ss) { for (const s of ss.flat(9)) if (s) this._push(0, s.z ?? 0, s); return this; }
   top(...ss) { for (const s of ss.flat(9)) if (s) this._push(0, s.z ?? 2, s); return this; }
   measure(str, o = {}) { return atlas.get(String(str), o); }
@@ -186,6 +186,7 @@ const TEX_TYPES = { fiber: 1, grain: 2, halftone: 3, misreg: 4, bleed: 5, rough:
 const TEX_ON = { shapes: 1, text: 2, lines: 4, bg: 8 };
 const DESC_MAX = 80;
 const RESERVED = new Set(['constructor', 'prototype', 'toString', 'valueOf', 'hasOwnProperty', 'none']);
+const IMPLICIT_ELEMENTS = { bg: '背景', text: '字幕' };
 function defineScene(d) {
   const bad = m => { throw new Error('defineScene：' + m); };
   if (SCENE) bad('一份新風格程式只能呼叫一次 defineScene');
@@ -197,14 +198,46 @@ function defineScene(d) {
   if (!d.palette || typeof d.palette !== 'object') bad('缺少 palette（配色物件）');
   for (const [k, v] of Object.entries(d.palette)) if (typeof v !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(v)) bad(`palette.${k} 要是 "#RRGGBB"`);
   if (!d.palette.bg) bad('palette 一定要有 bg（底色）');
+  const NAME = /^[A-Za-z][A-Za-z0-9_-]{0,40}$/;
+  const paramDefs = (o, where) => {
+    const out = {};
+    for (const [k, v] of Object.entries(o || {})) {
+      const p = typeof v === 'number' ? { value: v } : v;
+      if (!p || typeof p.value !== 'number') bad(`${where}.${k} 要是數字或 { value, min, max, label }`);
+      out[k] = { value: p.value, min: p.min ?? Math.min(0, p.value), max: p.max ?? Math.max(1, p.value * 2), step: p.step ?? 0, label: p.label || k };
+    }
+    return out;
+  };
+  const elements = {};
+  for (const [k, v] of Object.entries(d.elements || {})) {
+    if (!NAME.test(k) || RESERVED.has(k)) bad(`elements 的名稱「${k}」要用英文字母開頭，只能有英文、數字、- 或 _（例如 sun、stripes）`);
+    if (IMPLICIT_ELEMENTS[k]) bad(`elements 的名稱「${k}」是保留的（bg 代表整個背景、text 代表字幕），請換一個名稱`);
+    if (!v || typeof v.draw !== 'function') bad(`elements.${k} 缺少 draw(f, x, e) 函式`);
+    const colors = v.colors || [];
+    if (!Array.isArray(colors)) bad(`elements.${k}.colors 要是 palette 鍵的陣列，例如 ["main"]`);
+    for (const c of colors) if (!d.palette[c]) bad(`elements.${k}.colors 的「${c}」不在 palette 裡`);
+    elements[k] = { label: typeof v.label === 'string' && v.label.trim() ? v.label.trim().slice(0, 20) : k, draw: v.draw, colors: [...colors], params: paramDefs(v.params, `elements.${k}.params`) };
+  }
+  const useList = (list, where) => {
+    if (!Array.isArray(list) || !list.length) bad(`${where}.use 要是至少有一個元素的陣列，例如 ["sun", { el: "rays", count: 12 }]`);
+    return list.map(u => {
+      const id = typeof u === 'string' ? u : u && u.el;
+      if (typeof id !== 'string' || !elements[id]) bad(`${where}.use 的「${id}」不在 elements 裡（可用：${Object.keys(elements).join('、') || '還沒有定義任何元素'}）`);
+      const { el, ...args } = typeof u === 'string' ? {} : u;
+      return { id, args };
+    });
+  };
   const kinds = (o, what) => {
     if (!o || typeof o !== 'object' || !Object.keys(o).length) { if (what === 'backgrounds') bad('backgrounds 至少要有一種'); return {}; }
+    const out = {};
     for (const [k, v] of Object.entries(o)) {
-      if (!/^[A-Za-z][A-Za-z0-9_-]{0,40}$/.test(k) || RESERVED.has(k)) bad(`${what} 的名稱「${k}」要用英文字母開頭，只能有英文、數字、- 或 _（例如 calm、peak、verse1Text）`);
-      if (!v || typeof v.draw !== 'function') bad(`${what}.${k} 缺少 draw(f, x) 函式`);
+      if (!NAME.test(k) || RESERVED.has(k)) bad(`${what} 的名稱「${k}」要用英文字母開頭，只能有英文、數字、- 或 _（例如 calm、peak、verse1Text）`);
+      const composed = what === 'backgrounds' && v && v.use !== undefined;
+      if (!composed && (!v || typeof v.draw !== 'function')) bad(`${what}.${k} 缺少 draw(f, x) 函式` + (what === 'backgrounds' ? '（或 use 元素清單）' : ''));
       if (what === 'subtitles' && v.split && !['line', 'block'].includes(v.split)) bad(`subtitles.${k}.split 只能是 "line" 或 "block"`);
+      out[k] = composed ? { ...v, use: useList(v.use, `backgrounds.${k}`) } : v;
     }
-    return o;
+    return out;
   };
   const backgrounds = kinds(d.backgrounds, 'backgrounds'), subtitles = kinds(d.subtitles, 'subtitles');
   const textures = d.textures || [];
@@ -213,12 +246,7 @@ function defineScene(d) {
     if (!TEX_TYPES[t.type]) bad(`textures[${i}].type「${t.type}」不存在，可用：${Object.keys(TEX_TYPES).join('、')}`);
     for (const o of String(t.on || 'shapes').split(/[ ,+]+/)) if (!TEX_ON[o]) bad(`textures[${i}].on「${o}」只能是 shapes、text、lines、bg（可用逗號合併）`);
   });
-  const params = {};
-  for (const [k, v] of Object.entries(d.params || {})) {
-    const p = typeof v === 'number' ? { value: v } : v;
-    if (!p || typeof p.value !== 'number') bad(`params.${k} 要是數字或 { value, min, max, label }`);
-    params[k] = { value: p.value, min: p.min ?? Math.min(0, p.value), max: p.max ?? Math.max(1, p.value * 2), step: p.step ?? 0, label: p.label || k };
-  }
+  const params = paramDefs(d.params, 'params');
   if (d.canvas && typeof d.canvas.draw !== 'function') bad('canvas 要有 draw(ctx, t, info) 函式');
   if (d.shader && typeof d.shader.code !== 'string') bad('shader 要有 code（WGSL 文字）');
   if (d.world !== undefined) {
@@ -226,7 +254,24 @@ function defineScene(d) {
     if (d.world.camera !== undefined && typeof d.world.camera !== 'function') bad('world.camera 要是 camera(t, x) 函式');
   }
   if (d.description !== undefined && (typeof d.description !== 'string' || d.description.length > DESC_MAX)) bad(`description 要是一句話的字串（${DESC_MAX} 字以內）`);
-  SCENE = { d, id, backgrounds, subtitles, textures, params, palette: d.palette, defaults: { ...d.palette } };
+  SCENE = { d, id, backgrounds, subtitles, elements, textures, params, palette: d.palette, defaults: { ...d.palette } };
+}
+const usesOf = b => b.use ? [...new Set(b.use.map(u => u.id))] : ['bg'];
+const implicitInUse = () => ({ ...(Object.values(SCENE.backgrounds).some(b => !b.use) ? { bg: IMPLICIT_ELEMENTS.bg } : {}), ...(Object.keys(SCENE.subtitles).length ? { text: IMPLICIT_ELEMENTS.text } : {}) });
+const adjOf = id => (CLIP.els && CLIP.els[id]) || {};
+const isHidden = id => adjOf(id).visible === false;
+/* 注意：場景從同一個 palette 物件讀色，元素自己的顏色只能在它畫的期間原地換上、畫完換回 */
+function asElement(f, id, fn, alwaysRun) {
+  if (!alwaysRun && isHidden(id)) return;
+  const pal = SCENE.palette, own = adjOf(id).colors || {}, was = {}, outer = f.el;
+  for (const k of Object.keys(own)) { was[k] = pal[k]; pal[k] = own[k]; }
+  f.el = id;
+  try { return fn(); } finally { f.el = outer; Object.assign(pal, was); }
+}
+function drawBackground(f, x, name, o) {
+  const b = SCENE.backgrounds[name];
+  if (!b.use) return asElement(f, 'bg', () => b.draw(f, x, o));
+  for (const u of b.use) asElement(f, u.id, () => SCENE.elements[u.id].draw(f, x, { id: u.id, p: CLIP.elParams[u.id], args: u.args, sub: o && o.sub }));
 }
 
 let CLIP = null, SENT_ALL = false;
@@ -248,11 +293,15 @@ function setClip(c) {
   if (!big.length && small.length) { big = small; small = []; bigRaw = swap ? raw1 : raw2; }
   const pk = lines2.length ? parseLine(bigRaw[0] || '') : parseLine(text.split('\n')[0].trim());
   const jump = c.jump || 1, jt = tt => tt * jump;
-  CLIP = { def, x: { t: 0, beat: 0, dur: c.dur || 0, text, lines, text2, lines2, big, small, swap, chars: pk.chars, kw: pk.kw, pal: sc.palette, params, W, H, kind: c.kind, type: c.type,
+  const els = c.els || {}, elParams = {};
+  for (const [k, e] of Object.entries(sc.elements)) { elParams[k] = {}; for (const [pk, p] of Object.entries(e.params)) { const v = els[k] && els[k].params && els[k].params[pk]; elParams[k][pk] = typeof v === 'number' ? v : p.value; } }
+  CLIP = { def, els, elParams, x: { t: 0, beat: 0, dur: c.dur || 0, text, lines, text2, lines2, big, small, swap, chars: pk.chars, kw: pk.kw, pal: sc.palette, params, W, H, kind: c.kind, type: c.type,
     jt, step: (list, every, tt) => list[Math.floor(mod(jt(tt ?? CLIP.x.t), 1e9) / every) % list.length],
     bg: c.kind === 'sub' && c.bg && sc.backgrounds[c.bg] ? c.bg : null,
-    under: (f, dflt, o) => { const b = CLIP.x.bg && sc.backgrounds[CLIP.x.bg], fn = b ? b.draw : dflt || Object.values(sc.backgrounds)[0].draw;
-      return fn(f, CLIP.x, { sub: def.split || 'line', ...(o || {}) }); } } };
+    under: (f, dflt, o) => { const oo = { sub: def.split || 'line', ...(o || {}) };
+      if (CLIP.x.bg) return drawBackground(f, CLIP.x, CLIP.x.bg, oo);
+      if (typeof dflt === 'function') return asElement(f, 'bg', () => dflt(f, CLIP.x, oo));
+      return drawBackground(f, CLIP.x, typeof dflt === 'string' && sc.backgrounds[dflt] ? dflt : Object.keys(sc.backgrounds)[0], oo); } } };
   atlas.reset(); SENT_ALL = false;
 }
 const BLEND = { multiply: 1 };
@@ -270,8 +319,8 @@ function bbox(o, buf, at) {
 function frame(t) {
   const x = CLIP.x; x.t = t; x.beat = t / BEAT;
   const f = new Frame(SCENE.palette);
-  CLIP.def.draw(f, x);
-  const items = f.items.sort((a, b) => a.z - b.z || a.i - b.i);
+  if (x.kind === 'bg') drawBackground(f, x, x.type); else asElement(f, 'text', () => CLIP.def.draw(f, x), true);
+  const items = f.items.filter(it => !isHidden(it.el)).sort((a, b) => a.z - b.z || a.i - b.i), drawn = {};
   const n = items.length, buf = new Float32Array(Math.max(1, n) * ITEM_FLOATS), runs = [];
   const cz = SCENE.d.canvas ? (SCENE.d.canvas.z ?? .5) : null, sz = SCENE.d.shader ? (SCENE.d.shader.z ?? .5) : null;
   const marks = []; if (cz !== null) marks.push([cz, 3]); if (sz !== null) marks.push([sz, 4]); if (SCENE.d.world) marks.push([SCENE.d.world.z ?? .5, 5]); marks.sort((a, b) => a[0] - b[0]);
@@ -279,7 +328,9 @@ function frame(t) {
   for (let i = 0; i < n; i++) {
     const it = items[i], o = it.o, p = i * ITEM_FLOATS, c = o.col;
     while (mi < marks.length && marks[mi][0] <= it.z) runs.push([marks[mi++][1], 0, i, 0]);
-    buf[p + 4] = c[0]; buf[p + 5] = c[1]; buf[p + 6] = c[2]; buf[p + 7] = c[3]; buf[p + 16] = texMask(o.tex);
+    const op = adjOf(it.el).opacity;
+    buf[p + 4] = c[0]; buf[p + 5] = c[1]; buf[p + 6] = c[2]; buf[p + 7] = typeof op === 'number' && op !== 1 ? c[3] * op : c[3]; buf[p + 16] = texMask(o.tex);
+    drawn[it.el] = (drawn[it.el] || 0) + 1;
     if (it.t === 0) {
       buf[p] = o.cx; buf[p + 1] = o.cy; buf[p + 2] = o.hx; buf[p + 3] = o.hy;
       buf[p + 8] = o.ang; buf[p + 9] = o.kind; buf[p + 10] = o.a0; buf[p + 11] = o.sweep;
@@ -299,7 +350,7 @@ function frame(t) {
   }
   while (mi < marks.length) runs.push([marks[mi++][1], 0, n, 0]);
   const g = f.grid, gc = color(g.col), bg = color(f.bg);
-  const out = { buf, n, runs, bg, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
+  const out = { buf, n, runs, bg, drawn, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
   if (SCENE.d.world) {
     const wo = worldFor(x); out.world = { key: wo.key, n: wo.n, keep: wo.keep, cam: cameraAt(t, x) };
   }
@@ -326,8 +377,9 @@ function __wmReady() {
   postMessage({ ready: true, meta: {
     id: SCENE.id, name: d.name.trim().slice(0, 30), description: (d.description || '').trim(), palette: SCENE.defaults, labels: d.labels || null, params: SCENE.params,
     look: d.look || {}, textures: SCENE.textures,
-    backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4 })),
+    backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4, uses: usesOf(v) })),
     subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))) })),
+    elements: { ...list(implicitInUse(), (k, label) => ({ label, colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, colors: e.colors, params: e.params })) },
     canvas: d.canvas ? { src: String(d.canvas.draw), z: d.canvas.z ?? .5, half: !!d.canvas.half } : null,
     shader: d.shader ? { code: d.shader.code, z: d.shader.z ?? .5 } : null,
     world: d.world ? { z: d.world.z ?? .5 } : null,

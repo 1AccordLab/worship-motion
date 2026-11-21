@@ -259,6 +259,7 @@ function renderClips() {
   $('#exOneD').textContent = `上面預覽中的「${i0name(s)}」`;
   $('#exSecD').textContent = `「${s.name}」的背景` + (sl.length ? `＋${sl.length} 支字幕` : '（1 支）');
   $('#exSongD').textContent = `${P.sections.length} 段，共 ${total} 支；檔名照順序編號`;
+  renderElements();
   $('#exAllD').textContent = SONGS.length > 1 ? `${SONGS.length} 首（全部分頁），依分頁順序、每首一個資料夾` : '只有這一首（多開幾個分頁就能一次匯出）';
 }
 const i0name = s => clipIdx === 0 ? '背景' : `字幕 ${clipIdx}`;
@@ -270,6 +271,94 @@ function stepClip(d) {
 }
 function setPlaying(on) { playing = on; $('#play').textContent = on ? '暫停' : '播放'; $('#play').setAttribute('aria-label', on ? '暫停' : '播放'); }
 function refresh() { renderSongTabs(); renderGlobal(); renderSecTabs(); renderSection(); renderClips(); return rebuild(); }
+let elScope = 'song';
+const pct = v => Math.round(v * 100) + '%', num = v => (+v).toFixed(2).replace(/\.?0+$/, '');
+function elementsNow() {
+  const m = meta(), s = sec(), adj = clipElements(s), pal = resolvedPal();
+  return clipElementIds(s, clipIdx, m).map(id => { const d = m.elements[id], a = adj[id] || {};
+    return { id, label: d.label, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+      params: Object.fromEntries(Object.entries(d.params).map(([k, p]) => [k, { ...p, value: (a.params || {})[k] ?? p.value }])),
+      colors: Object.fromEntries(d.colors.map(k => [k, (a.colors || {})[k] || pal[k]])) }; });
+}
+function elementLabel(d, patch) {
+  const name = `元素「${d.label}」`;
+  if (patch.visible !== undefined) return (patch.visible ? '顯示' : '隱藏') + name;
+  if (patch.opacity !== undefined) return `${name}透明度 ${pct(patch.opacity)}`;
+  const k = Object.keys(patch.params || {})[0];
+  return k && d.params[k] ? `${name}：${d.params[k].label}` : `${name}換色`;
+}
+function applyElement(id, patch, scope = elScope) {
+  const m = meta(), d = m.elements[id]; if (!d) return false;
+  const inSec = scope === 'section', host = inSec ? sec() : P;
+  const next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
+  setOrDrop(host, pruneElements({ ...host.elements, [id]: next }, m, inSec ? P.elements : {}));
+  save((inSec ? sec().name + '：' : '') + elementLabel(d, patch), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
+  syncElementRows(); return true;
+}
+function setElement(id, patch, scope) { return applyElement(id, patch, scope) && rebuild(); }
+const tuneElement = (id, patch) => { applyElement(id, patch); deb(rebuild); };
+function resetElement(id, scope = elScope) {
+  const m = meta(), d = m.elements[id], host = scope === 'section' ? sec() : P; if (!d || !(host.elements || {})[id]) return false;
+  const { [id]: gone, ...rest } = host.elements; setOrDrop(host, rest);
+  save(`${scope === 'section' ? sec().name + '：' : ''}元素「${d.label}」還原`); renderElements(); return rebuild();
+}
+function syncElementRows() {
+  const now = Object.fromEntries(elementsNow().map(e => [e.id, e])), own = (elScope === 'section' ? sec() : P).elements || {}, other = elScope === 'section' ? {} : sec().elements || {};
+  document.querySelectorAll('#elList .elrow').forEach(row => {
+    const e = now[row.dataset.id]; if (!e) return;
+    row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible);
+    const op = row.querySelector('.elop'); if (document.activeElement !== op) op.value = Math.round(e.opacity * 100);
+    row.querySelector('.elopv').textContent = pct(e.opacity);
+    row.querySelectorAll('.elparam').forEach(i => { if (document.activeElement !== i) { i.value = e.params[i.dataset.k].value; i.nextElementSibling.textContent = num(i.value); } });
+    row.querySelectorAll('.elcolor input').forEach(i => { if (document.activeElement !== i) i.value = e.colors[i.dataset.k]; });
+    row.querySelector('.elreset').hidden = !own[e.id];
+    row.querySelector('.elnote').textContent = other[e.id] ? '這一段有自己的設定' : '';
+  });
+}
+function renderElements() {
+  const list = elementsNow().reverse(), box = $('#elList'), open = new Set([...box.querySelectorAll('.elrow.open')].map(r => r.dataset.id)), m = meta();
+  fillSeg($('#elScope'), [{ v: 'song', label: '整首歌' }, { v: 'section', label: '只有這一段' }], elScope, v => { elScope = v; renderElements(); });
+  $('#elDesc').textContent = `預覽中的「${i0name(sec())}」由這 ${list.length} 個元素疊起來，上面的列畫在上面。`;
+  box.innerHTML = '';
+  for (const e of list) {
+    const row = document.createElement('div'); row.className = 'elrow'; row.dataset.id = e.id;
+    const head = document.createElement('div'); head.className = 'elhead';
+    const lab = document.createElement('label'); lab.className = 'elshow';
+    const vis = document.createElement('input'); vis.type = 'checkbox'; vis.className = 'elvis'; vis.title = '顯示這個元素';
+    const name = document.createElement('span'); name.className = 'elname'; name.textContent = e.label;
+    lab.append(vis, name);
+    const op = document.createElement('input'); op.type = 'range'; op.className = 'elop'; op.min = 0; op.max = 100; op.step = 1; op.setAttribute('aria-label', `「${e.label}」的透明度`);
+    const opv = document.createElement('b'); opv.className = 'elopv';
+    vis.onchange = () => setElement(e.id, { visible: vis.checked });
+    op.oninput = () => { opv.textContent = op.value + '%'; tuneElement(e.id, { opacity: op.value / 100 }); };
+    head.append(lab, op, opv);
+    const detail = document.createElement('div'); detail.className = 'eldetail';
+    for (const [k, col] of Object.entries(e.colors)) {
+      const l = document.createElement('label'), i = document.createElement('input'), text = (m.labels || {})[k] || k;
+      i.type = 'color'; i.dataset.k = k; i.value = col; i.setAttribute('aria-label', `「${e.label}」的顏色：${text}`);
+      i.oninput = () => tuneElement(e.id, { colors: { [k]: i.value } });
+      l.className = 'elcolor'; l.append(i, text); detail.appendChild(l);
+    }
+    for (const [k, p] of Object.entries(e.params)) {
+      const l = document.createElement('label'); l.className = 'field';
+      const s = document.createElement('span'); s.className = 'lab'; s.textContent = p.label;
+      const i = document.createElement('input'); i.type = 'range'; i.className = 'grow elparam'; i.dataset.k = k; i.min = p.min; i.max = p.max; i.step = p.step || (p.max - p.min) / 100; i.value = p.value;
+      const v = document.createElement('b'); v.className = 'elopv'; const show = () => { v.textContent = num(i.value); }; show();
+      i.oninput = () => { show(); tuneElement(e.id, { params: { [k]: +i.value } }); };
+      l.append(s, i, v); detail.appendChild(l);
+    }
+    if (detail.childElementCount) {
+      const more = document.createElement('button'); more.type = 'button'; more.className = 'small elmore'; more.textContent = '細部';
+      const toggle = on => { row.classList.toggle('open', on); more.setAttribute('aria-expanded', String(on)); detail.hidden = !on; };
+      more.onclick = () => toggle(!row.classList.contains('open')); toggle(open.has(e.id));
+      head.append(more);
+    }
+    const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'small elreset'; reset.textContent = '還原'; reset.title = '把這個元素還原成風格原本的樣子'; reset.onclick = () => resetElement(e.id);
+    const note = document.createElement('span'); note.className = 'elnote';
+    head.append(reset, note); row.append(head, detail); box.appendChild(row);
+  }
+  syncElementRows();
+}
 let lyrPlan = null, lyrUndo = null;
 function lyrOpts() {
   const v = n => (document.querySelector(`input[name="${n}"]:checked`) || {}).value;
