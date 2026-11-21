@@ -56,6 +56,9 @@ async def main():
         async def handle(name):
             r = await p.ev("n=>{const h=document.querySelector('#selBox .h.'+n).getBoundingClientRect(),v=document.querySelector('#view').getBoundingClientRect();return [(h.left+h.width/2-v.left)/v.width*1920,(h.top+h.height/2-v.top)/v.height*1080]}", name)
             return tuple(r)
+        async def boxmid():
+            r = await p.ev("(()=>{const h=document.querySelector('#selBox').getBoundingClientRect(),v=document.querySelector('#view').getBoundingClientRect();return [(h.left+h.width/2-v.left)/v.width*1920,(h.top+h.height/2-v.top)/v.height*1080]})()")
+            return tuple(r)
         async def safe(name, fn):
             try: await fn()
             except Exception as e: rec(name, False, "例外：" + str(e).split("\n")[0][:200])
@@ -73,6 +76,10 @@ async def main():
             rec("D1 色票條疊在大圓上面的地方：選到上面的色票條", s and s["id"] == "swatches", s and s["id"])
             await click(960, 540)
             rec("D1 點空白處：取消選取，選取框消失", await sel() is None and await p.ev("document.querySelector('#selBox').hidden"), await sel())
+            await at(0, 0, 1.0); await set_el("swatches", {"opacity": 0}); await p.ev("__app.seek(1.0)"); await click(300, 1010); s = await sel()
+            rec("D1 透明度調到 0 的元素點不到：點同一個地方選到底下的大圓", s and s["id"] == "discs", s and s["id"])
+            await p.ev("__app.selectElement('ring')"); await set_el("ring", {"visible": False}); marked = await p.ev("[...document.querySelectorAll('#elList .elrow.sel')].map(r=>r.dataset.id)")
+            rec("D1 把選取中的元素隱藏：取消選取，清單上的選取標記也拿掉", await sel() is None and marked == [], (await sel(), marked))
         await safe("D1 選取", d1)
 
         async def d2():
@@ -86,6 +93,9 @@ async def main():
             rec("D2 一次拖曳是一筆歷史紀錄（提到元素名稱）", len(h["labels"]) == n0 + 1 and "圓環" in h["labels"][-1], h["labels"][-2:])
             await p.ev("__app.undo()"); pj = await proj_now(); await p.ev("__app.seek(1.0)"); e2 = await els()
             rec("D2 還原：回到原位", not (pj.get("elements") or {}).get("ring") and near(e2["ring"]["box"], e0["ring"]["box"], 0.5), (pj.get("elements"), e2["ring"]["box"]))
+            await at(0, 0, 1.0); await set_el("ring", {"dx": 600}); await p.ev("__app.seek(1.0)"); await p.ev("__app.selectElement('ring')"); m = await boxmid()
+            await drag(m, (m[0] - 500, m[1])); adj = (await proj_now())["elements"]["ring"]; u = await unit()
+            rec("D2 元素整個在畫面外時：抓選取框中間還是拖得回來", near((adj.get("dx", 0),), (100,), 2 * u + 1), (m, adj))
         await safe("D2 拖動", d2)
 
         async def d3():
@@ -154,6 +164,11 @@ async def main():
             await at(0, 0, 1.0); await p.ev("__app.tab('el')"); await pg.click("#elScope button:nth-child(2)")
             await click(1690, 180); await drag((1690, 180), (1500, 300)); pj = await proj_now()
             rec("D9 選「只有這一段」再拖：位置記在段落上，整首歌沒有", "dx" in (pj["sections"][0].get("elements") or {}).get("ring", {}) and "ring" not in (pj.get("elements") or {}), (pj.get("elements"), pj["sections"][0].get("elements")))
+            await at(0, 0, 1.0); await p.ev("__app.tab('el')"); await pg.click("#elScope button:nth-child(2)"); u = await unit()
+            await click(1690, 180); await drag((1690, 180), (1490, 180)); await pg.click("#elScope button:nth-child(1)"); await p.ev("__app.seek(1.0)")
+            await drag((1490, 180), (1590, 180)); pj = await proj_now(); e = await els()
+            rec("D9 這一段有自己的位置時改用「整首歌」拖：圓環跟著游標往右 100，位置記在整首歌，這一段改成跟著整首歌", near(center(e["ring"]["box"]), (1590, 180), 4 * u + 1) and near(((pj.get("elements") or {}).get("ring", {}).get("dx", 0),), (-100,), 4 * u + 1) and "dx" not in (pj["sections"][0].get("elements") or {}).get("ring", {}), (e["ring"]["box"], pj.get("elements"), pj["sections"][0].get("elements")))
+            await p.shot(1, 0, 1.0); await p.ev("__app.seek(1.0)")
         await safe("D9 段落範圍", d9)
 
         async def d10():
@@ -165,6 +180,10 @@ async def main():
             bad = proj("riso", elements={"sun": {"dx": "右邊一點"}})
             ok = await p.ev("t=>__app.paste(t)", fence("json", json.dumps(bad, ensure_ascii=False))); st = await p.ev("__app.status()")
             rec("D10 dx 不是數字：不套用，說明是 elements.sun.dx", ok is False and "elements.sun.dx" in st and "沒有套用" in st, st[:140])
+            for odd in (None, True, [1]):
+                bad = proj("riso", elements={"sun": {"scale": odd}})
+                ok = await p.ev("t=>__app.paste(t)", fence("json", json.dumps(bad, ensure_ascii=False))); st = await p.ev("__app.status()")
+                rec(f"D10 scale 寫成 {json.dumps(odd)}：不套用，說明是 elements.sun.scale", ok is False and "elements.sun.scale" in st, st[:120])
             sk = await p.ev("__app.skill()")
             rec("D10 給 AI 的說明寫了 dx、dy、scale、rotate 與 fixed", all(f"`{k}`" in sk for k in ("dx", "dy", "scale", "rotate", "fixed")), [k for k in ("dx", "dy", "scale", "rotate", "fixed") if f"`{k}`" not in sk])
         await safe("D10 設定 JSON", d10)
@@ -182,6 +201,13 @@ async def main():
             await pg.fill("#elList .elrow[data-id=ring] .elnum[data-k=dx]", "-120"); await pg.fill("#elList .elrow[data-id=ring] .elnum[data-k=scale]", "150"); await pg.fill("#elList .elrow[data-id=ring] .elnum[data-k=rotate]", "30")
             await p.wait("((__app.project.elements||{}).ring||{}).rotate===30"); adj = (await proj_now())["elements"]["ring"]
             rec("D11 「細部」填位置 -120、大小 150%、旋轉 30：設定記下 dx -120、scale 1.5、rotate 30", adj == {"dx": -120, "scale": 1.5, "rotate": 30}, adj)
+            await at(0, 0, 1.0); await p.ev("__app.tab('el')")
+            if not await p.ev("document.querySelector('#elList .elrow[data-id=ring]').classList.contains('open')"): await pg.click("#elList .elrow[data-id=ring] .elmore")
+            await pg.fill("#elList .elrow[data-id=ring] .elnum[data-k=dx]", "-120"); await p.wait("((__app.project.elements||{}).ring||{}).dx===-120")
+            await pg.wait_for_timeout(600); await p.ev("__app.seek(1.0)"); u = await unit()
+            await drag((1570, 180), (1370, 180)); adj = (await proj_now())["elements"]["ring"]
+            shown = await p.ev("document.querySelector('#elList .elrow[data-id=ring] .elnum[data-k=dx]').value")
+            rec("D11 游標還在數字欄裡就到預覽上拖：欄位跟著顯示拖完的位置", near((adj.get("dx", 0),), (-320,), 2 * u + 1) and float(shown) == adj.get("dx"), (adj, shown))
         await safe("D11 畫面元素分頁", d11)
 
         async def d12():
