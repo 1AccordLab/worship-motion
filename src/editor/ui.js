@@ -276,7 +276,7 @@ const pct = v => Math.round(v * 100) + '%', num = v => (+v).toFixed(2).replace(/
 function elementsNow() {
   const m = meta(), s = sec(), adj = clipElements(s), pal = resolvedPal();
   return clipElementIds(s, clipIdx, m).map(id => { const d = m.elements[id], a = adj[id] || {};
-    return { id, label: d.label, fixed: !!d.fixed, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+    return { id, label: d.label, fixed: !!d.fixed, locked: !!a.locked, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
       dx: a.dx ?? 0, dy: a.dy ?? 0, scale: a.scale ?? 1, rotate: a.rotate ?? 0, box: frameBoxes[id] || null,
       params: Object.fromEntries(Object.entries(d.params).map(([k, p]) => [k, { ...p, value: (a.params || {})[k] ?? p.value }])),
       colors: Object.fromEntries(d.colors.map(k => [k, (a.colors || {})[k] || pal[k]])) }; });
@@ -284,6 +284,7 @@ function elementsNow() {
 function elementLabel(d, patch) {
   const name = `元素「${d.label}」`;
   if (patch.visible !== undefined) return (patch.visible ? '顯示' : '隱藏') + name;
+  if (patch.locked !== undefined) return (patch.locked ? '鎖定' : '解鎖') + name;
   if (patch.opacity !== undefined) return `${name}透明度 ${pct(patch.opacity)}`;
   if (patch.dx !== undefined || patch.dy !== undefined) return '移動' + name;
   if (patch.scale !== undefined) return '縮放' + name;
@@ -326,12 +327,13 @@ function resetElement(id, scope = elScope) {
 }
 function syncElementRows() {
   const now = Object.fromEntries(elementsNow().map(e => [e.id, e]));
-  if (selEl && !(now[selEl] && now[selEl].visible)) { selEl = null; renderStage(); }
+  const still = selEls.filter(id => selectable(now[id])); if (still.length !== selEls.length) { selEls = still; renderStage(); }
   const own = (elScope === 'section' ? sec() : P).elements || {}, other = elScope === 'section' ? {} : sec().elements || {};
   document.querySelectorAll('#elList .elrow').forEach(row => {
     const e = now[row.dataset.id]; if (!e) return;
-    row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible); row.classList.toggle('sel', selEl === e.id);
-    row.querySelectorAll('.elnum').forEach(i => { if (document.activeElement !== i) i.value = i.dataset.k === 'scale' ? Math.round(e.scale * 100) : e[i.dataset.k]; });
+    row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible); row.classList.toggle('sel', isSelected(e.id));
+    row.querySelectorAll('.elnum').forEach(i => { i.disabled = e.locked; if (document.activeElement !== i) i.value = i.dataset.k === 'scale' ? Math.round(e.scale * 100) : e[i.dataset.k]; });
+    const lock = row.querySelector('.ellock'); if (lock) { lock.setAttribute('aria-pressed', String(e.locked)); lock.textContent = e.locked ? '已鎖定' : '鎖定'; }
     const op = row.querySelector('.elop'); if (document.activeElement !== op) op.value = Math.round(e.opacity * 100);
     row.querySelector('.elopv').textContent = pct(e.opacity);
     row.querySelectorAll('.elparam').forEach(i => { if (document.activeElement !== i) { i.value = e.params[i.dataset.k].value; i.nextElementSibling.textContent = num(i.value); } });
@@ -341,7 +343,7 @@ function syncElementRows() {
   });
 }
 function renderElements() {
-  if (selEl && !elementsNow().some(e => e.id === selEl && e.visible && !e.fixed)) selEl = null;
+  { const all = elementsNow(); selEls = selEls.filter(id => selectable(all.find(e => e.id === id))); }
   const list = elementsNow().reverse(), box = $('#elList'), open = new Set([...box.querySelectorAll('.elrow.open')].map(r => r.dataset.id)), m = meta();
   fillSeg($('#elScope'), [{ v: 'song', label: '整首歌' }, { v: 'section', label: '只有這一段' }], elScope, v => { elScope = v; renderElements(); });
   $('#elDesc').textContent = `預覽中的「${i0name(sec())}」由這 ${list.length} 個元素疊起來，上面的列畫在上面。`;
@@ -353,7 +355,7 @@ function renderElements() {
     const vis = document.createElement('input'); vis.type = 'checkbox'; vis.className = 'elvis'; vis.title = '顯示這個元素'; vis.setAttribute('aria-label', `顯示「${e.label}」`);
     const name = document.createElement('button'); name.type = 'button'; name.className = 'elname'; name.textContent = e.label;
     name.title = e.fixed ? '鋪滿畫面的元素：可以隱藏、調透明度，不能移動' : '在預覽上選取這個元素';
-    name.onclick = () => selectElement(selEl === e.id ? null : e.id);
+    name.onclick = () => selectElement(selEls.length === 1 && isSelected(e.id) ? null : e.id);
     lab.append(vis, name);
     const op = document.createElement('input'); op.type = 'range'; op.className = 'elop'; op.min = 0; op.max = 100; op.step = 1; op.setAttribute('aria-label', `「${e.label}」的透明度`);
     const opv = document.createElement('b'); opv.className = 'elopv';
@@ -387,6 +389,7 @@ function renderElements() {
       more.onclick = () => toggle(!row.classList.contains('open')); toggle(open.has(e.id));
       head.append(more);
     }
+    if (!e.fixed) { const lock = document.createElement('button'); lock.type = 'button'; lock.className = 'small ellock'; lock.title = '鎖定後，在預覽上點不到也拖不動這個元素'; lock.onclick = () => setElement(e.id, { locked: lock.getAttribute('aria-pressed') !== 'true' }, 'song'); head.append(lock); }
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'small elreset'; reset.textContent = '還原'; reset.title = '把這個元素還原成風格原本的樣子'; reset.onclick = () => resetElement(e.id);
     const note = document.createElement('span'); note.className = 'elnote';
     head.append(reset, note); row.append(head, detail); box.appendChild(row);

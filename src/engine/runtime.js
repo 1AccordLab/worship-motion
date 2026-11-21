@@ -352,8 +352,14 @@ function placedItems(t) {
 }
 function hitAt(t, px, py) {
   const { items } = measuring(() => placedItems(t));
-  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (!isFixed(it.el) && it.o.col[3] * (adjOf(it.el).opacity ?? 1) >= HIT_MIN_ALPHA && itemContains(it, px, py)) return it.el; }
+  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (pickable(it) && itemContains(it, px, py)) return it.el; }
   return null;
+}
+const pickable = it => !isFixed(it.el) && !adjOf(it.el).locked && it.o.col[3] * (adjOf(it.el).opacity ?? 1) >= HIT_MIN_ALPHA;
+function touching(t, x0, y0, x1, y1) {
+  const { items } = measuring(() => placedItems(t)), ids = new Set();
+  for (const it of items) { if (ids.has(it.el) || !pickable(it)) continue; const box = itemBox(it); if (box[0] <= x1 && box[2] >= x0 && box[1] <= y1 && box[3] >= y0) ids.add(it.el); }
+  return [...ids];
 }
 
 let CLIP = null, SENT_ALL = false;
@@ -446,6 +452,7 @@ self.onmessage = ev => {
     if (m.op === 'els') { setElements(m.els || {}); postMessage({ id: m.id, ok: true }); return; }
     if (m.op === 'boxes') { const fr = measuring(() => frame(m.t)); postMessage({ id: m.id, ok: true, boxes: fr.boxes, drawn: fr.drawn }); return; }
     if (m.op === 'territory') { postMessage({ id: m.id, ok: true, boxes: territory() }); return; }
+    if (m.op === 'touching') { postMessage({ id: m.id, ok: true, els: touching(m.t, ...m.rect) }); return; }
     if (m.op === 'hit') { postMessage({ id: m.id, ok: true, el: hitAt(m.t, m.x, m.y) }); return; }
     if (m.op === 'clip') { setClip(m.clip); if (SCENE.d.world) worldFor(CLIP.x); postMessage({ id: m.id, ok: true }); return; }
     if (m.op === 'frame') {

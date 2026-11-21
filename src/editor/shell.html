@@ -112,7 +112,13 @@ body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單�
 .swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
 .stage{position:relative}
-#stageOvl{position:absolute;inset:0;touch-action:none;cursor:default}
+#stageOvl{position:absolute;inset:0;pointer-events:none}
+#stageOvl.on{pointer-events:auto;touch-action:none;cursor:default}
+#editToggle[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);font-weight:700}
+#hoverBox{position:absolute;box-sizing:border-box;border:1.5px dashed var(--accent);pointer-events:none}
+#hoverName{position:absolute;left:0;top:0;padding:1px 6px;font-size:12px;line-height:18px;background:var(--accent);color:var(--on-accent);white-space:nowrap}
+#marquee{position:absolute;box-sizing:border-box;border:1.5px dashed var(--warn);background:var(--warn-soft);opacity:.55;pointer-events:none}
+#selBox.multi .h{display:none}
 #selBox{position:absolute;box-sizing:border-box;border:1.5px solid var(--accent);pointer-events:none}
 #selBox .h{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:var(--surface);border:1.5px solid var(--accent);pointer-events:auto}
 #selBox .h.nw{left:0;top:0;cursor:nwse-resize}#selBox .h.ne{left:100%;top:0;cursor:nesw-resize}#selBox .h.sw{left:0;top:100%;cursor:nesw-resize}#selBox .h.se{left:100%;top:100%;cursor:nwse-resize}
@@ -246,14 +252,17 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
       <div class="status" id="secMsg" role="status"></div>
       <div class="sectabs" id="secTabs" role="tablist" aria-label="段落（點一下切換、按住拖曳排序、點兩下改名）"></div>
       <div class="frame"><div class="stage" id="stage"><canvas id="view" width="1920" height="1080" aria-label="影片預覽"></canvas>
-        <div id="stageOvl" title="點一下選取元素，拖動改位置">
+        <div id="stageOvl">
           <div class="snap v" id="snapV" hidden></div><div class="snap h" id="snapH" hidden></div>
+          <div id="hoverBox" hidden><span id="hoverName"></span></div>
+          <div id="marquee" hidden></div>
           <div id="selPivot" hidden></div>
           <div id="selBox" hidden><i class="h nw" title="拉動縮放"></i><i class="h ne" title="拉動縮放"></i><i class="h sw" title="拉動縮放"></i><i class="h se" title="拉動縮放"></i><i class="h rot" title="拖動旋轉（按住 Shift 每 15 度一格）"></i></div>
         </div>
       </div></div>
       <div class="bar">
         <button class="small" id="play" aria-label="暫停">暫停</button>
+        <button class="small" id="editToggle" aria-pressed="false" title="打開後才能在預覽上選取、拖動元素；關著的時候預覽只是看">調整畫面</button>
         <input type="range" id="scrub" min="0" max="10" step="0.0333" value="0" aria-label="預覽時間">
         <span class="time" id="time">0.0 / 0.0 秒</span>
         <span class="hint keys">空白鍵 播放／暫停・← → 換影片</span>
@@ -372,7 +381,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <p class="hint" id="elDesc"></p>
           <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
           <div id="elList"></div>
-          <p class="hint">在預覽上點元素可以選取、拖動；按住 Shift 拖只走水平或垂直，靠近畫面中心或邊緣會吸附（按住 Ctrl 或 ⌘ 就不吸附）。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。「套用在」選整首歌時，這一段原本自己的同一項調整會改成跟著整首歌。</p>
+          <p class="hint">先按預覽下面的「調整畫面」，才能在預覽上操作：點一下選取，再拖動選取的元素；在其他地方按住拖是範圍選取，按住 Shift 點可以多選。按住 Shift 拖只走水平或垂直，靠近畫面中心或邊緣會吸附（按住 Ctrl 或 ⌘ 就不吸附）。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。「套用在」選整首歌時，這一段原本自己的同一項調整會改成跟著整首歌。</p>
         </div>
       </div>
 

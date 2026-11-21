@@ -47,7 +47,7 @@
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。
 - 畫面元素：場景在 `elements` 登記元素、背景用 `use` 組合；調整存在設定的 `elements`（整首歌）與 `sections[].elements`（單一段落）。場景從同一個 palette 物件讀色，元素的換色是在它畫的期間原地換上再換回，所以顏色要在 `draw` 裡現讀。把風格拆成元素是純重構，畫圖順序與算式要一模一樣，用 `test_golden` 驗證。
-- 預覽上的選取與拖拉在 `stage.js`：點到哪個元素、每個元素這一格的範圍、活動範圍都要問 Worker，是非同步的；測試用 `__app.seek(秒)` 停在固定時間，再讀 `__app.elements()`、`__app.selection()`（它們會等排隊中的工作做完）。元素的範圍（`box`）跟著編輯器的時間，抽格（`grab`）不會改它。
+- 預覽上的選取與拖拉在 `stage.js`：點到哪個元素、每個元素這一格的範圍、活動範圍都要問 Worker，是非同步的；測試先 `__app.editMode(true)` 打開「調整畫面」，用 `__app.seek(秒)` 停在固定時間，再讀 `__app.elements()`、`__app.selection()`、`__app.hover()`（它們會等排隊中的工作做完）。在 Worker 裡為了量範圍或判定點擊而跑場景時要包在 `measuring()` 裡，不能動文字圖集。元素的範圍（`box`）跟著編輯器的時間，抽格（`grab`）不會改它。
 - 質感表在 `gpu.js`（`T`／`ON`）和 `runtime.js`（`TEX_TYPES`／`TEX_ON`）各一份，要一起改；`tests/check_repo.py`（k）會比對。
 - 3D 筆觸層（`world`）：`WORLD_FLOATS` 在 `gpu.js` 和 `runtime.js` 各一份要一致（`tests/check_repo.py`（k）會比對）。無頭 SwiftShader 畫油彩一格約 8 秒，測試只拍少數幾格。無頭環境裡不帶 `?nopreview` 的預覽會讓 GPU 掛掉（2D 風格也一樣），預覽的程式路徑用 `__app.previewFrames` 測。
 - `x.under(f, 預設)` 的底跟著段落選的背景走，改字幕時一起看背景。

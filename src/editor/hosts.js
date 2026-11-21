@@ -71,6 +71,7 @@ class SceneHost {
   elements(els) { return this.call({ op: 'els', els }, TIMEOUT.frame, '套用元素調整時'); }
   boxes(t) { return this.call({ op: 'boxes', t }, TIMEOUT.firstFrame, '量元素範圍時'); }
   territory() { return this.call({ op: 'territory' }, TIMEOUT.firstFrame, '量元素活動範圍時'); }
+  touching(t, rect) { return this.call({ op: 'touching', t, rect }, TIMEOUT.firstFrame, '找範圍裡的元素時'); }
   hit(t, x, y) { return this.call({ op: 'hit', t, x, y }, TIMEOUT.firstFrame, '找點到的元素時'); }
   kill() { if (this.w) { this.w.terminate(); this.w = null; } for (const r of this.wait.values()) r({ ok: false, error: '場景已停止。' }); this.wait.clear(); }
 }
