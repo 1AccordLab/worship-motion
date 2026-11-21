@@ -155,7 +155,7 @@
         <h2>AI 的回覆整則貼回來，不用自己挑</h2>
         <p>編輯器會自己找出要用的部分。AI 的回覆通常長這樣：</p>
       </div>
-      <div class="anat" role="img" aria-label="AI 回覆的各部分：說明文字略過；js 程式碼框變成新風格；json 程式碼框變成設定；下次可以這樣說略過">
+      <div class="anat" role="img" aria-label="AI 回覆的各部分：說明文字略過；js 程式碼框變成新風格；json 程式碼框變成設定；patchScene 程式碼框變成改動；下次可以這樣說略過">
         <span class="anat-head">AI 的回覆</span><span class="anat-head"></span><span class="anat-head">編輯器怎麼用</span>
         <div class="seg seg-text">好的！我做了一個新風格「色帶」…</div>
         <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
@@ -166,6 +166,9 @@
         <div class="seg seg-json">```json<br>{ "title": "○○○", … }<br>```</div>
         <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
         <div class="res res-json"><b>設定</b><span>段落、歌詞、顏色、速度</span></div>
+        <div class="seg seg-js">```js<br>…patchScene(…)<br>```</div>
+        <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
+        <div class="res res-js"><b>改動</b><span>請 AI 改的時候：只改你說的那一樣</span></div>
         <div class="seg seg-text">下次可以這樣說：「…」</div>
         <div class="to"><svg viewBox="0 0 34 16" aria-hidden="true"><path d="M2 9 C 12 6, 20 10, 30 8 M 24 3 L 31 8 L 24 13"/></svg></div>
         <div class="res res-skip"><b>略過</b><span>留給你學</span></div>
@@ -175,7 +178,7 @@
         <div class="dont"><h3><span class="mark-no">✗</span>用滑鼠拖曳選取</h3><span>框線會不見。只有設定時還能用；有新風格時會失敗。</span></div>
       </div>
       <div class="two">
-        <figure class="plain"><img src="img/paste_detect.jpg" alt="貼上後顯示「找到：」，後面列出設定、新風格各有沒有找到"><figcaption>① 貼上後，先告訴你找到什麼</figcaption></figure>
+        <figure class="plain"><img src="img/paste_detect.jpg" alt="貼上後顯示「找到：」，後面列出設定、新風格、改動各有沒有找到"><figcaption>① 貼上後，先告訴你找到什麼</figcaption></figure>
         <figure class="plain"><img src="img/paste_applied.jpg" alt="按套用後列出改了哪些"><figcaption>② 按「套用」後，列出改了哪些</figcaption></figure>
       </div>
       <div class="two">
@@ -239,11 +242,14 @@
               <tr><td>字出來太急</td><td>字幕進場太快，慢一點</td></tr>
               <tr><td>字停太短</td><td>每句字幕停久一點</td></tr>
               <tr><td>放大的字不對</td><td>第二句想放大「熱」</td></tr>
+              <tr><td>想加一樣東西</td><td>副歌加一個十字架</td></tr>
+              <tr><td>想換掉一樣東西</td><td>太陽改成月亮</td></tr>
               <tr><td>說不出來</td><td>（留空，讓 AI 問你）</td></tr>
             </tbody>
           </table>
         </div>
       </div>
+      <p class="small muted">AI 只會回「改動」：只改你說的那一樣，其他照舊，整則貼回來就好。畫面上的改動（加一個元素、換掉一個元素）會列在「進階」分頁的「這首歌的改動」，不想要的可以單獨「拿掉」；AI 加的元素在「畫面元素」分頁也能直接「刪除」。</p>
       <h3>自己調：「自己調」分頁，改了預覽馬上變</h3>
       <div class="two">
         <figure class="plain"><img src="img/self_section.jpg" alt="「自己調」分頁的「這一段」：背景、色塊換位、動態字幕、歌詞、第二語言歌詞、每支長度、進場速度"><figcaption>歌詞框下方會告訴你要做成幾支字幕影片</figcaption></figure>
@@ -261,6 +267,16 @@
             <figure><img src="img/pal_after.jpg" alt="剪紙拼貼換成墨綠底"><figcaption>換配色後</figcaption></figure>
           </div>
           <p class="small muted"><b>色塊換位</b>：很快／快／中／慢，越慢畫面越穩（動態效果，預覽裡看最準）</p>
+        </div>
+      </div>
+      <h3>畫面元素：畫面上每一樣東西都能單獨調</h3>
+      <div class="two">
+        <figure class="plain"><img src="img/elements.jpg" alt="按了「調整畫面」後，預覽上的太陽被選取框框住；右邊「畫面元素」分頁列出這支影片的每個元素"><figcaption>先按預覽下方的「調整畫面」，再點畫面上的東西</figcaption></figure>
+        <div style="display:grid; gap:12px;">
+          <p class="small muted"><b>清單</b>：「畫面元素」分頁列出這一支影片裡的每一樣東西，可以隱藏、調透明度、換它自己的顏色。</p>
+          <p class="small muted"><b>直接拖</b>：按「調整畫面」後，點一下選取，再拖位置；拉四個角改大小，拖上面的圓點旋轉。沒按的時候預覽只是看，不會誤動。</p>
+          <p class="small muted"><b>疊在一起</b>：在同一個位置再點一下，會換選底下那一個。不想被點到的元素按「鎖定」。</p>
+          <p class="small muted"><b>套用在</b>：「整首歌」或「只有這一段」。調壞了按那個元素的「還原」。</p>
         </div>
       </div>
     </div>

@@ -323,6 +323,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
             <span class="cap">整則貼上就好，編輯器會自己找：</span>
             <code>```json 框</code><span class="arr">→</span><span><b>設定</b>（段落、歌詞、顏色、速度）</span>
             <code>```js 框</code><span class="arr">→</span><span><b>新風格</b>（AI 做的新畫面）</span>
+            <code>只改一部分的框</code><span class="arr">→</span><span><b>改動</b>（請 AI 改的時候，只改你說的那一樣）</span>
             <span class="dim">框外的文字</span><span class="arr">→</span><span class="dim">略過</span>
           </div>
           <textarea class="code" id="pasteText" spellcheck="false" aria-label="AI 的回覆" aria-describedby="detect" placeholder="在 AI 回覆下方按「複製」，整則貼到這裡"></textarea>
@@ -382,7 +383,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
           <p class="hint" id="elDesc"></p>
           <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
           <div id="elList"></div>
-          <p class="hint">先按預覽下面的「調整畫面」，才能在預覽上操作：點一下選取，再拖動選取的元素；在其他地方按住拖是範圍選取，按住 Shift 點可以多選；點空白處或按 Esc 取消選取。按住 Shift 拖只走水平或垂直，靠近畫面中心或邊緣會吸附（按住 Ctrl 或 ⌘ 就不吸附）。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。「套用在」選整首歌時，這一段原本自己的同一項調整會改成跟著整首歌。</p>
+          <p class="hint">先按預覽下面的「調整畫面」，才能在預覽上操作：點一下選取，再拖動選取的元素；元素疊在一起時，在同一個位置再點一下會換選底下那一個；在其他地方按住拖是範圍選取，按住 Shift 點可以多選；點空白處或按 Esc 取消選取。按住 Shift 拖只走水平或垂直，靠近畫面中心或邊緣會吸附（按住 Ctrl 或 ⌘ 就不吸附）。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。「套用在」選整首歌時，這一段原本自己的同一項調整會改成跟著整首歌。</p>
         </div>
       </div>
 

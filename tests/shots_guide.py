@@ -8,6 +8,9 @@ TMP = OUT / "guide"; TMP.mkdir(parents=True, exist_ok=True)
 MIN = (ROOT / "examples" / "minimal.js").read_text()
 L4 = "這是第[一]行示意文字\n這是第[二]行示意文字\n這是第[三]行示意文字"
 G4 = "這是第一行示意文字\n這是第二行示意文字\n\n這是第三行示意文字\n這是第四行示意文字"
+UNDER_STAGE = """(b64)=>{document.querySelectorAll('#ovl').forEach(x=>x.remove()); const c=document.querySelector('#view'), i=document.createElement('img'); i.id='ovl'; i.src='data:image/png;base64,'+b64;
+Object.assign(i.style,{position:'absolute',left:c.offsetLeft+'px',top:c.offsetTop+'px',width:c.clientWidth+'px',height:c.clientHeight+'px',borderRadius:'4px'});
+document.querySelector('.stage').insertBefore(i, document.querySelector('#stageOvl')); return new Promise(res=>i.complete?res(1):i.onload=()=>res(1));}"""
 def song(title, style):
     return {"format": "worship-motion/1", "title": title, "style": style, "bpm": 120, "sections": [
         {"name": "主歌", "background": "calm", "subtitle": "none"},
@@ -87,6 +90,11 @@ async def main():
         box = await p.ev("(()=>{const a=document.querySelector('#songTabs').getBoundingClientRect(),m=document.querySelector('#songMenu').getBoundingClientRect();return [Math.min(a.left,m.left)-8,a.top-8,Math.max(a.right,m.right)+8,m.bottom+8]})()")
         await pg.screenshot(path=str(TMP / "songmenu.png"), clip={"x": box[0], "y": max(0, box[1]), "width": min(1440, box[2]) - box[0], "height": box[3] - max(0, box[1])})
         jpg(TMP / "songmenu.png", "songmenu.jpg", 1000); await pg.keyboard.press("Escape")
+
+        await p.ev("x=>__app.load(x)", song("範例詩歌一", "riso")); await p.ev("__app.select(2,0)"); await p.ev("__app.seek(3.0)")
+        await p.ev("__app.selectElement('sun')"); png = await pg.evaluate(GRAB, 3.0); await pg.evaluate(UNDER_STAGE, png); await p.ev("scrollTo(0,0)")
+        await pg.screenshot(path=str(TMP / "elements.png")); jpg(TMP / "elements.png", "elements.jpg", 1600)
+        await pg.evaluate("document.querySelectorAll('#ovl').forEach(x=>x.remove())"); await p.ev("__app.editMode(false)")
 
         for st in STYLES:
             await p.ev("x=>__app.load(x)", song("風格圖鑑", st))
