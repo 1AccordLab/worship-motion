@@ -94,6 +94,11 @@ async def main():
             await p.shot(0, 0, 1.0); e0 = await els()
             now1 = await p.shot(1, 0, 1.0); e1 = await els()
             rec("AC6 這一段的大圓藏起來，下一段照舊（畫面一格不差）", e0["discs"]["visible"] is False and e1["discs"]["visible"] is True and diff(base1, now1, 1) == 0, (e0["discs"]["visible"], e1["discs"]["visible"], diff(base1, now1, 1)))
+            await fresh("riso"); await p.ev("__app.select(0,0)")
+            await set_el("discs", {"visible": False}, "section"); await set_el("discs", {"visible": False}, "song")
+            assert await p.ev("x=>__app.load(x)", await proj_now()); await p.ev("__app.select(0,0)")
+            await set_el("discs", {"visible": True}, "song"); await p.shot(0, 0, 1.0); e0 = await els(); await p.shot(1, 0, 1.0); e1 = await els(); pj = await proj_now()
+            rec("AC6 這一段和整首歌設成一樣、重新載入後再把整首歌改回來：這一段仍照自己的設定", e0["discs"]["visible"] is False and e1["discs"]["visible"] is True and (pj["sections"][0].get("elements") or {}).get("discs", {}).get("visible") is False, (e0["discs"]["visible"], e1["discs"]["visible"], pj["sections"][0].get("elements")))
         await safe("AC6 段落覆寫", ac6)
 
         async def ac7():
@@ -126,6 +131,9 @@ async def main():
             bad = proj("riso", elements={"discs": {"colors": {"blue": "藍色"}}})
             ok = await p.ev("t=>__app.paste(t)", fence("json", json.dumps(bad, ensure_ascii=False))); st = await p.ev("__app.status()")
             rec("AC9 顏色不是色碼：不套用，說明是 elements.discs.colors.blue", ok is False and "elements.discs.colors.blue" in st, st[:160])
+            odd = proj("riso", elements={"toString": {"visible": False}, "constructor": {"params": {"a": 1}}})
+            ok = await p.ev("t=>__app.paste(t)", fence("json", json.dumps(odd, ensure_ascii=False))); st = await p.ev("__app.status()"); pj = await proj_now()
+            rec("AC9 元素名稱剛好是物件內建名稱（toString、constructor）：當成不認得的元素略過並提醒", ok and st.startswith("已套用") and not pj.get("elements") and "toString" in st and "constructor" in st and "略過" in st, (ok, st[:80], pj.get("elements")))
         await safe("AC9 設定 JSON 的 elements", ac9)
 
         async def ac10():
