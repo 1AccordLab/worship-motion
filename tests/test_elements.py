@@ -10,7 +10,7 @@ AC7  字幕影片的元素清單＝段落背景的元素＋字幕；字幕也能
 AC8  整個背景是一個畫圖函式的風格（剪紙拼貼）照常能用，列出 背景、字幕 兩個元素，同樣能隱藏、調透明度。
 AC9  設定 JSON 的 elements 欄位：貼上會套用；不認得的元素略過並提醒；值不對就不套用並說明哪一欄。
 AC10 換風格會清掉元素調整；還原（undo）回到調整前；匯出的設定、存成的單檔都帶著調整，重新載入後一樣。
-AC11 「自己調」分頁有元素清單：上面的列是畫在上面的元素；勾選與滑桿會改設定。
+AC11 「畫面元素」分頁有元素清單：上面的列是畫在上面的元素；勾選與滑桿會改設定。
 AC12 AI 可以用 elements＋use 寫風格（examples/elements.js）；use 指到不存在的元素、元素取了保留的名稱，都會擋下並說明。
 AC13 隱藏元素後仍能匯出 MP4；給 AI 的文字帶著目前的元素調整。
 另外用 python3 tests/test_golden.py --ref <實作前的 commit> 確認：沒有任何調整時，畫面和拆元素前一格不差。"""
@@ -152,9 +152,9 @@ async def main():
         await safe("AC10 換風格、還原、存檔", ac10)
 
         async def ac11():
-            await fresh("riso"); await p.ev("__app.select(0,0)"); await p.ev("__app.tab('self')")
+            await fresh("riso"); await p.ev("__app.select(0,0)"); await p.ev("__app.tab('el')")
             rows = await p.ev("[...document.querySelectorAll('#elList .elrow')].map(r=>[r.dataset.id, r.querySelector('.elname').textContent])")
-            rec("AC11 「自己調」的元素清單：上面的列是畫在上面的元素", rows == [list(x) for x in zip(CALM[::-1], CALM_LABELS[::-1])] and await p.pg.is_visible("#elList"), rows)
+            rec("AC11 「畫面元素」分頁的元素清單：上面的列是畫在上面的元素", rows == [list(x) for x in zip(CALM[::-1], CALM_LABELS[::-1])] and await p.pg.is_visible("#elList"), rows)
             await p.pg.click("#elList .elrow[data-id=discs] .elvis"); await p.wait("(__app.project.elements||{}).discs&&__app.project.elements.discs.visible===false")
             rec("AC11 取消勾選「顯示」：設定記下 visible false", True)
             await p.pg.click("#elList .elrow[data-id=discs] .elvis"); await p.pg.fill("#elList .elrow[data-id=marks] .elop", "40")
