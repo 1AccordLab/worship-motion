@@ -24,8 +24,8 @@ async def shoot(out, html=None, examples=None):
             for i in range(nb):
                 si = i * 3
                 for t in (1.0, 5.5): await p.shot(si, 0, t, out / f"{tag}_s{i}_bg_{t}.png")
-                await p.shot(si + 1, 0, 0.9, out / f"{tag}_s{i}_flashy_0.9.png"); await p.shot(si + 1, 0, 3.0, out / f"{tag}_s{i}_flashy_3.0.png")
-                await p.shot(si + 2, 0, 4.0, out / f"{tag}_s{i}_gentle_4.0.png")
+                await p.shot(si + 1, 1, 0.9, out / f"{tag}_s{i}_flashy_0.9.png"); await p.shot(si + 1, 1, 3.0, out / f"{tag}_s{i}_flashy_3.0.png")
+                await p.shot(si + 2, 1, 4.0, out / f"{tag}_s{i}_gentle_4.0.png")
         have = set(await p.ev("__app.builtins()"))
         for st in (s for s in STYLES if s in have):
             await cap(st, gproj(st), 3)
