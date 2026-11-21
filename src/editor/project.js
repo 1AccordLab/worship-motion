@@ -4,15 +4,17 @@ const pickKey = (obj, k) => { if (k == null) return null; if (Object.prototype.h
 const NAME_ZH = { calm: '平靜', build: '累積', peak: '高潮', flashy: '華麗', gentle: '收斂', none: '不要' };
 const nameOf = (tbl, k) => (tbl && tbl[k] && tbl[k].label) || NAME_ZH[k] || k;
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+const ownProp = (o, k) => Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
 const boolOf = v => v === true || v === 'true' ? true : v === false || v === 'false' ? false : null;
-/* 注意：只留和基準不同的值（整首歌的基準是元素預設，段落的基準是整首歌的調整），存檔與給 AI 的設定才不會塞滿預設值 */
+/* 注意：只留和基準不同的值，存檔與給 AI 的設定才不會塞滿預設值。整首歌的基準是元素預設。段落只在同工動手調的當下和整首歌比（調回一樣就拿掉）；讀設定時不比，因為之後整首歌再改，這一段要照自己的 */
 function pruneElements(adj, m, base = {}) {
   const out = {};
   for (const [id, a] of Object.entries(adj || {})) {
-    const def = m.elements[id], b = base[id] || {}, o = {}; if (!def || !isObj(a)) continue;
+    const def = ownProp(m.elements, id), b = ownProp(base || {}, id) || {}, o = {}; if (!def || !isObj(a)) continue;
+    if (base === null) { const kept = Object.fromEntries(Object.entries(a).filter(([, v]) => !isObj(v) || Object.keys(v).length)); if (Object.keys(kept).length) out[id] = kept; continue; }
     if (typeof a.visible === 'boolean' && a.visible !== (b.visible ?? true)) o.visible = a.visible;
     if (typeof a.opacity === 'number' && a.opacity !== (b.opacity ?? 1)) o.opacity = a.opacity;
-    const params = Object.fromEntries(Object.entries(a.params || {}).filter(([k, v]) => def.params[k] && v !== ((b.params || {})[k] ?? def.params[k].value)));
+    const params = Object.fromEntries(Object.entries(a.params || {}).filter(([k, v]) => ownProp(def.params, k) && v !== ((b.params || {})[k] ?? def.params[k].value)));
     const colors = Object.fromEntries(Object.entries(a.colors || {}).filter(([k, v]) => def.colors.includes(k) && v !== (b.colors || {})[k]));
     if (Object.keys(params).length) o.params = params;
     if (Object.keys(colors).length) o.colors = colors;
@@ -24,14 +26,14 @@ function readElements(src, m, at, errors, warnings) {
   const out = {};
   if (!isObj(src)) { errors.push(`${at}elements 要是物件，例如 {"sun":{"visible":false}}。`); return out; }
   for (const [id, a] of Object.entries(src)) {
-    const def = m.elements[id], path = `${at}elements.${id}`;
+    const def = ownProp(m.elements, id), path = `${at}elements.${id}`;
     if (!def) { warnings.push(`${at}elements 的「${id}」不是「${m.name}」的元素，已略過（可用：${Object.keys(m.elements).join('、')}）。`); continue; }
     if (!isObj(a)) { errors.push(`${path} 要是物件，例如 {"visible":false,"opacity":0.6}。`); continue; }
     const o = out[id] = {};
     if (a.visible !== undefined) { const v = boolOf(a.visible); if (v === null) errors.push(`${path}.visible 要是 true 或 false（收到 ${a.visible}）。`); else o.visible = v; }
     if (a.opacity !== undefined) { const v = typeof a.opacity === 'string' && !a.opacity.trim() ? NaN : Number(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
     if (a.params !== undefined) { if (!isObj(a.params)) errors.push(`${path}.params 要是物件。`); else for (const [k, v] of Object.entries(a.params)) {
-      const d = def.params[k]; if (!d) { warnings.push(`${path}.params 的「${k}」這個元素沒有，已略過。`); continue; }
+      const d = ownProp(def.params, k); if (!d) { warnings.push(`${path}.params 的「${k}」這個元素沒有，已略過。`); continue; }
       const n = Number(v); if (!isFinite(n)) { errors.push(`${path}.params.${k} 要是數字。`); continue; }
       (o.params = o.params || {})[k] = Math.max(d.min, Math.min(d.max, n)); } }
     if (a.colors !== undefined) { if (!isObj(a.colors)) errors.push(`${path}.colors 要是物件。`); else for (const [k, v] of Object.entries(a.colors)) {
@@ -84,7 +86,7 @@ function normalize(raw, m, styleId) {
     if (s.lyrics !== undefined) { if (typeof s.lyrics === 'string') o.lyrics = s.lyrics.replace(/\r/g, ''); else errors.push(`${at} lyrics 要是文字（換行用 \\n）。`); }
     if (s.lyrics2 !== undefined && s.lyrics2 !== null) { if (typeof s.lyrics2 === 'string') o.lyrics2 = s.lyrics2.replace(/\r/g, ''); else errors.push(`${at} lyrics2 要是文字（換行用 \\n）。`); }
     if (s.swapLang !== undefined) o.swapLang = s.swapLang === true || s.swapLang === 'true' || s.swapLang === 1;
-    if (s.elements !== undefined) setOrDrop(o, pruneElements(readElements(s.elements, m, `${at} `, errors, warnings), m, p.elements));
+    if (s.elements !== undefined) setOrDrop(o, pruneElements(readElements(s.elements, m, `${at} `, errors, warnings), m, null));
     if (o.subtitle !== 'none' && !slidesOf(o, m).length) warnings.push(`${at}「${o.name}」選了動態字幕但沒有歌詞，只會有背景。`);
     p.sections.push(o);
   });

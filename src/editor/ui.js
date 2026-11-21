@@ -288,17 +288,18 @@ function elementLabel(d, patch) {
   return k && d.params[k] ? `${name}：${d.params[k].label}` : `${name}換色`;
 }
 function applyElement(id, patch, scope = elScope) {
-  const m = meta(), d = m.elements[id]; if (!d) return false;
+  const m = meta(), d = ownProp(m.elements, id); if (!d) return false;
   const inSec = scope === 'section', host = inSec ? sec() : P;
   const next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
-  setOrDrop(host, pruneElements({ ...host.elements, [id]: next }, m, inSec ? P.elements : {}));
+  const { [id]: before, ...others } = host.elements || {};
+  setOrDrop(host, { ...others, ...pruneElements({ [id]: next }, m, inSec ? P.elements : {}) });
   save((inSec ? sec().name + '：' : '') + elementLabel(d, patch), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
   syncElementRows(); return true;
 }
 function setElement(id, patch, scope) { return applyElement(id, patch, scope) && rebuild(); }
 const tuneElement = (id, patch) => { applyElement(id, patch); deb(rebuild); };
 function resetElement(id, scope = elScope) {
-  const m = meta(), d = m.elements[id], host = scope === 'section' ? sec() : P; if (!d || !(host.elements || {})[id]) return false;
+  const m = meta(), d = ownProp(m.elements, id), host = scope === 'section' ? sec() : P; if (!d || !ownProp(host.elements || {}, id)) return false;
   const { [id]: gone, ...rest } = host.elements; setOrDrop(host, rest);
   save(`${scope === 'section' ? sec().name + '：' : ''}元素「${d.label}」還原`); renderElements(); return rebuild();
 }
