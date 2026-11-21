@@ -83,6 +83,17 @@ function renderNotices() {
   }
   box.hidden = !notices.size;
 }
+const builtinBase = () => BUILTIN.some(b => b.code === patchParts(sceneCode).base);
+function renderPatches() {
+  const box = $('#patchList'), list = meta().patches; box.innerHTML = '';
+  $('#noPatches').hidden = !!list.length;
+  list.forEach((pt, i) => {
+    const row = document.createElement('div'); row.className = 'patchrow'; row.dataset.i = i;
+    const name = document.createElement('span'); name.className = 'patchname'; name.textContent = pt.label;
+    const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'small patchdrop'; drop.textContent = '拿掉'; drop.title = '拿掉這個改動（可以還原）'; drop.onclick = () => removePatch(i);
+    row.append(name, drop); box.appendChild(row);
+  });
+}
 const isCustomNow = () => !!(CUSTOM && scene && CUSTOM.id === meta().id && sceneCode === CUSTOM.code);
 function renderStyle() {
   const sel = $('#style'); sel.innerHTML = '';
@@ -98,7 +109,7 @@ function renderGlobal() {
   $('#bpm').value = P.bpm;
   const eb = effBpm();
   $('#bpmNote').textContent = Math.abs(eb - P.bpm) > 0.005 ? `為了讓背景頭尾接得起來，實際用 ${eb.toFixed(2)}。` : '';
-  $('#styleDesc').textContent = isCustomNow() ? `${withPeriod(m.description || 'AI 做的新風格')}想改它的長相：「請 AI 改」勾選「連同新風格的程式」。` : m.description;
+  $('#styleDesc').textContent = (isCustomNow() && !builtinBase() ? withPeriod(m.description || 'AI 做的新風格') : m.description) + (m.patches.length ? `這首歌另外套用了 ${m.patches.length} 個改動（在「進階」可以拿掉）。` : '');
   const box = $('#swatches'); box.innerHTML = '';
   for (const k of palKeys(m)) {
     const l = document.createElement('label'), i = document.createElement('input');
@@ -116,9 +127,9 @@ function renderGlobal() {
     l.append(s, i, v); pb.appendChild(l);
   }
   $('#noParams').hidden = !!Object.keys(m.params).length;
-  $('#sceneName').textContent = `目前風格：${m.name}` + (isCustomNow() ? '（AI 做的新風格）' : '（內建）') +
+  $('#sceneName').textContent = `目前風格：${m.name}` + (isCustomNow() && !builtinBase() ? '（AI 做的新風格）' : '（內建）') + (m.patches.length ? `＋${m.patches.length} 個改動` : '') +
     (m.canvas ? '・自由畫層' + (canvasHost ? '' : '（停用）') : '') + (m.shader ? '・特效層' + (r.shader ? (r.shader.half ? '（半解析度）' : '') : '（停用）') : '') + (m.textures.length ? `・質感 ${m.textures.length} 層` : '');
-  $('#withCodeRow').hidden = !isCustomNow();
+  renderPatches();
   $('#songNote').hidden = !P.note; $('#songNote').textContent = P.note ? '這首歌的說明：' + P.note : '';
   renderSaveState();
 }
@@ -276,7 +287,7 @@ const pct = v => Math.round(v * 100) + '%', num = v => (+v).toFixed(2).replace(/
 function elementsNow() {
   const m = meta(), s = sec(), adj = clipElements(s), pal = resolvedPal();
   return clipElementIds(s, clipIdx, m).map(id => { const d = m.elements[id], a = adj[id] || {};
-    return { id, label: d.label, fixed: !!d.fixed, locked: !!a.locked, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+    return { id, label: d.label, fixed: !!d.fixed, added: d.patch !== null && d.patch !== undefined, locked: !!a.locked, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
       dx: a.dx ?? 0, dy: a.dy ?? 0, scale: a.scale ?? 1, rotate: a.rotate ?? 0, box: frameBoxes[id] || null,
       params: Object.fromEntries(Object.entries(d.params).map(([k, p]) => [k, { ...p, value: (a.params || {})[k] ?? p.value }])),
       colors: Object.fromEntries(d.colors.map(k => [k, (a.colors || {})[k] || pal[k]])) }; });
@@ -394,6 +405,7 @@ function renderElements() {
     }
     if (!e.fixed) { const lock = document.createElement('button'); lock.type = 'button'; lock.className = 'small ellock'; lock.title = '鎖定後，在預覽上點不到也拖不動這個元素'; lock.onclick = () => setElement(e.id, { locked: lock.getAttribute('aria-pressed') !== 'true' }, 'song'); head.append(lock); }
     const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'small elreset'; reset.textContent = '還原'; reset.title = '把這個元素還原成風格原本的樣子'; reset.onclick = () => resetElement(e.id);
+    if (e.added) { const del = document.createElement('button'); del.type = 'button'; del.className = 'small eldelete'; del.textContent = '刪除'; del.title = '這個元素是 AI 加的，刪除後可以還原'; del.onclick = () => deleteElement(e.id); head.append(del); }
     const note = document.createElement('span'); note.className = 'elnote';
     head.append(reset, note); row.append(head, detail); box.appendChild(row);
   }

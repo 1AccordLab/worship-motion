@@ -436,3 +436,60 @@ world: { z: .2,
 | 改錯了 | 頂端「↶ 還原」「↷ 重做」（Ctrl／⌘＋Z）；「進階 → 歷史紀錄」可回到最近 50 步的任一個狀態；關掉的分頁從「最近關閉」叫回 |
 | 字型 | 用電腦內建字型，**在要播放的那台電腦上匯出**，字形才一致 |
 | 規格 | 1920×1080、30fps、H.264 的 MP4；只用 WebGPU、不連網、不用外部函式庫 |
+
+---
+
+## 四、只改一部分：改動
+
+同工在編輯器的「請 AI 改」打一句想改什麼，按「複製給 AI」，貼來的訊息裡有「目前的設定」和「目前的風格程式」。這時**只回改動**，不要重寫整份設定或整份程式；同工把回覆整則貼回同一個貼上框就生效，可以還原。兩種改動可以同時給，各放在自己的程式碼區塊；回覆最後用一句話說改了什麼，並加「下次可以這樣說」。不確定同工要什麼，先用選擇題問，不要猜。
+
+### 改設定：一個 json 區塊
+
+速度、配色、段落、歌詞、某個元素的位置大小顏色……只列有變的地方，`null` 代表刪掉。
+
+```json
+{ "format": "worship-motion-patch/1",
+  "set": { "bpm": 96, "palette": { "pink": "#c0392b" }, "elements": { "sun": { "scale": 1.2, "dx": -80 }, "dot": { "visible": false } } },
+  "sections": { "副歌": { "jumpBeats": 8 }, "間奏": null, "橋段": { "after": "副歌", "background": "build", "subtitle": "none" } } }
+```
+
+| 鍵 | 內容 |
+|---|---|
+| `format` | 固定 `"worship-motion-patch/1"` |
+| `set` | 整首歌的設定，欄位和第一節的設定 JSON 一樣（`sections` 除外）。物件會一層一層合併，只蓋掉列出的鍵 |
+| `sections` | 鍵是段落名稱。已有的段落只改列出的欄位（同名的段落都會改）；沒有的名稱＝新增一段，可用 `after` 或 `before` 指定排在哪一段旁邊；`null`＝刪掉那一段 |
+
+元素的調整寫在 `set.elements`（整首歌）或某一段的 `elements`：`visible`、`opacity`、`dx`、`dy`、`scale`、`rotate`、`params`、`colors`、`locked`。
+
+### 改畫面的長相：一個 js 區塊，呼叫一次 `patchScene`
+
+加一樣東西、改寫或刪掉某個元素、換一種組合。它接在「目前的風格程式」後面執行，可以直接用那份程式裡的變數與小工具（配色物件、自己寫的小函式）。
+
+```js
+patchScene({
+  label: '加十字架',
+  elements: {
+    cross: { label: '十字架', colors: ['ink'], in: ['peak'], after: 'sun',
+      draw(f, x, e) { f.add(rect(940, 300, 980, 620, PAL.ink), rect(860, 400, 1060, 440, PAL.ink)); } },
+    dot: null,
+  },
+  backgrounds: { peak: { jumpBeats: 8 }, dawn: { label: '破曉', jumpBeats: 4, use: ['sun', 'cross'] } },
+  palette: { gold: '#d3a253' }, labels: { gold: '暖金' },
+});
+```
+
+| `patchScene` 的鍵 | 內容 |
+|---|---|
+| `label` | 這次改動的名字（例如「加十字架」），顯示在編輯器「進階 → 這首歌的改動」 |
+| `elements` | `{ 名稱: 元素 }`。新名稱＝新增；已有的名稱＝整個改寫那個元素（位置照舊）；`null`＝刪掉。元素的寫法和第二節「把畫面拆成元素」一樣，另外可以加：`in`（放進哪些背景或字幕的名稱陣列，省略＝所有背景）、`after`／`before`（疊在哪個元素的上面／下面，省略＝最上面）、`args`（給 `e.args` 的資料） |
+| `backgrounds`、`subtitles` | `{ 名稱: … }`。只給 `label`、`jumpBeats`、`seconds` 這類欄位＝改那幾個欄位；給 `use`＝新增一種或重排它的元素；`null`＝刪掉 |
+| `palette`、`labels` | 新增或改預設顏色與它在面板上的名稱 |
+| `look`、`textures`、`params` | 後製、質感層、風格的滑桿，寫法同 `defineScene`（`textures` 是整組換掉） |
+
+規則：
+- 範例裡的 `PAL` 只是示意：顏色從「目前的風格程式」裡那個 palette 物件讀。
+- 一個 js 區塊只呼叫一次 `patchScene`，只放這次要改的東西；要用的小函式寫在同一個區塊裡。
+- 整個背景是一個函式的風格也可以加元素：新元素會疊在那個背景的上面。
+- 第二節的固定規則照舊：背景不放字；不要光暈、霓虹、漸層球、玻璃、無意義的 3D 旋轉；不要純白、純黑；不要 import、fetch、網址。
+- 同工要的是全新的風格（整個畫面換掉）才回完整的 `defineScene`；第一次做一首歌回完整的設定 JSON。
+

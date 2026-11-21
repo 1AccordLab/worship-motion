@@ -26,7 +26,7 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   if (prep) await commitScene(prep);
   const chg = changes(before, n.project, mOld, m);
   P = n.project; cur = 0; clipIdx = 0; t = 0;
-  save(chg.otherSong ? chg.lines[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : '載入' + source);
+  save(chg.otherSong ? chg.lines[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : source === 'AI 的改動' ? '套用 AI 的改動' : '載入' + source);
   renderStyle(); await refresh();
   out(doneText(prefix, changes(before, P, mOld, meta()).lines, n.warnings), 'ok');
   return true;
@@ -48,16 +48,73 @@ async function pasteScene(code) {
     return false;
   }
 }
+function reconcileProject() {
+  const m = meta(), q = clone(P), bgs = Object.keys(m.backgrounds), subs = Object.keys(m.subtitles);
+  for (const s of q.sections) { if (!m.backgrounds[s.background]) s.background = bgs[0]; if (s.subtitle !== 'none' && !m.subtitles[s.subtitle]) s.subtitle = subs[0] || 'none'; }
+  const n = normalize(q, m, m.id);
+  if (n.project) P = n.project; else adapt(P, m);
+  cur = Math.min(cur, P.sections.length - 1);
+}
+async function loadPatched(base, list) {
+  if (!list.length) { const plain = BUILTIN.find(b => b.code === base); if (plain) { CUSTOM = null; if (SONGS[ACT]) SONGS[ACT].custom = null; await useStyle(plain.id); return; } }
+  await commitScene(await prepareScene(joinPatches(base, list), true));
+}
+async function applyScenePatches(codes) {
+  const { base, patches } = patchParts(sceneCode), before = joinPatches(base, patches).split('\n').length + 1;
+  try { await loadPatched(base, [...patches, ...codes]); }
+  catch (e) { throw errAt(e.message, e.line > before ? e.line - before : 0); }
+  reconcileProject();
+}
+async function removePatch(i) {
+  const { base, patches } = patchParts(sceneCode), label = (meta().patches[i] || {}).label || `改動 ${i + 1}`;
+  if (i < 0 || i >= patches.length) return false;
+  try { await loadPatched(base, patches.filter((_, k) => k !== i)); }
+  catch (e) { say('#patchMsg', `拿不掉「${label}」：後面的改動用到它。${fmtErr(e)}`, true); return false; }
+  reconcileProject(); save(`拿掉改動「${label}」`); renderStyle(); await refresh();
+  say('#patchMsg', `「${label}」這個改動移走了。按「↶ 還原」可以放回來。`, 'ok'); return true;
+}
+async function deleteElement(id) {
+  const m = meta(), d = ownProp(m.elements, id); if (!d || d.patch === null) return false;
+  const src = m.patches[d.patch];
+  if (src && src.only) return removePatch(d.patch);
+  try { await applyScenePatches([`patchScene({ label: ${JSON.stringify('刪除「' + d.label + '」')}, elements: { ${JSON.stringify(id)}: null } });`]); }
+  catch (e) { say('#patchMsg', `刪不掉「${d.label}」：${fmtErr(e)}`, true); return false; }
+  save(`刪除元素「${d.label}」`); renderStyle(); await refresh(); return true;
+}
 async function pasteAny(text, where = '#cfgStatus') {
   const p = splitPaste(text), before = P ? clone(P) : null, mOld = scene ? meta() : null;
-  if (!p.code && !p.json) { say(where, '沒有套用：' + (p.jsonErr && !/^找不到/.test(p.jsonErr) ? p.jsonErr : '找不到設定或新風格。請在 AI 回覆下方按「複製」，整則貼進來。'), true); return false; }
+  if (!p.code && !p.json && !p.patches.length && !p.patchJson) { say(where, '沒有套用：' + (p.jsonErr && !/^找不到/.test(p.jsonErr) ? p.jsonErr : '找不到設定、新風格或改動。請在 AI 回覆下方按「複製」，整則貼進來。'), true); return false; }
   let prefix = '';
   if (p.code) {
     if (!(await pasteScene(p.code))) { say(where, '新風格沒有套用（保留原本的風格）：\n' + lastSceneErr, true); return false; }
     prefix = `新風格「${meta().name}」\n`;
   }
-  if (p.json) return applyRaw(p.json, 'AI 的設定', where, { before, mOld, prefix });
+  const kept = { code: sceneCode, custom: CUSTOM, P: clone(P) };
+  if (p.patches.length) {
+    const n0 = meta().patches.length;
+    try { await applyScenePatches(p.patches); }
+    catch (e) { say(where, '改動沒有套用（保留原本的樣子）：\n' + fmtErr(e), true); return false; }
+    prefix += `改動：${meta().patches.slice(n0).map(x => '「' + x.label + '」').join('、')}\n`;
+  }
+  let raw = p.json;
+  if (p.patchJson) {
+    const pc = patchedConfig(P, p.patchJson);
+    if (pc.errors.length) { await undoPatches(kept, p.patches.length); say(where, '改動沒有套用，請修正後再試：\n・' + pc.errors.join('\n・'), true); return false; }
+    raw = pc.raw; if (!p.patches.length) prefix += '改動\n';
+  }
+  if (raw) {
+    const ok = await applyRaw(raw, p.patchJson ? 'AI 的改動' : 'AI 的設定', where, { before, mOld, prefix });
+    if (!ok) await undoPatches(kept, p.patches.length);
+    return ok;
+  }
+  if (p.patches.length) { save('套用 AI 的改動'); renderStyle(); await refresh(); }
   say(where, doneText(prefix, changes(before, P, mOld, meta()).lines), 'ok'); return true;
+}
+async function undoPatches(kept, n) {
+  if (!n) return;
+  const parts = patchParts(kept.code);
+  CUSTOM = kept.custom; if (SONGS[ACT]) SONGS[ACT].custom = kept.custom;
+  await loadPatched(parts.base, parts.patches); P = kept.P; renderStyle(); await refresh();
 }
 function exportText() { return JSON.stringify(P, null, 2); }
 const CHIPS = [
@@ -70,11 +127,15 @@ const CHIPS = [
   ['加字幕', s => `「${s}」想加動態字幕，歌詞如下：\n`],
   ['加一段', () => '想加一段：（例如副歌 2、橋段、間奏）'],
 ];
+// 注意：改動的寫法只有一份，在 SKILL.md 的「只改一部分」那一節；複製給 AI 時整節附上，沒裝 skill 的 AI 也看得懂
+const PATCH_HEADING = '## 四、只改一部分：改動';
+function patchGuide() { const from = SKILL.indexOf(PATCH_HEADING); if (from < 0) return ''; const rest = SKILL.slice(from), end = rest.indexOf('\n---'); return (end < 0 ? rest : rest.slice(0, end)).trim(); }
 function aiText() {
-  const want = $('#askText').value.trim();
-  let s = `這是我目前的詩歌影片設定（格式 ${FORMAT}）。請照「worship-motion-backgrounds」skill 接著修改，回覆時給我一個完整的 json 程式碼區塊。\n我想改：${want || '（我還說不清楚，請你用選擇題問我）'}\n\n\`\`\`json\n${exportText()}\n\`\`\``;
-  if (isCustomNow() && $('#withCode').checked) s += `\n\n這是目前的新風格程式（風格「${meta().name}」）。如果要改畫面長相，請修改它，回覆一段完整的 js 程式碼區塊：\n\n\`\`\`js\n${sceneCode}\n\`\`\``;
-  return s;
+  const want = $('#askText').value.trim(), fence = '```';
+  return [`我在用「詩歌影片編輯器」做教會敬拜詩歌的動態背景與字幕影片。請照最下面「只改一部分：改動」的寫法，只給我「改動」，我會整則貼回編輯器。`,
+    `我想改：${want || '（我還說不清楚，請你用選擇題問我）'}`, '',
+    `【目前的設定】（格式 ${FORMAT}）`, fence + 'json', exportText(), fence, '',
+    `【目前的風格程式】（風格「${meta().name}」）`, fence + 'js', sceneCode, fence, '', patchGuide()].join('\n');
 }
 function openingText(short) {
   const name = P && !isFresh() && P.title !== '新的詩歌' ? `「${P.title}」` : '';
@@ -84,22 +145,22 @@ function openingText(short) {
 }
 function detect(text) {
   const s = String(text || '');
-  if (!s.trim()) return { empty: true, cfg: false, scene: false, err: '', noFence: false, title: '' };
-  const p = splitPaste(s), cfg = !!p.json && typeof p.json === 'object' && !Array.isArray(p.json);
-  return { empty: false, cfg, scene: !!p.code, err: cfg || p.code ? '' : (p.jsonErr || ''), noFence: !/```/.test(s) && /\bdefineScene\s*\(/.test(s), title: cfg && typeof p.json.title === 'string' ? p.json.title.trim() : '' };
+  if (!s.trim()) return { empty: true, cfg: false, scene: false, patch: false, err: '', noFence: false, title: '' };
+  const p = splitPaste(s), cfg = !!p.json && typeof p.json === 'object' && !Array.isArray(p.json), patch = p.patches.length > 0 || !!p.patchJson;
+  return { empty: false, cfg, scene: !!p.code, patch, err: cfg || p.code || patch ? '' : (p.jsonErr || ''), noFence: !/```/.test(s) && /\bdefineScene\s*\(/.test(s), title: cfg && typeof p.json.title === 'string' ? p.json.title.trim() : '' };
 }
 function renderDetect() {
   const d = detect($('#pasteText').value), box = $('#detect'); box.innerHTML = '';
-  $('#pasteApply').disabled = !(d.cfg || d.scene);
+  $('#pasteApply').disabled = !(d.cfg || d.scene || d.patch);
   const line = (cls, txt) => { const s = document.createElement('span'); s.className = cls; s.textContent = txt; box.append(s); return s; };
   if (d.empty) { line('dim', '貼上後，這裡會先告訴你找到什麼，再按「套用」。'); return d; }
   const tag = (ok, label) => { const s = document.createElement('span'); s.className = 'found' + (ok ? ' yes' : ''); s.textContent = label + (ok ? ' ✔' : ' —'); return s; };
-  box.append('找到：', tag(d.cfg, '設定'), tag(d.scene, '新風格'));
+  box.append('找到：', tag(d.cfg, '設定'), tag(d.scene, '新風格'), tag(d.patch, '改動'));
   if (d.title && P && d.title !== P.title) line('dim', `（另一首歌：「${d.title}」）`);
   if (d.noFence) line('warnline', '沒有看到 ``` 框。請用 AI 回覆下方的「複製」按鈕整則複製，不要只選取一段。');
-  if (!d.cfg && !d.scene) {
+  if (!d.cfg && !d.scene && !d.patch) {
     const fmt = d.err && !/^找不到/.test(d.err);
-    line('badline', fmt ? d.err : '沒找到設定或新風格。請在 AI 回覆下方按「複製」，整則貼上。');
+    line('badline', fmt ? d.err : '沒找到設定、新風格或改動。請在 AI 回覆下方按「複製」，整則貼上。');
     if (fmt) { const b = document.createElement('button'); b.className = 'small'; b.type = 'button'; b.textContent = '複製錯誤訊息給 AI'; b.onclick = async () => { await copyText(fixText(d.err)); b.textContent = '已複製 ✔ 貼回 AI 對話'; }; box.append(b); }
   }
   return d;
@@ -117,7 +178,7 @@ async function applyPasteUI(text) {
   const back = ACT;
   if (g === 'new') await newSong({ quiet: true });
   const created = g === 'new' ? SONGS[ACT].uid : null;
-  const b = $('#pasteApply'); b.disabled = true; cfgStatus(p.code ? '套用中…新風格要先試跑每種背景和字幕，約需幾秒。' : '套用中…');
+  const b = $('#pasteApply'); b.disabled = true; cfgStatus(p.code || p.patches.length ? '套用中…要先試跑每種背景和字幕，約需幾秒。' : '套用中…');
   let ok = false;
   try { ok = await pasteAny(text); } finally { b.disabled = false; }
   if (!ok && created) { const msg = $('#cfgStatus').textContent; await discardSong(created, back); cfgStatus(msg, true); }

@@ -49,6 +49,7 @@ function testApi() {
     resetSong, slides: () => slidesOf(sec()),
     elements: async () => { await queue; return elementsNow(); }, selection: async () => { await queue; return selectionNow(); }, territory: async () => { await queue; return clipTerritory; },
     editMode: on => { if (on !== undefined) setEditMode(!!on); return editOn; }, hover: async () => { do { await queue; await Promise.resolve(); } while (hoverBusy); return hoverEl ? { id: hoverEl } : null; },
+    patches: () => meta().patches, removePatch, deleteElement, sceneCode: () => sceneCode,
     selectElement, seek: tt => { t = tt; setPlaying(false); return serial(loadBoxes); }, setElement: (id, patch, scope) => setElement(id, patch, scope || 'song'), resetElement,
     toTrad, planSplit: (text, o) => planSplit(text, o || {}), applySplitText: (text, o) => { applySplit(planSplit(text, o || {})); save('貼上整首歌詞'); return refresh().then(() => clone(P)); },
     openLyrics: () => openLyricsDialog(), lyricsDialog: () => ({ open: $('#lyrDlg').open, text: $('#lyrBody').innerText }),

@@ -1,4 +1,8 @@
-const FORMAT = 'worship-motion/1';
+const FORMAT = 'worship-motion/1', PATCH_FORMAT = 'worship-motion-patch/1';
+// 注意：一首歌的風格程式＝原本的風格＋一段一段的改動；每段改動包在自己的大括號裡，才不會和別段的變數撞名
+const PATCH_OPEN = '\n/*@wm-patch*/{\n', PATCH_CLOSE = '\n}/*@wm-end*/\n';
+const patchParts = code => { const [base, ...rest] = String(code).split(PATCH_OPEN); return { base, patches: rest.map(x => x.split(PATCH_CLOSE)[0]) }; };
+const joinPatches = (base, list) => base + list.map(c => PATCH_OPEN + c + PATCH_CLOSE).join('');
 const $ = s => document.querySelector(s);
 const clone = o => JSON.parse(JSON.stringify(o));
 const HEX = /^#[0-9a-fA-F]{6}$/, JUMPS = [1, 2, 4, 8], LOOPS = [32, 64, 128];

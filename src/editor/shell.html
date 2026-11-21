@@ -130,6 +130,8 @@ body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單�
 .snap.v{top:0;bottom:0;width:2px;margin-left:-1px}.snap.h{left:0;right:0;height:2px;margin-top:-1px}
 body.stagedrag{user-select:none}
 .elrow.sel{background:var(--accent-soft)}
+.patchrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1.5px solid var(--line)}
+.patchname{flex:1;font-size:14px}
 .elname{border:none;background:transparent;padding:2px 4px;min-height:28px;font-size:14px;text-align:left;color:var(--ink);cursor:pointer}
 .elplace{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
 .elplace input{width:68px}
@@ -308,10 +310,9 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
       <div class="pane" role="tabpanel" id="pane-ai" aria-labelledby="tab-ai">
         <div class="card" id="askCard">
           <h2><span class="num">1</span>告訴 AI 想改什麼</h2>
-          <label class="lab" for="askText">想改的地方（可以留空）</label>
-          <textarea id="askText" rows="3" placeholder="例如：副歌背景太躁，想穩一點。&#10;留空的話 AI 會用選擇題問你。"></textarea>
+          <label class="lab" for="askText">想改的地方（一句話就好，可以留空）</label>
+          <textarea id="askText" rows="3" placeholder="例如：副歌背景太躁，想穩一點。&#10;或：副歌加一個十字架、太陽改成月亮。&#10;留空的話 AI 會用選擇題問你。"></textarea>
           <div class="chips" id="chips" role="group" aria-label="常用說法（點了會加進上面）"></div>
-          <label class="check" id="withCodeRow" hidden><input type="checkbox" id="withCode"><span>連同目前「新風格」的程式一起給 AI（想改畫面長相，不只是顏色、速度時勾）</span></label>
           <div class="row mt"><button class="strong" id="copyAI">複製給 AI</button><span class="hint">→ 貼到 AI 對話裡送出</span></div>
           <div class="status" id="copyMsg" role="status"></div>
         </div>
@@ -404,6 +405,12 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
             <button class="small" id="scenePaste">貼上新風格（用貼上框）→</button>
           </div>
           <div class="status" id="sceneStatus" role="status"></div>
+        </div>
+        <div class="card" id="patchCard">
+          <h2>這首歌的改動<button type="button" class="q" data-tip="用「請 AI 改」貼回來的畫面改動（加元素、改寫元素、新的背景組合…）會一筆一筆列在這裡，只影響這首歌。不想要的可以單獨拿掉。">?</button></h2>
+          <div id="patchList"></div>
+          <p class="hint" id="noPatches">這首歌用的是風格原本的樣子，沒有另外的改動。</p>
+          <div class="status" id="patchMsg" role="status"></div>
         </div>
         <div class="card" id="histCard">
           <h2>歷史紀錄<button type="button" class="q" data-tip="這首歌每一次改動都會記一步（連續打字、拖滑桿算一步）。點一列看和現在差在哪裡，再按「回到這個狀態」；回去之後還是可以按「↶ 還原」反悔。歷史存在這台電腦的瀏覽器裡，重新整理、關掉再開都還在；存成單檔 HTML 不帶歷史。">?</button></h2>

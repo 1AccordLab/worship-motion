@@ -130,8 +130,38 @@ function pairsOf(s, m = meta()) {
   return Array.from({ length: n }, (_, i) => ({ a: A[i] || '', b: B[i] || '' }));
 }
 const slidesOf = (s, m = meta()) => pairsOf(s, m).map(x => x.a || x.b);
+function mergeDeep(base, add) {
+  for (const [k, v] of Object.entries(add)) {
+    if (v === null) delete base[k];
+    else if (isObj(v) && isObj(base[k])) mergeDeep(base[k], v);
+    else base[k] = isObj(v) || Array.isArray(v) ? clone(v) : v;
+  }
+  return base;
+}
+/* 注意：改動只列有變的地方，null 代表刪掉；合併完還是交給 normalize 檢查，錯誤訊息才會和整份設定一樣 */
+function patchedConfig(project, patch) {
+  const raw = clone(project), errors = [];
+  for (const k of Object.keys(patch)) if (!['format', 'set', 'sections'].includes(k)) errors.push(`改動裡的「${k}」看不懂：只能有 set（整首歌的設定）和 sections（依段落名稱）。`);
+  if (patch.set !== undefined) {
+    if (!isObj(patch.set)) errors.push('set 要是物件，例如 {"bpm":96}。');
+    else { const { sections, format, ...rest } = patch.set; if (sections !== undefined) errors.push('段落的改動寫在 sections（依段落名稱），不要放在 set 裡。'); mergeDeep(raw, rest); }
+  }
+  if (patch.sections !== undefined) {
+    if (!isObj(patch.sections)) errors.push('sections 要是物件，鍵是段落名稱，例如 {"副歌":{"jumpBeats":8}}。');
+    else for (const [name, v] of Object.entries(patch.sections)) {
+      const hits = raw.sections.filter(s => s.name === name);
+      if (v === null) { if (!hits.length) errors.push(`要刪除的段落「${name}」不存在（目前有：${raw.sections.map(s => s.name).join('、')}）。`); raw.sections = raw.sections.filter(s => s.name !== name); continue; }
+      if (!isObj(v)) { errors.push(`sections 的「${name}」要是物件，或用 null 代表刪掉這一段。`); continue; }
+      const { after, before, ...fields } = v;
+      if (hits.length) { for (const s of hits) mergeDeep(s, fields); continue; }
+      const anchor = before !== undefined ? raw.sections.findIndex(s => s.name === before) : after !== undefined ? raw.sections.findIndex(s => s.name === after) + 1 || -1 : -1;
+      raw.sections.splice(anchor < 0 ? raw.sections.length : anchor, 0, mergeDeep({ name }, fields));
+    }
+  }
+  return { raw, errors };
+}
 function splitPaste(text) {
-  const t = String(text || ''), out = { code: null, json: null, jsonErr: null };
+  const t = String(text || ''), out = { code: null, json: null, jsonErr: null, patches: [], patchJson: null };
   const blocks = [...t.matchAll(/```[a-zA-Z]*\s*\n?([\s\S]*?)```/g)].map(m => m[1]);
   const tryJSON = s => { const q = s.replace(/[“”＂]/g, '"').replace(/[‘’]/g, "'"); const a = q.indexOf('{'), b = q.lastIndexOf('}');
     if (a < 0 || b <= a) throw new Error('找不到 { } 包起來的設定。');
@@ -139,9 +169,11 @@ function splitPaste(text) {
   const list = blocks.length ? blocks : [t];
   for (const b of list) {
     if (/\bdefineScene\s*\(/.test(b)) { out.code = out.code || b; continue; }
+    if (/\bpatchScene\s*\(/.test(b)) { out.patches.push(b.trim()); continue; }
     if (out.json) continue;
     try { out.json = tryJSON(b); } catch (e) { out.jsonErr = e.message; }
   }
+  if (out.json && out.json.format === PATCH_FORMAT) { out.patchJson = out.json; out.json = null; }
   return out;
 }
 
