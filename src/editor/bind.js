@@ -4,7 +4,7 @@ const isTextField = el => !!el && (el.tagName === 'TEXTAREA' || el.isContentEdit
 function bindUI() {
   TABS.forEach((k, i) => {
     $('#tab-' + k).onclick = () => showTab(k);
-    $('#tab-' + k).onkeydown = e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); showTab(TABS[(i + d + 3) % 3], true); } };
+    $('#tab-' + k).onkeydown = e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); showTab(TABS[(i + d + TABS.length) % TABS.length], true); } };
   });
   document.querySelectorAll('#steps>button').forEach(b => b.onclick = () => {
     const n = +b.dataset.step;
@@ -91,6 +91,7 @@ function bindUI() {
     e.preventDefault(); (k === 'y' || e.shiftKey) ? redo() : undo();
   });
   document.addEventListener('keydown', previewKeys);
+  bindStage();
   syncScroll($('#sLyrics'), $('#sLyrics2'));
   bindFileDrop();
 

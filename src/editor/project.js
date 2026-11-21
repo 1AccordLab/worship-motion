@@ -5,6 +5,13 @@ const NAME_ZH = { calm: '平靜', build: '累積', peak: '高潮', flashy: '華�
 const nameOf = (tbl, k) => (tbl && tbl[k] && tbl[k].label) || NAME_ZH[k] || k;
 const isObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const ownProp = (o, k) => Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined;
+const wrapDegrees = v => { const w = ((v + 180) % 360 + 360) % 360 - 180; return Math.round(w * 10) / 10; };
+const PLACEMENT = {
+  dx: { rest: 0, fit: v => Math.round(Math.max(-4000, Math.min(4000, v)) * 10) / 10 },
+  dy: { rest: 0, fit: v => Math.round(Math.max(-4000, Math.min(4000, v)) * 10) / 10 },
+  scale: { rest: 1, fit: v => Math.round(Math.max(.1, Math.min(5, v)) * 1000) / 1000 },
+  rotate: { rest: 0, fit: wrapDegrees },
+};
 const boolOf = v => v === true || v === 'true' ? true : v === false || v === 'false' ? false : null;
 /* 注意：只留和基準不同的值，存檔與給 AI 的設定才不會塞滿預設值。整首歌的基準是元素預設。段落只在同工動手調的當下和整首歌比（調回一樣就拿掉）；讀設定時不比，因為之後整首歌再改，這一段要照自己的 */
 function pruneElements(adj, m, base = {}) {
@@ -14,6 +21,7 @@ function pruneElements(adj, m, base = {}) {
     if (base === null) { const kept = Object.fromEntries(Object.entries(a).filter(([, v]) => !isObj(v) || Object.keys(v).length)); if (Object.keys(kept).length) out[id] = kept; continue; }
     if (typeof a.visible === 'boolean' && a.visible !== (b.visible ?? true)) o.visible = a.visible;
     if (typeof a.opacity === 'number' && a.opacity !== (b.opacity ?? 1)) o.opacity = a.opacity;
+    for (const [k, pl] of Object.entries(PLACEMENT)) if (!def.fixed && typeof a[k] === 'number' && a[k] !== (b[k] ?? pl.rest)) o[k] = a[k];
     const params = Object.fromEntries(Object.entries(a.params || {}).filter(([k, v]) => ownProp(def.params, k) && v !== ((b.params || {})[k] ?? def.params[k].value)));
     const colors = Object.fromEntries(Object.entries(a.colors || {}).filter(([k, v]) => def.colors.includes(k) && v !== (b.colors || {})[k]));
     if (Object.keys(params).length) o.params = params;
@@ -32,6 +40,9 @@ function readElements(src, m, at, errors, warnings) {
     const o = out[id] = {};
     if (a.visible !== undefined) { const v = boolOf(a.visible); if (v === null) errors.push(`${path}.visible 要是 true 或 false（收到 ${a.visible}）。`); else o.visible = v; }
     if (a.opacity !== undefined) { const v = typeof a.opacity === 'string' && !a.opacity.trim() ? NaN : Number(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
+    for (const [k, pl] of Object.entries(PLACEMENT)) { if (a[k] === undefined) continue;
+      if (def.fixed) { warnings.push(`${path}.${k}：「${def.label}」鋪滿畫面，不能移動、縮放、旋轉，已略過。`); continue; }
+      const v = typeof a[k] === 'string' && !a[k].trim() ? NaN : Number(a[k]); if (!isFinite(v)) errors.push(`${path}.${k} 要是數字（收到 ${a[k]}）。`); else o[k] = pl.fit(v); }
     if (a.params !== undefined) { if (!isObj(a.params)) errors.push(`${path}.params 要是物件。`); else for (const [k, v] of Object.entries(a.params)) {
       const d = ownProp(def.params, k); if (!d) { warnings.push(`${path}.params 的「${k}」這個元素沒有，已略過。`); continue; }
       const n = Number(v); if (!isFinite(n)) { errors.push(`${path}.params.${k} 要是數字。`); continue; }

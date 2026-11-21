@@ -12,7 +12,19 @@ const serial = fn => { const p = queue.then(fn, fn); queue = p.catch(() => { });
 function canvasInfo(st) { return { beat: st / BEAT, W, H, pal: resolvedPal(), params: paramsNow(), kind: clip.kind, type: clip.type, text: clip.text || '', text2: clip.text2 || '', swap: !!clip.swap, dur: clip.dur || 0 }; }
 const paramsNow = () => Object.fromEntries(Object.entries(meta().params).map(([k, d]) => [k, (P && P.params && P.params[k]) ?? d.value]));
 let worldData = null, previewDensity = 1, worldMs = 0;
-let drawnByElement = {};
+let drawnByElement = {}, frameBoxes = {}, clipTerritory = {};
+const bgSpan = s => frames32() * s.loopBeats / 32 / FPS * K();
+async function loadBoxes() {
+  if (!clip || !scene) { frameBoxes = {}; clipTerritory = {}; renderStage(); return; }
+  frameBoxes = (await scene.boxes(clip.map(t))).boxes; clipTerritory = (await scene.territory()).boxes; renderStage();
+}
+// 注意：拖曳時游標事件比 Worker 來回快得多，排隊中的那一次會讀到最新的調整，所以同時只排一次
+let elementsPush = null;
+function pushElements() {
+  if (exporting) return;
+  if (!elementsPush) elementsPush = serial(async () => { elementsPush = null; if (!clip || !scene) return; await scene.elements(clipElements(sec())); await loadBoxes(); }).catch(e => pvStatus('預覽錯誤：' + fmtErr(e), true));
+  return elementsPush;
+}
 function clipElementIds(s, ci, m = meta()) { const ids = [...m.backgrounds[s.background].uses]; if (ci > 0) ids.push('text'); return ids; }
 function clipElements(s) {
   const out = {};
@@ -39,6 +51,7 @@ async function drawAt(tt, idx, target) {
   let [fr] = await Promise.all([scene.frame(st, fa), canvasHost ? canvasHost.frame(st, canvasInfo(st)).then(x => { cv = x; }, e => canvasFail(e)) : null]);
   if (fr.atlas) r.uploadAtlas(fr.atlas);
   drawnByElement = fr.frame.drawn || {};
+  if (target === 'canvas') { frameBoxes = fr.frame.boxes || {}; renderStage(); }
   const fwk = fr.frame.world && fr.frame.world.key;
   if (fwk && !fr.world && (!worldData || worldData.key !== fwk)) fr = await scene.frame(st, false, true);
   syncWorld(fr, target);
@@ -241,7 +254,7 @@ async function makeClip(si, ci) {
     out = { kind: 'sub', type: s.subtitle, loop: false, frames, duration: frames / FPS, map: tt => k * warp(tt, s.enterSpeed), text: pr.a, text2: pr.b, swap: !!s.swapLang, dur: k * warp(s.clipSeconds, s.enterSpeed) };
   }
   out.jump = jump;
-  await scene.clip({ kind: out.kind, type: out.type, bg: s.background, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, pal: P.palette, params: paramsNow(), els: clipElements(s) });
+  await scene.clip({ kind: out.kind, type: out.type, bg: s.background, text: out.text, text2: out.text2, swap: out.swap, dur: out.dur, jump, span: bgSpan(s), pal: P.palette, params: paramsNow(), els: clipElements(s) });
   sceneToRenderer(r);
   return out;
 }
@@ -252,7 +265,7 @@ function rebuild() {
   return serial(async () => {
     if (my !== rebuildN) return;
     const n = 1 + slidesOf(sec()).length; if (clipIdx >= n) clipIdx = 0;
-    try { clip = await makeClip(cur, clipIdx); $('#scrub').max = clip.duration; t = Math.min(t, clip.duration); pvStatus(''); }
+    try { clip = await makeClip(cur, clipIdx); $('#scrub').max = clip.duration; t = Math.min(t, clip.duration); pvStatus(''); await loadBoxes(); }
     catch (e) { clip = null; if (e.hang) await sceneFailed(e); else pvStatus('預覽失敗：' + fmtErr(e), true); }
   });
 }

@@ -38,7 +38,7 @@ async function copyText(text, okMsg, where) {
   return ok;
 }
 
-const TABS = ['ai', 'self', 'adv'];
+const TABS = ['ai', 'self', 'el', 'adv'];
 function showTab(name, focus) {
   curTab = name;
   for (const k of TABS) { const tb = $('#tab-' + k), on = k === name; tb.setAttribute('aria-selected', String(on)); tb.tabIndex = on ? 0 : -1; $('#pane-' + k).hidden = !on; }
@@ -157,7 +157,7 @@ function moveSecTo(from, to) {
   save(`段落「${s.name}」移到第 ${to + 1} 段`); refresh(); return true;
 }
 const altArrow = e => e.altKey && !e.ctrlKey && !e.metaKey ? (e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0) : 0;
-let dragEndAt = 0;
+let dragEndAt = -Infinity;
 const justDragged = () => performance.now() - dragEndAt < 350;
 // 注意：被拖的元素在 DOM 裡搬動會失去 pointer capture，所以在 window 上聽 pointermove／pointerup。
 // 注意：觸控要長按才開始拖，否則會搶走分頁列的左右滑動；開始拖之後要擋掉 touchmove，不然瀏覽器會改成捲動並送 pointercancel。
@@ -276,7 +276,8 @@ const pct = v => Math.round(v * 100) + '%', num = v => (+v).toFixed(2).replace(/
 function elementsNow() {
   const m = meta(), s = sec(), adj = clipElements(s), pal = resolvedPal();
   return clipElementIds(s, clipIdx, m).map(id => { const d = m.elements[id], a = adj[id] || {};
-    return { id, label: d.label, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+    return { id, label: d.label, fixed: !!d.fixed, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+      dx: a.dx ?? 0, dy: a.dy ?? 0, scale: a.scale ?? 1, rotate: a.rotate ?? 0, box: frameBoxes[id] || null,
       params: Object.fromEntries(Object.entries(d.params).map(([k, p]) => [k, { ...p, value: (a.params || {})[k] ?? p.value }])),
       colors: Object.fromEntries(d.colors.map(k => [k, (a.colors || {})[k] || pal[k]])) }; });
 }
@@ -284,16 +285,24 @@ function elementLabel(d, patch) {
   const name = `元素「${d.label}」`;
   if (patch.visible !== undefined) return (patch.visible ? '顯示' : '隱藏') + name;
   if (patch.opacity !== undefined) return `${name}透明度 ${pct(patch.opacity)}`;
+  if (patch.dx !== undefined || patch.dy !== undefined) return '移動' + name;
+  if (patch.scale !== undefined) return '縮放' + name;
+  if (patch.rotate !== undefined) return '旋轉' + name;
   const k = Object.keys(patch.params || {})[0];
   return k && d.params[k] ? `${name}：${d.params[k].label}` : `${name}換色`;
 }
-function applyElement(id, patch, scope = elScope) {
-  const m = meta(), d = ownProp(m.elements, id); if (!d) return false;
-  const inSec = scope === 'section', host = inSec ? sec() : P;
-  const next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
+const scopeHost = scope => scope === 'section' ? sec() : P;
+const scopePrefix = scope => scope === 'section' ? sec().name + '：' : '';
+function writeElement(id, patch, scope = elScope) {
+  const m = meta(), d = ownProp(m.elements, id); if (!d) return null;
+  const host = scopeHost(scope), next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
   const { [id]: before, ...others } = host.elements || {};
-  setOrDrop(host, { ...others, ...pruneElements({ [id]: next }, m, inSec ? P.elements : {}) });
-  save((inSec ? sec().name + '：' : '') + elementLabel(d, patch), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
+  setOrDrop(host, { ...others, ...pruneElements({ [id]: next }, m, scope === 'section' ? P.elements : {}) });
+  return d;
+}
+function applyElement(id, patch, scope = elScope) {
+  const d = writeElement(id, patch, scope); if (!d) return false;
+  save(scopePrefix(scope) + elementLabel(d, patch), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
   syncElementRows(); return true;
 }
 function setElement(id, patch, scope) { return applyElement(id, patch, scope) && rebuild(); }
@@ -307,7 +316,8 @@ function syncElementRows() {
   const now = Object.fromEntries(elementsNow().map(e => [e.id, e])), own = (elScope === 'section' ? sec() : P).elements || {}, other = elScope === 'section' ? {} : sec().elements || {};
   document.querySelectorAll('#elList .elrow').forEach(row => {
     const e = now[row.dataset.id]; if (!e) return;
-    row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible);
+    row.querySelector('.elvis').checked = e.visible; row.classList.toggle('off', !e.visible); row.classList.toggle('sel', selEl === e.id);
+    row.querySelectorAll('.elnum').forEach(i => { if (document.activeElement !== i) i.value = i.dataset.k === 'scale' ? Math.round(e.scale * 100) : e[i.dataset.k]; });
     const op = row.querySelector('.elop'); if (document.activeElement !== op) op.value = Math.round(e.opacity * 100);
     row.querySelector('.elopv').textContent = pct(e.opacity);
     row.querySelectorAll('.elparam').forEach(i => { if (document.activeElement !== i) { i.value = e.params[i.dataset.k].value; i.nextElementSibling.textContent = num(i.value); } });
@@ -317,6 +327,7 @@ function syncElementRows() {
   });
 }
 function renderElements() {
+  if (selEl && !elementsNow().some(e => e.id === selEl && e.visible && !e.fixed)) selEl = null;
   const list = elementsNow().reverse(), box = $('#elList'), open = new Set([...box.querySelectorAll('.elrow.open')].map(r => r.dataset.id)), m = meta();
   fillSeg($('#elScope'), [{ v: 'song', label: '整首歌' }, { v: 'section', label: '只有這一段' }], elScope, v => { elScope = v; renderElements(); });
   $('#elDesc').textContent = `預覽中的「${i0name(sec())}」由這 ${list.length} 個元素疊起來，上面的列畫在上面。`;
@@ -324,9 +335,11 @@ function renderElements() {
   for (const e of list) {
     const row = document.createElement('div'); row.className = 'elrow'; row.dataset.id = e.id;
     const head = document.createElement('div'); head.className = 'elhead';
-    const lab = document.createElement('label'); lab.className = 'elshow';
-    const vis = document.createElement('input'); vis.type = 'checkbox'; vis.className = 'elvis'; vis.title = '顯示這個元素';
-    const name = document.createElement('span'); name.className = 'elname'; name.textContent = e.label;
+    const lab = document.createElement('span'); lab.className = 'elshow';
+    const vis = document.createElement('input'); vis.type = 'checkbox'; vis.className = 'elvis'; vis.title = '顯示這個元素'; vis.setAttribute('aria-label', `顯示「${e.label}」`);
+    const name = document.createElement('button'); name.type = 'button'; name.className = 'elname'; name.textContent = e.label;
+    name.title = e.fixed ? '鋪滿畫面的元素：可以隱藏、調透明度，不能移動' : '在預覽上選取這個元素';
+    name.onclick = () => selectElement(selEl === e.id ? null : e.id);
     lab.append(vis, name);
     const op = document.createElement('input'); op.type = 'range'; op.className = 'elop'; op.min = 0; op.max = 100; op.step = 1; op.setAttribute('aria-label', `「${e.label}」的透明度`);
     const opv = document.createElement('b'); opv.className = 'elopv';
@@ -348,6 +361,12 @@ function renderElements() {
       i.oninput = () => { show(); tuneElement(e.id, { params: { [k]: +i.value } }); };
       l.append(s, i, v); detail.appendChild(l);
     }
+    if (!e.fixed) for (const [k, text, unit, step] of [['dx', '往右', '', 1], ['dy', '往下', '', 1], ['scale', '大小', '%', 1], ['rotate', '旋轉', '°', 1]]) {
+      const l = document.createElement('label'); l.className = 'elplace'; const i = document.createElement('input');
+      i.type = 'number'; i.className = 'elnum'; i.dataset.k = k; i.step = step; i.setAttribute('aria-label', `「${e.label}」${text}`);
+      i.oninput = () => { if (i.value !== '' && isFinite(+i.value)) tuneElement(e.id, { [k]: k === 'scale' ? i.value / 100 : +i.value }); };
+      l.append(text, i, unit); detail.appendChild(l);
+    }
     if (detail.childElementCount) {
       const more = document.createElement('button'); more.type = 'button'; more.className = 'small elmore'; more.textContent = '細部';
       const toggle = on => { row.classList.toggle('open', on); more.setAttribute('aria-expanded', String(on)); detail.hidden = !on; };
@@ -358,7 +377,7 @@ function renderElements() {
     const note = document.createElement('span'); note.className = 'elnote';
     head.append(reset, note); row.append(head, detail); box.appendChild(row);
   }
-  syncElementRows();
+  syncElementRows(); renderStage();
 }
 let lyrPlan = null, lyrUndo = null;
 function lyrOpts() {

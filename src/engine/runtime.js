@@ -216,7 +216,7 @@ function defineScene(d) {
     const colors = v.colors || [];
     if (!Array.isArray(colors)) bad(`elements.${k}.colors 要是 palette 鍵的陣列，例如 ["main"]`);
     for (const c of colors) if (!d.palette[c]) bad(`elements.${k}.colors 的「${c}」不在 palette 裡`);
-    elements[k] = { label: typeof v.label === 'string' && v.label.trim() ? v.label.trim().slice(0, 20) : k, draw: v.draw, colors: [...colors], params: paramDefs(v.params, `elements.${k}.params`) };
+    elements[k] = { label: typeof v.label === 'string' && v.label.trim() ? v.label.trim().slice(0, 20) : k, draw: v.draw, fixed: !!v.fixed, colors: [...colors], params: paramDefs(v.params, `elements.${k}.params`) };
   }
   const useList = (list, where) => {
     if (!Array.isArray(list) || !list.length) bad(`${where}.use 要是至少有一個元素的陣列，例如 ["sun", { el: "rays", count: 12 }]`);
@@ -274,7 +274,88 @@ function drawBackground(f, x, name, o) {
   for (const u of b.use) asElement(f, u.id, () => SCENE.elements[u.id].draw(f, x, { id: u.id, p: CLIP.elParams[u.id], args: u.args, sub: o && o.sub }));
 }
 
+const isFixed = id => id === 'bg' || !!(SCENE.elements[id] && SCENE.elements[id].fixed);
+function itemBox(it) {
+  const o = it.o;
+  if (it.t === 0) {
+    if (o.kind === 0) { const c = Math.abs(Math.cos(o.ang)), s = Math.abs(Math.sin(o.ang)), ex = o.hx * c + o.hy * s, ey = o.hx * s + o.hy * c; return [o.cx - ex, o.cy - ey, o.cx + ex, o.cy + ey]; }
+    const r = o.kind === 1 ? o.hx + o.hy : o.hx; return [o.cx - r, o.cy - r, o.cx + r, o.cy + r];
+  }
+  if (it.t === 1) { const c = Math.abs(Math.cos(o.rot)), s = Math.abs(Math.sin(o.rot)), ex = (o.w * c + o.h * s) / 2, ey = (o.w * s + o.h * c) / 2; return [o.x - ex, o.y - ey, o.x + ex, o.y + ey]; }
+  return [Math.min(o.x0, o.x1) - o.hw, Math.min(o.y0, o.y1) - o.hw, Math.max(o.x0, o.x1) + o.hw, Math.max(o.y0, o.y1) + o.hw];
+}
+const grow = (box, a) => box ? [Math.min(box[0], a[0]), Math.min(box[1], a[1]), Math.max(box[2], a[2]), Math.max(box[3], a[3])] : a;
+const HIT_PAD = 4, HIT_MIN_ALPHA = .02;
+function itemContains(it, px, py) {
+  const o = it.o, inSweep = (ux, uy) => o.sweep >= TAU || mod(Math.atan2(uy, ux) - o.a0, TAU) <= o.sweep;
+  const inRect = (ux, uy, ang, hx, hy) => { const c = Math.cos(ang), s = Math.sin(ang); return Math.abs(c * ux + s * uy) <= hx + HIT_PAD && Math.abs(-s * ux + c * uy) <= hy + HIT_PAD; };
+  if (it.t === 0) {
+    const ux = px - o.cx, uy = py - o.cy, len = Math.hypot(ux, uy);
+    if (o.kind === 0) return inRect(ux, uy, o.ang, o.hx, o.hy);
+    if (o.kind === 1) return o.sweep >= TAU ? len <= o.hx + o.hy + HIT_PAD : Math.abs(len - o.hx) <= o.hy + HIT_PAD && inSweep(ux, uy);
+    return len <= o.hx + HIT_PAD && (o.kind !== 3 || inSweep(ux, uy));
+  }
+  if (it.t === 1) return inRect(px - o.x, py - o.y, o.rot, o.w / 2, o.h / 2);
+  const vx = o.x1 - o.x0, vy = o.y1 - o.y0, k = clamp01(((px - o.x0) * vx + (py - o.y0) * vy) / Math.max(1e-4, vx * vx + vy * vy));
+  return Math.hypot(px - o.x0 - vx * k, py - o.y0 - vy * k) <= o.hw + HIT_PAD;
+}
+/* 注意：活動範圍＝元素在整段影片裡畫過的地方（沒有位移、縮放、旋轉時），裁到畫面內；縮放與旋轉以它的中心為軸 */
+/* 注意：背景的元素一律用背景影片的循環來取樣，字幕影片裡同一個元素的軸心才會和背景影片一樣；字幕只看最後一格（播完停住的樣子） */
+const TERRITORY_SAMPLES = 32;
+let TERRITORY = null;
+function territory() {
+  const x = CLIP.x, bgName = x.kind === 'bg' ? x.type : x.bg;
+  const key = JSON.stringify([SCENE.id, x.kind, x.type, bgName, CLIP.jump, CLIP.span, x.dur, x.text, x.text2, x.swap, CLIP.elParams, Object.keys(CLIP.els).filter(isHidden)]);
+  if (TERRITORY && TERRITORY.key === key) return TERRITORY.boxes;
+  const boxes = {}, keepT = x.t, at = tt => { x.t = tt; x.beat = tt / BEAT; return new Frame(SCENE.palette); };
+  const collect = (f, only) => { for (const it of f.items) if (!only || it.el === only) boxes[it.el] = grow(boxes[it.el], itemBox(it)); };
+  try {
+    if (bgName && SCENE.backgrounds[bgName].use) for (let i = 0; i < TERRITORY_SAMPLES; i++) { const f = at((i + .5) * CLIP.span / TERRITORY_SAMPLES); drawBackground(f, x, bgName); collect(f); }
+    if (x.kind === 'sub') { const f = at(x.dur); asElement(f, 'text', () => CLIP.def.draw(f, x), true); collect(f, 'text'); }
+  } finally { x.t = keepT; x.beat = keepT / BEAT; }
+  for (const [k, box] of Object.entries(boxes)) {
+    const inView = [Math.max(0, box[0]), Math.max(0, box[1]), Math.min(W, box[2]), Math.min(H, box[3])];
+    if (inView[2] > inView[0] && inView[3] > inView[1]) boxes[k] = inView; else delete boxes[k];
+  }
+  TERRITORY = { key, boxes };
+  return boxes;
+}
+function transformOf(id) {
+  if (isFixed(id)) return null;
+  const a = adjOf(id), dx = a.dx || 0, dy = a.dy || 0, k = typeof a.scale === 'number' ? a.scale : 1, deg = a.rotate || 0;
+  if (!dx && !dy && k === 1 && !deg) return null;
+  const box = k !== 1 || deg ? territory()[id] : null;
+  return { dx, dy, k, cos: Math.cos(deg * Math.PI / 180), sin: Math.sin(deg * Math.PI / 180), th: deg * Math.PI / 180, ax: box ? (box[0] + box[2]) / 2 : W / 2, ay: box ? (box[1] + box[3]) / 2 : H / 2 };
+}
+function placed(it, tr) {
+  const o = it.o, k = tr.k;
+  const move = (px, py) => { const ux = (px - tr.ax) * k, uy = (py - tr.ay) * k; return [tr.ax + tr.cos * ux - tr.sin * uy + tr.dx, tr.ay + tr.sin * ux + tr.cos * uy + tr.dy]; };
+  if (it.t === 0) { const [cx, cy] = move(o.cx, o.cy); return { ...o, cx, cy, hx: o.hx * k, hy: o.hy * k, ang: o.ang + tr.th, a0: mod(o.a0 + tr.th, TAU) }; }
+  if (it.t === 1) { const [px, py] = move(o.x, o.y); return { ...o, x: px, y: py, w: o.w * k, h: o.h * k, rot: o.rot + tr.th }; }
+  const [x0, y0] = move(o.x0, o.y0), [x1, y1] = move(o.x1, o.y1);
+  return { ...o, x0, y0, x1, y1, hw: o.hw * k };
+}
+function placedItems(t) {
+  const x = CLIP.x; x.t = t; x.beat = t / BEAT;
+  const f = new Frame(SCENE.palette), trs = {};
+  if (x.kind === 'bg') drawBackground(f, x, x.type); else asElement(f, 'text', () => CLIP.def.draw(f, x), true);
+  const items = f.items.filter(it => !isHidden(it.el)).sort((a, b) => a.z - b.z || a.i - b.i).map(it => {
+    if (!(it.el in trs)) trs[it.el] = transformOf(it.el);
+    return trs[it.el] ? { ...it, o: placed(it, trs[it.el]) } : it; });
+  return { f, items };
+}
+function hitAt(t, px, py) {
+  const { items } = placedItems(t);
+  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (!isFixed(it.el) && it.o.col[3] >= HIT_MIN_ALPHA && itemContains(it, px, py)) return it.el; }
+  return null;
+}
+
 let CLIP = null, SENT_ALL = false;
+function setElements(els) {
+  const elParams = {};
+  for (const [k, e] of Object.entries(SCENE.elements)) { elParams[k] = {}; for (const [pk, p] of Object.entries(e.params)) { const v = els[k] && els[k].params && els[k].params[pk]; elParams[k][pk] = typeof v === 'number' ? v : p.value; } }
+  CLIP.els = els; CLIP.elParams = elParams;
+}
 function parseLine(line) {
   const m = line.match(/^(.*?)\[(.+?)\](.*)$/);
   if (m) { const chars = [...(m[1] + m[2] + m[3])]; return { chars, kw: [...m[1]].length }; }
@@ -293,15 +374,14 @@ function setClip(c) {
   if (!big.length && small.length) { big = small; small = []; bigRaw = swap ? raw1 : raw2; }
   const pk = lines2.length ? parseLine(bigRaw[0] || '') : parseLine(text.split('\n')[0].trim());
   const jump = c.jump || 1, jt = tt => tt * jump;
-  const els = c.els || {}, elParams = {};
-  for (const [k, e] of Object.entries(sc.elements)) { elParams[k] = {}; for (const [pk, p] of Object.entries(e.params)) { const v = els[k] && els[k].params && els[k].params[pk]; elParams[k][pk] = typeof v === 'number' ? v : p.value; } }
-  CLIP = { def, els, elParams, x: { t: 0, beat: 0, dur: c.dur || 0, text, lines, text2, lines2, big, small, swap, chars: pk.chars, kw: pk.kw, pal: sc.palette, params, W, H, kind: c.kind, type: c.type,
+  CLIP = { def, els: {}, elParams: {}, jump, span: c.span > 0 ? c.span : LOOP, x: { t: 0, beat: 0, dur: c.dur || 0, text, lines, text2, lines2, big, small, swap, chars: pk.chars, kw: pk.kw, pal: sc.palette, params, W, H, kind: c.kind, type: c.type,
     jt, step: (list, every, tt) => list[Math.floor(mod(jt(tt ?? CLIP.x.t), 1e9) / every) % list.length],
     bg: c.kind === 'sub' && c.bg && sc.backgrounds[c.bg] ? c.bg : null,
     under: (f, dflt, o) => { const oo = { sub: def.split || 'line', ...(o || {}) };
       if (CLIP.x.bg) return drawBackground(f, CLIP.x, CLIP.x.bg, oo);
       if (typeof dflt === 'function') return asElement(f, 'bg', () => dflt(f, CLIP.x, oo));
       return drawBackground(f, CLIP.x, typeof dflt === 'string' && sc.backgrounds[dflt] ? dflt : Object.keys(sc.backgrounds)[0], oo); } } };
+  setElements(c.els || {});
   atlas.reset(); SENT_ALL = false;
 }
 const BLEND = { multiply: 1 };
@@ -317,10 +397,7 @@ function bbox(o, buf, at) {
   buf[at] = x0; buf[at + 1] = y0; buf[at + 2] = x1; buf[at + 3] = y1;
 }
 function frame(t) {
-  const x = CLIP.x; x.t = t; x.beat = t / BEAT;
-  const f = new Frame(SCENE.palette);
-  if (x.kind === 'bg') drawBackground(f, x, x.type); else asElement(f, 'text', () => CLIP.def.draw(f, x), true);
-  const items = f.items.filter(it => !isHidden(it.el)).sort((a, b) => a.z - b.z || a.i - b.i), drawn = {};
+  const { f, items } = placedItems(t), x = CLIP.x, drawn = {}, boxes = {};
   const n = items.length, buf = new Float32Array(Math.max(1, n) * ITEM_FLOATS), runs = [];
   const cz = SCENE.d.canvas ? (SCENE.d.canvas.z ?? .5) : null, sz = SCENE.d.shader ? (SCENE.d.shader.z ?? .5) : null;
   const marks = []; if (cz !== null) marks.push([cz, 3]); if (sz !== null) marks.push([sz, 4]); if (SCENE.d.world) marks.push([SCENE.d.world.z ?? .5, 5]); marks.sort((a, b) => a[0] - b[0]);
@@ -330,7 +407,7 @@ function frame(t) {
     while (mi < marks.length && marks[mi][0] <= it.z) runs.push([marks[mi++][1], 0, i, 0]);
     const op = adjOf(it.el).opacity;
     buf[p + 4] = c[0]; buf[p + 5] = c[1]; buf[p + 6] = c[2]; buf[p + 7] = typeof op === 'number' && op !== 1 ? c[3] * op : c[3]; buf[p + 16] = texMask(o.tex);
-    drawn[it.el] = (drawn[it.el] || 0) + 1;
+    drawn[it.el] = (drawn[it.el] || 0) + 1; boxes[it.el] = grow(boxes[it.el], itemBox(it));
     if (it.t === 0) {
       buf[p] = o.cx; buf[p + 1] = o.cy; buf[p + 2] = o.hx; buf[p + 3] = o.hy;
       buf[p + 8] = o.ang; buf[p + 9] = o.kind; buf[p + 10] = o.a0; buf[p + 11] = o.sweep;
@@ -350,7 +427,7 @@ function frame(t) {
   }
   while (mi < marks.length) runs.push([marks[mi++][1], 0, n, 0]);
   const g = f.grid, gc = color(g.col), bg = color(f.bg);
-  const out = { buf, n, runs, bg, drawn, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
+  const out = { buf, n, runs, bg, drawn, boxes, grid: [g.w, g.h, g.alpha + g.flash, g.line, gc[0], gc[1], gc[2]] };
   if (SCENE.d.world) {
     const wo = worldFor(x); out.world = { key: wo.key, n: wo.n, keep: wo.keep, cam: cameraAt(t, x) };
   }
@@ -360,6 +437,10 @@ function frame(t) {
 self.onmessage = ev => {
   const m = ev.data;
   try {
+    if (m.op === 'els') { setElements(m.els || {}); postMessage({ id: m.id, ok: true }); return; }
+    if (m.op === 'boxes') { const fr = frame(m.t); postMessage({ id: m.id, ok: true, boxes: fr.boxes, drawn: fr.drawn }); return; }
+    if (m.op === 'territory') { postMessage({ id: m.id, ok: true, boxes: territory() }); return; }
+    if (m.op === 'hit') { postMessage({ id: m.id, ok: true, el: hitAt(m.t, m.x, m.y) }); return; }
     if (m.op === 'clip') { setClip(m.clip); if (SCENE.d.world) worldFor(CLIP.x); postMessage({ id: m.id, ok: true }); return; }
     if (m.op === 'frame') {
       const r = frame(m.t), at = atlas.take(!SENT_ALL || m.fullAtlas); SENT_ALL = true;
@@ -379,7 +460,7 @@ function __wmReady() {
     look: d.look || {}, textures: SCENE.textures,
     backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4, uses: usesOf(v) })),
     subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))) })),
-    elements: { ...list(implicitInUse(), (k, label) => ({ label, colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, colors: e.colors, params: e.params })) },
+    elements: { ...list(implicitInUse(), (k, label) => ({ label, fixed: isFixed(k), colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, fixed: e.fixed, colors: e.colors, params: e.params })) },
     canvas: d.canvas ? { src: String(d.canvas.draw), z: d.canvas.z ?? .5, half: !!d.canvas.half } : null,
     shader: d.shader ? { code: d.shader.code, z: d.shader.z ?? .5 } : null,
     world: d.world ? { z: d.world.z ?? .5 } : null,

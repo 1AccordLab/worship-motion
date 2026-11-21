@@ -205,7 +205,7 @@ defineScene({
   palette: TY, labels: { bg: '底色', tone: '大字色', org: '重點色', crm: '字色' },
   elements: {
     giant: { label: '背景大字', colors: ['tone'], params: { size: { value: 1, min: .5, max: 1.5, label: '大小' } }, draw: giantEl },
-    wash: { label: '整面閃色', colors: ['tone'], draw: washEl },
+    wash: { label: '整面閃色', fixed: true, colors: ['tone'], draw: washEl },
     panel: { label: '側邊色塊', draw: panelEl },
     para: { label: '段落剪影', draw: paraEl },
     ibeam: { label: '直條', colors: ['org'], draw: ibeamEl },

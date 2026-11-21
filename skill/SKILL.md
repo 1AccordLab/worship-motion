@@ -67,7 +67,7 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 | 字出來太急／太慢 | `enterSpeed` 0.7／1.3 |
 | 字停太短／太久 | `clipSeconds` |
 | 放大的字不對 | 移動 `[ ]` |
-| 某個東西不想要、太搶眼、想換顏色（例如「光芒不要」「圓太大」） | 設定的 `elements`：`visible`、`opacity`、`params`、`colors`；同工也可以自己在「自己調 → 畫面元素」調 |
+| 某個東西不想要、太搶眼、想換顏色、想換位置（例如「光芒不要」「圓太大」「太陽往左一點」） | 設定的 `elements`：`visible`、`opacity`、`params`、`colors`、`dx`、`dy`、`scale`、`rotate`；同工也可以自己在「畫面元素」分頁調，或直接在預覽上拖 |
 | 整體感覺不對 | 先換內建 `style`；內建都沒有才寫場景程式 |
 
 ### 教同工怎麼說
@@ -152,11 +152,11 @@ description: 教會敬拜詩歌的動態背景與動態字幕影片：AI 先用�
 | `lyrics` | 文字，換行 `\n` | "" | 沒字幕時只當備註；可以留空讓同工自己貼 |
 | `lyrics2` | 文字，換行 `\n` | "" | 第二語言歌詞（小字）：和 `lyrics` 同樣的切法、逐行配對，行數不同也可以 |
 | `swapLang` | `true` `false` | `false` | 大小對調：第二語言當大字、第一語言當小字 |
-| `elements` | `{ 元素名稱: { visible, opacity, params, colors } }` | 空（全部照風格原本的樣子） | 畫面元素的調整，整首歌都套用。`visible`：`false` 就不畫；`opacity`：0–1；`params`：`{ 鍵: 數字 }`，那個元素自己的參數；`colors`：`{ 配色鍵: "#rrggbb" }`，只換那個元素用的顏色。只填想改的；換風格會清空 |
+| `elements` | `{ 元素名稱: { visible, opacity, params, colors, dx, dy, scale, rotate } }` | 空（全部照風格原本的樣子） | 畫面元素的調整，整首歌都套用。`visible`：`false` 就不畫；`opacity`：0–1；`params`：`{ 鍵: 數字 }`，那個元素自己的參數；`colors`：`{ 配色鍵: "#rrggbb" }`，只換那個元素用的顏色；`dx` `dy`：往右、往下移動幾像素（畫面是 1920×1080，負數是往左、往上）；`scale`：整個元素放大幾倍（0.1–5，預設 1）；`rotate`：順時針轉幾度。大小與旋轉以元素整個活動範圍的中心為軸，會跳位置的元素連跳的位置一起縮放；只想讓東西原地變大，用它的 `params`。鋪滿畫面的元素不能移動、縮放、旋轉。只填想改的；換風格會清空 |
 | `sections[].elements` | 同上 | 空 | 只套用在這一段，蓋過整首歌的調整（例如只有副歌把光芒調淡） |
 
 內建風格配色鍵：swiss `bg org crm dim`｜paper `bg red yel crm pnk`｜type `bg tone org crm`｜bauhaus `bg red yel blu crm`｜riso `bg pink blue yel teal ink`｜ink `bg ink wash warm seal shade`｜nave `bg green win light gold`｜sky `bg blue warm far mid near hill light`。
-內建風格的元素（`elements` 的名稱）：riso `discs 大圓` `bar 橫條` `ring 圓環` `ramp 網點漸層` `marks 套準記號` `swatches 色票條` `stripes 斜條紋` `tri 三角形` `progress 進度條` `rays 光芒` `sun 太陽` `dot 小圓`｜type `giant 背景大字` `wash 整面閃色` `panel 側邊色塊` `para 段落剪影` `ibeam 直條` `disc 大圓點` `dot 小圓點` `rules 橫線` `ellipsis 刪節號` `progress 進度條` `corner 角落色塊` `ring 圓環` `block 大色塊`｜其他內建風格 `bg 背景`。每個風格的字幕都是 `text 字幕`。可調的參數：riso 的 `discs.size` `sun.size`、type 的 `giant.size`（都是 0.5–1.5，預設 1）。例：`"elements": { "rays": { "opacity": 0.5 }, "sun": { "params": { "size": 1.2 } } }`。
+內建風格的元素（`elements` 的名稱）：riso `discs 大圓` `bar 橫條` `ring 圓環` `ramp 網點漸層` `marks 套準記號` `swatches 色票條` `stripes 斜條紋` `tri 三角形` `progress 進度條` `rays 光芒` `sun 太陽` `dot 小圓`｜type `giant 背景大字` `wash 整面閃色` `panel 側邊色塊` `para 段落剪影` `ibeam 直條` `disc 大圓點` `dot 小圓點` `rules 橫線` `ellipsis 刪節號` `progress 進度條` `corner 角落色塊` `ring 圓環` `block 大色塊`｜其他內建風格 `bg 背景`。每個風格的字幕都是 `text 字幕`。可調的參數：riso 的 `discs.size` `sun.size`、type 的 `giant.size`（都是 0.5–1.5，預設 1）。鋪滿畫面、不能移動的元素：type 的 `wash`，以及其他內建風格的 `bg`。例：`"elements": { "rays": { "opacity": 0.5 }, "sun": { "params": { "size": 1.2 }, "dx": -120, "dy": 40 } }`。
 純 JSON：雙引號、無註解、無尾逗號；不確定就省略。編輯器會檢查，錯了列出哪段哪欄、不套用。
 
 ---
@@ -190,7 +190,7 @@ defineScene({
 
 ### 把畫面拆成元素（建議）
 
-畫面上每個看得出來的東西（一條色帶、一顆圓、一排光芒）寫成一個**元素**：一個小函式 `draw(f, x, e)`，登記在 `elements`；背景用 `use` 列出要疊哪些元素（先列的在下面）。同工就能在編輯器「自己調 → 畫面元素」把每個元素單獨隱藏、調透明度、換顏色、調參數，不用回來找 AI。上面的最小範例改成元素的寫法：
+畫面上每個看得出來的東西（一條色帶、一顆圓、一排光芒）寫成一個**元素**：一個小函式 `draw(f, x, e)`，登記在 `elements`；背景用 `use` 列出要疊哪些元素（先列的在下面）。同工就能在編輯器的「畫面元素」分頁把每個元素單獨隱藏、調透明度、換顏色、調參數，也能直接在預覽上拖動、縮放、旋轉，不用回來找 AI。上面的最小範例改成元素的寫法：
 
 ```js
 // 元素範例：暖灰底上一條跟拍子跳位置的色帶、一顆跟拍輕跳的圓，各是一個可以單獨調整的元素
@@ -230,6 +230,7 @@ defineScene({
 | `draw(f, x, e)` | 只畫這個元素。`e.p`：這個元素的參數值；`e.args`：背景在 `use` 裡給的其他資料；`e.sub`：畫在字幕底下時是 `'line'` 或 `'block'`，可以讓出放大字的位置 |
 | `params` | `{ 鍵: { value, min, max, label } }`，這個元素自己的滑桿；讀 `e.p.鍵`。大小、數量、粗細這類同工會想調的值都放這裡 |
 | `colors` | 這個元素用到的 palette 鍵，例如 `['main']`；同工可以只換這個元素的顏色。顏色要在 `draw` 裡從 palette 物件讀（`C.main`），不要先存成別的變數 |
+| `fixed` | `true`：鋪滿整個畫面的元素（整面底色、整面閃色）。同工只能隱藏、調透明度，不能在預覽上拖它 |
 
 背景的 `use`：元素名稱的陣列，每一項是 `'名稱'` 或 `{ el: '名稱', 其他資料 }`；同一個元素可以用在好幾種背景，各給不同的資料。元素之間不要互相依賴（一個元素被隱藏，其他的要照常畫）。元素名稱的規則和背景名稱一樣，不要用 `bg`、`text`（保留給「整個背景」和「字幕」）。背景寫成一個 `draw(f, x)` 也可以，這時整個背景在清單上是一個元素「背景」。
 

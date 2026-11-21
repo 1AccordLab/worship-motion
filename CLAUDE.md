@@ -32,7 +32,7 @@
 | 位置 | 內容 |
 |---|---|
 | `src/engine/` | `gpu.js`（Renderer、WGSL、3D 筆觸層）、`shader_guard.js`（自訂 WGSL 檢查）、`mp4.js`、`zip.js`、`download.js`、`runtime.js`（Worker 裡的場景環境）、`s2t.txt` |
-| `src/editor/` | `core` `guard` `hosts` `project` `lyrics` `preview` `history` `songs` `paste` `ui` `bind` `export` `single` `main`（`.js`）＋ `shell.html` |
+| `src/editor/` | `core` `guard` `hosts` `project` `lyrics` `preview` `history` `songs` `paste` `ui` `stage` `bind` `export` `single` `main`（`.js`）＋ `shell.html` |
 | `src/scenes/` | 9 個內建風格：swiss paper type bauhaus riso ink nave sky oil（`build.py` 的 `SCENE_ORDER` 決定下拉順序，第一個 swiss 是預設） |
 | `examples/` | 自訂風格範例（`elements.js` 是用元素寫的） |
 | `skill/SKILL.md`、`guide/` | 給 AI 的說明、給同工的教學 |
@@ -47,6 +47,7 @@
 - `skill/SKILL.md` 是對外介面：整份給任何 AI，也內嵌在編輯器的「複製開場白」。不能出現 `src/`、`tests/`、`build.py` 這類開發者資訊，不寫真實歌詞，欄位、預設值、介面用語要和程式一致。
 - 新增設定欄位或 `defineScene` 欄位：`project.js`／`runtime.js`、SKILL.md 的欄位表、範例、測試一起改。
 - 畫面元素：場景在 `elements` 登記元素、背景用 `use` 組合；調整存在設定的 `elements`（整首歌）與 `sections[].elements`（單一段落）。場景從同一個 palette 物件讀色，元素的換色是在它畫的期間原地換上再換回，所以顏色要在 `draw` 裡現讀。把風格拆成元素是純重構，畫圖順序與算式要一模一樣，用 `test_golden` 驗證。
+- 預覽上的選取與拖拉在 `stage.js`：點到哪個元素、每個元素這一格的範圍、活動範圍都要問 Worker，是非同步的；測試用 `__app.seek(秒)` 停在固定時間，再讀 `__app.elements()`、`__app.selection()`（它們會等排隊中的工作做完）。元素的範圍（`box`）跟著編輯器的時間，抽格（`grab`）不會改它。
 - 質感表在 `gpu.js`（`T`／`ON`）和 `runtime.js`（`TEX_TYPES`／`TEX_ON`）各一份，要一起改；`tests/check_repo.py`（k）會比對。
 - 3D 筆觸層（`world`）：`WORLD_FLOATS` 在 `gpu.js` 和 `runtime.js` 各一份要一致（`tests/check_repo.py`（k）會比對）。無頭 SwiftShader 畫油彩一格約 8 秒，測試只拍少數幾格。無頭環境裡不帶 `?nopreview` 的預覽會讓 GPU 掛掉（2D 風格也一樣），預覽的程式路徑用 `__app.previewFrames` 測。
 - `x.under(f, 預設)` 的底跟著段落選的背景走，改字幕時一起看背景。

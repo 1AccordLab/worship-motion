@@ -1,5 +1,5 @@
 const prog = p => { $('#prog').style.width = (p * 100).toFixed(1) + '%'; };
-const lock = on => { exporting = on; cancel = false; ['#exOne', '#exSec', '#exSong', '#exAll', '#style', '#newSong', '#saveHTML'].forEach(s => $(s).disabled = on); $('#cancel').hidden = !on; renderSongTabs(); renderUndo(); };
+const lock = on => { exporting = on; cancel = false; ['#exOne', '#exSec', '#exSong', '#exAll', '#style', '#newSong', '#saveHTML'].forEach(s => $(s).disabled = on); $('#cancel').hidden = !on; renderSongTabs(); renderUndo(); renderStage(); };
 const errText = e => e.message === 'NO_H264' ? '這個瀏覽器不能輸出 H.264，請改用最新版 Chrome 或 Edge。' : e.message === 'CANCELLED' ? '已取消。' : '匯出失敗：' + fmtErr(e);
 function clipName(si, ci) {
   const s = P.sections[si], base = `${pad2(si + 1)}_${fileSafe(s.name)}`;

@@ -111,8 +111,21 @@ body.filedrop::after{content:"放開就打開（設定檔 .json 或存好的單�
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .swatches label{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:2px}
 .hint{margin:4px 0 0;font-size:12.5px;line-height:20px;color:var(--muted)}
-.elbox{margin-top:14px;padding-top:10px;border-top:1.5px dashed var(--muted)}
-.elboxhead{display:flex;align-items:center;gap:6px;font-weight:700;font-size:15px}
+.stage{position:relative}
+#stageOvl{position:absolute;inset:0;touch-action:none;cursor:default}
+#selBox{position:absolute;box-sizing:border-box;border:1.5px solid var(--accent);pointer-events:none}
+#selBox .h{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;background:var(--surface);border:1.5px solid var(--accent);pointer-events:auto}
+#selBox .h.nw{left:0;top:0;cursor:nwse-resize}#selBox .h.ne{left:100%;top:0;cursor:nesw-resize}#selBox .h.sw{left:0;top:100%;cursor:nesw-resize}#selBox .h.se{left:100%;top:100%;cursor:nwse-resize}
+#selBox .h.rot{left:50%;top:-26px;border-radius:50%;cursor:grab}
+#selBox.low .h.rot{top:16px}
+#selPivot{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;pointer-events:none;background:linear-gradient(var(--warn),var(--warn)) 50% 0/2px 100% no-repeat,linear-gradient(var(--warn),var(--warn)) 0 50%/100% 2px no-repeat}
+.snap{position:absolute;background:var(--warn);pointer-events:none}
+.snap.v{top:0;bottom:0;width:2px;margin-left:-1px}.snap.h{left:0;right:0;height:2px;margin-top:-1px}
+body.stagedrag{user-select:none}
+.elrow.sel{background:var(--accent-soft)}
+.elname{border:none;background:transparent;padding:2px 4px;min-height:28px;font-size:14px;text-align:left;color:var(--ink);cursor:pointer}
+.elplace{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.elplace input{width:68px}
 .elrow{padding:6px 0;border-top:1.5px solid var(--line)}
 .elrow.off .elname{color:var(--muted);text-decoration:line-through}
 .elhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -231,7 +244,13 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
       <p class="songnote" id="songNote" hidden></p>
       <div class="status" id="secMsg" role="status"></div>
       <div class="sectabs" id="secTabs" role="tablist" aria-label="段落（點一下切換、按住拖曳排序、點兩下改名）"></div>
-      <div class="frame"><canvas id="view" width="1920" height="1080" aria-label="影片預覽"></canvas></div>
+      <div class="frame"><div class="stage" id="stage"><canvas id="view" width="1920" height="1080" aria-label="影片預覽"></canvas>
+        <div id="stageOvl" title="點一下選取元素，拖動改位置">
+          <div class="snap v" id="snapV" hidden></div><div class="snap h" id="snapH" hidden></div>
+          <div id="selPivot" hidden></div>
+          <div id="selBox" hidden><i class="h nw" title="拉動縮放"></i><i class="h ne" title="拉動縮放"></i><i class="h sw" title="拉動縮放"></i><i class="h se" title="拉動縮放"></i><i class="h rot" title="拖動旋轉（按住 Shift 每 15 度一格）"></i></div>
+        </div>
+      </div></div>
       <div class="bar">
         <button class="small" id="play" aria-label="暫停">暫停</button>
         <input type="range" id="scrub" min="0" max="10" step="0.0333" value="0" aria-label="預覽時間">
@@ -272,6 +291,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
       <div class="tabs" role="tablist" aria-label="調整方式">
         <button role="tab" id="tab-ai" aria-controls="pane-ai" aria-selected="true">請 AI 改<span class="badge">建議</span></button>
         <button role="tab" id="tab-self" aria-controls="pane-self" aria-selected="false" tabindex="-1">自己調</button>
+        <button role="tab" id="tab-el" aria-controls="pane-el" aria-selected="false" tabindex="-1">畫面元素</button>
         <button role="tab" id="tab-adv" aria-controls="pane-adv" aria-selected="false" tabindex="-1">進階</button>
       </div>
 
@@ -341,14 +361,18 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);ou
             <div class="field"><label for="sDur">每支長度</label><input type="number" id="sDur" min="2" max="60" step="1"><span class="hint">秒</span></div>
             <div class="field"><label for="sEnter">進場速度</label><span class="hint">慢</span><input type="range" id="sEnter" min="0.5" max="2" step="0.1" class="grow"><span class="hint">快</span><b id="sEnterV" style="min-width:40px;text-align:right;font-size:13px"></b></div>
           </div>
-          <div class="elbox" id="elBox">
-            <div class="elboxhead">畫面元素<button type="button" class="q" data-tip="畫面是一個一個元素疊起來的。每個元素可以單獨隱藏、調透明度；按「細部」可以換它自己的顏色、調它自己的參數。調整會跟著存檔，也會帶給 AI。">?</button></div>
-            <p class="hint" id="elDesc"></p>
-            <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
-            <div id="elList"></div>
-          </div>
         </div>
 
+      </div>
+
+      <div class="pane" role="tabpanel" id="pane-el" aria-labelledby="tab-el" hidden>
+        <div class="card" id="elCard">
+          <h2>畫面元素<button type="button" class="q" data-tip="畫面是一個一個元素疊起來的。在左邊的預覽上點一下元素就能選取：拖動改位置，拉角落的把手改大小，拖上方的圓點旋轉。每個元素也可以單獨隱藏、調透明度；按「細部」可以換它自己的顏色、調它自己的參數、填位置的數字。調整會跟著存檔，也會帶給 AI。">?</button></h2>
+          <p class="hint" id="elDesc"></p>
+          <div class="field"><span class="lab" id="lElScope">套用在</span><div class="seg" id="elScope" role="group" aria-labelledby="lElScope"></div></div>
+          <div id="elList"></div>
+          <p class="hint">在預覽上點元素可以選取、拖動；按住 Shift 拖只走水平或垂直。大小與旋轉以元素整個活動範圍的中心（預覽上的小十字）為軸。</p>
+        </div>
       </div>
 
       <div class="pane" role="tabpanel" id="pane-adv" aria-labelledby="tab-adv" hidden>
