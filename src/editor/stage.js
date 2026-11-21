@@ -50,14 +50,22 @@ function shownBox(box) {
   return [x0, y0, x1, y1];
 }
 function setHover(id) {
-  hoverEl = id || null;
-  const box = $('#hoverBox'), e = hoverEl && editOn && !stageDrag ? elementsNow().find(x => x.id === hoverEl) : null;
+  hoverEl = id || null; showHover();
+}
+function showHover() {
+  const box = $('#hoverBox'), e = hoverEl && editOn && !stageDrag && !exporting ? elementsNow().find(x => x.id === hoverEl && selectable(x)) : null;
   box.hidden = !(e && e.box); if (box.hidden) return;
   placeBox(box, shownBox(e.box)); $('#hoverName').textContent = e.label;
 }
 // 注意：選取框與把手只畫在畫面範圍內（元素可以超出畫面，把手要抓得到、不能蓋住預覽外面的控制列），而且至少留一塊抓得到的中間；旋轉把手上方沒空間就放下方，都沒有才放框內
+// 注意：選取框裡的空白處只有在元素本身很難點到時（太小、或大半在畫面外）才算抓到它；不然選取框蓋滿預覽時就點不到空白處、沒辦法取消選取
+function hardToHit(box) {
+  const min = BOX_MIN_CSS_PX * W / Math.max(1, $('#view').clientWidth);
+  return Math.min(W, box[2]) - Math.max(0, box[0]) < min || Math.min(H, box[3]) - Math.max(0, box[1]) < min;
+}
 function renderStage() {
   const box = $('#selBox'); if (!box) return;
+  showHover();
   const s = exporting || !editOn ? null : selectionNow(), pivot = $('#selPivot');
   box.hidden = !s; pivot.hidden = !(s && s.anchor);
   if (!stageDrag) showGuides(null, null);
@@ -110,13 +118,13 @@ function applyDrag(drag) {
   if (!drag.armed || drag.over) return;
   if (!drag.moved && Math.hypot(drag.last.x - drag.p0.x, drag.last.y - drag.p0.y) < DRAG_START_CSS_PX * drag.last.unit) return;
   drag.moved = true;
-  if (drag.mode === 'marquee') { const m = $('#marquee'); m.hidden = false; placeBox(m, dragRect(drag)); return; }
+  if (drag.mode === 'marquee') { const m = $('#marquee'), rc = dragRect(drag); m.hidden = false; placeBox(m, [Math.max(0, rc[0]), Math.max(0, rc[1]), Math.min(W, rc[2]), Math.min(H, rc[3])]); return; }
   const patches = DRAG_PATCHES[drag.mode](drag); if (!patches.length) return;
-  for (const [id, patch] of patches) writeElement(id, patch, drag.scope);
+  for (const [id, patch] of patches) { writeElement(id, patch, drag.scope); drag.followed = drag.followed || followedSong; }
   syncElementRows(); pushElements();
 }
 function clickSelect(drag) {
-  if (drag.mode === 'move') { if (drag.hit && selEls.length > 1) setSelection([drag.hit]); return; }
+  if (drag.mode === 'move') { if (drag.hit && drag.add) setSelection(selEls.filter(id => id !== drag.hit)); else if (drag.hit && selEls.length > 1) setSelection([drag.hit]); return; }
   if (drag.hit) setSelection(drag.add ? (isSelected(drag.hit) ? selEls.filter(id => id !== drag.hit) : [...selEls, drag.hit]) : [drag.hit]);
   else if (!drag.add) setSelection([]);
 }
@@ -131,7 +139,7 @@ function finishDrag(drag, keep) {
     if (keep) serial(async () => { const ids = (await scene.touching(clip.map(t), dragRect(drag))).els; setSelection(drag.add ? [...selEls, ...ids] : ids); }).catch(() => { });
     return;
   }
-  if (keep) save(scopePrefix(drag.scope) + DRAG_WORD[drag.mode] + drag.start.label);
+  if (keep) save(scopePrefix(drag.scope) + DRAG_WORD[drag.mode] + drag.start.label + (drag.followed ? FOLLOWED_NOTE : ''));
   else { setOrDrop(scopeHost(drag.scope), drag.start.before); setOrDrop(sec(), drag.scope === 'section' ? drag.start.before : drag.start.beforeSection); pushElements(); }
   syncElementRows();
 }
@@ -139,7 +147,7 @@ function finishDrag(drag, keep) {
 function onStageDown(ev) {
   if (!editOn || ev.button > 0 || exporting || !clip || !scene || stageDrag) return;
   ev.preventDefault();
-  if (document.activeElement && document.activeElement.closest('#elList')) document.activeElement.blur();
+  if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   const handle = ev.target.closest('.h'), p0 = stagePoint(ev);
   const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, add: ev.shiftKey, free: ev.ctrlKey || ev.metaKey, hit: null };
   drag.onMove = e => { drag.last = stagePoint(e); drag.shift = e.shiftKey; drag.free = e.ctrlKey || e.metaKey; applyDrag(drag); };
@@ -150,10 +158,11 @@ function onStageDown(ev) {
   if (handle) { if (!armTransform(drag)) finishDrag(drag, false); return; }
   serial(async () => {
     const hit = drag.hit = (await scene.hit(clip.map(t), p0.x, p0.y)).el, sel = selectionNow();
-    const onSelection = !drag.add && (hit ? isSelected(hit) : !!(sel && inBox(shownBox(sel.box), p0)));
+    const onSelection = hit ? isSelected(hit) : !drag.add && !!sel && hardToHit(sel.box) && inBox(shownBox(sel.box), p0);
     if (onSelection) { if (!armTransform(drag)) { finishDrag(drag, false); return; } }
     else { drag.mode = 'marquee'; drag.armed = true; }
-    if (drag.released) finishDrag(drag, !drag.cancelled); else applyDrag(drag);
+    applyDrag(drag);
+    if (drag.released) finishDrag(drag, !drag.cancelled);
   }).catch(() => finishDrag(drag, false));
 }
 function runHover() {
@@ -166,5 +175,5 @@ function bindStage() {
   const ovl = $('#stageOvl');
   ovl.addEventListener('pointerdown', onStageDown); ovl.addEventListener('pointermove', onStageHover);
   ovl.addEventListener('pointerleave', () => { hoverWant = null; if (!hoverBusy) setHover(null); });
-  document.addEventListener('keydown', e => { if (e.key !== 'Escape' || anyDialogOpen()) return; if (stageDrag) { if (stageDrag.armed) finishDrag(stageDrag, false); else { stageDrag.released = true; stageDrag.cancelled = true; } } else if (selEls.length) setSelection([]); });
+  document.addEventListener('keydown', e => { if (e.key !== 'Escape' || anyDialogOpen() || (isTextField(e.target) && !stageDrag)) return; if (stageDrag) { if (stageDrag.armed) finishDrag(stageDrag, false); else { stageDrag.released = true; stageDrag.cancelled = true; } } else if (selEls.length) setSelection([]); });
 }

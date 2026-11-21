@@ -17,6 +17,7 @@ const bgSpan = s => frames32() * s.loopBeats / 32 / FPS * K();
 async function loadBoxes() {
   if (!clip || !scene) { frameBoxes = {}; clipTerritory = {}; renderStage(); return; }
   frameBoxes = (await scene.boxes(clip.map(t))).boxes; clipTerritory = (await scene.territory()).boxes; renderStage();
+  if (hoverWant && !hoverBusy) runHover();
 }
 // 注意：拖曳時游標事件比 Worker 來回快得多，排隊中的那一次會讀到最新的調整，所以同時只排一次
 let elementsPush = null;

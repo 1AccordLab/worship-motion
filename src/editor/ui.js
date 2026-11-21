@@ -299,12 +299,14 @@ function writeElement(id, patch, scope = elScope) {
   const host = scopeHost(scope), next = mergeAdj((host.elements || {})[id], readElements({ [id]: patch }, m, '', [], [])[id]);
   const { [id]: before, ...others } = host.elements || {};
   setOrDrop(host, { ...others, ...pruneElements({ [id]: next }, m, scope === 'section' ? P.elements : {}) });
-  if (scope === 'song') followSong(id, patch, m);
+  followedSong = scope === 'song' && followSong(id, patch, m);
   return d;
 }
 // 注意：這一段自己有同一項調整時，整首歌的值在這一段看不到；在「整首歌」調的那一項要從這一段拿掉，畫面才會跟著動
+let followedSong = false;
+const FOLLOWED_NOTE = '（這一段改成跟著整首歌）';
 function followSong(id, patch, m) {
-  const own = ownProp(sec().elements || {}, id); if (!own) return;
+  const own = ownProp(sec().elements || {}, id); if (!own) return false;
   const left = { ...own };
   for (const [k, v] of Object.entries(patch)) {
     if (!isObj(v)) { delete left[k]; continue; }
@@ -312,17 +314,18 @@ function followSong(id, patch, m) {
   }
   const { [id]: was, ...others } = sec().elements;
   setOrDrop(sec(), { ...others, ...pruneElements({ [id]: left }, m, null) });
+  return JSON.stringify(left) !== JSON.stringify(own);
 }
 function applyElement(id, patch, scope = elScope) {
   const d = writeElement(id, patch, scope); if (!d) return false;
-  save(scopePrefix(scope) + elementLabel(d, patch), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
+  save(scopePrefix(scope) + elementLabel(d, patch) + (followedSong ? FOLLOWED_NOTE : ''), `el:${scope}:${id}:${JSON.stringify(Object.keys(patch).map(k => [k, Object.keys(Object(patch[k]))]))}`);
   syncElementRows(); return true;
 }
 function setElement(id, patch, scope) { return applyElement(id, patch, scope) && rebuild(); }
 const tuneElement = (id, patch) => { applyElement(id, patch); deb(rebuild); };
 function resetElement(id, scope = elScope) {
   const m = meta(), d = ownProp(m.elements, id), host = scope === 'section' ? sec() : P; if (!d || !ownProp(host.elements || {}, id)) return false;
-  const { [id]: gone, ...rest } = host.elements; setOrDrop(host, rest);
+  const { [id]: gone, ...rest } = host.elements; setOrDrop(host, gone.locked ? { ...rest, [id]: { locked: true } } : rest);
   save(`${scope === 'section' ? sec().name + '：' : ''}元素「${d.label}」還原`); renderElements(); return rebuild();
 }
 function syncElementRows() {

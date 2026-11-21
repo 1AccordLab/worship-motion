@@ -41,7 +41,8 @@ function readElements(src, m, at, errors, warnings) {
     if (!isObj(a)) { errors.push(`${path} 要是物件，例如 {"visible":false,"opacity":0.6}。`); continue; }
     const o = out[id] = {};
     if (a.visible !== undefined) { const v = boolOf(a.visible); if (v === null) errors.push(`${path}.visible 要是 true 或 false（收到 ${a.visible}）。`); else o.visible = v; }
-    if (a.locked !== undefined) { const v = boolOf(a.locked); if (v === null) errors.push(`${path}.locked 要是 true 或 false（收到 ${a.locked}）。`); else o.locked = v; }
+    if (a.locked !== undefined && at) warnings.push(`${path}.locked：鎖定只記在整首歌的 elements，段落裡的已略過。`);
+    else if (a.locked !== undefined) { const v = boolOf(a.locked); if (v === null) errors.push(`${path}.locked 要是 true 或 false（收到 ${a.locked}）。`); else o.locked = v; }
     if (a.opacity !== undefined) { const v = numOf(a.opacity); if (!isFinite(v)) errors.push(`${path}.opacity 要是 0 到 1 的數字（收到 ${a.opacity}）。`); else o.opacity = Math.max(0, Math.min(1, Math.round(v * 100) / 100)); }
     for (const [k, pl] of Object.entries(PLACEMENT)) { if (a[k] === undefined) continue;
       if (def.fixed) { warnings.push(`${path}.${k}：「${def.label}」鋪滿畫面，不能移動、縮放、旋轉，已略過。`); continue; }

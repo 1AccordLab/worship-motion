@@ -92,7 +92,7 @@ function bindUI() {
   });
   document.addEventListener('keydown', previewKeys);
   bindStage();
-  $('#editToggle').onclick = () => setEditMode(!editOn);
+  $('#editToggle').onclick = () => { setEditMode(!editOn); $('#editToggle').blur(); };
   syncScroll($('#sLyrics'), $('#sLyrics2'));
   bindFileDrop();
 
