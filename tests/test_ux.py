@@ -54,7 +54,7 @@ async def main():
         await pg.fill("#askText", "")
         await p.ev("__app.aiText()")
         rec("留空時請 AI 用選擇題問", "選擇題" in await p.ev("__app.aiText()"))
-        rec("內建風格不顯示「附上新風格程式」選項", not await visible("#withCodeRow"))
+        rec("內建風格也帶著目前的風格程式", "```js" in await p.ev("__app.aiText()") and "defineScene({" in await p.ev("__app.aiText()"))
 
         cfg = json.dumps(SONG, ensure_ascii=False)
         cases = {
@@ -96,11 +96,9 @@ async def main():
         await pg.click("#pasteApply"); await pg.wait_for_function("document.querySelector('#cfgStatus').textContent.includes('已套用') || document.querySelector('#cfgStatus').classList.contains('err')", timeout=60000)
         rec("只貼新風格 → 同一個貼上框套用", "新風格「色帶」" in await pg.inner_text("#cfgStatus") and (await p.ev("__app.sceneInfo()"))["id"] == "bars", await pg.inner_text("#cfgStatus"))
         await p.ev("__app.tab('ai')")
-        rec("新風格時顯示「附上新風格程式」選項", await visible("#withCodeRow"))
-        await pg.check("#withCode"); await pg.click("#copyAI"); await settle_copy()
+        await pg.click("#copyAI"); await settle_copy()
         txt = await p.ev("__app.lastCopied()")
-        rec("勾選後複製給 AI 會附上 ```js 新風格程式", "```js" in txt and "defineScene" in txt and "```json" in txt)
-        await pg.uncheck("#withCode")
+        rec("新風格複製給 AI 會附上 ```js 風格程式", "```js" in txt and "name: '色帶'" in txt and "```json" in txt)
 
         await p.ev("__app.load(" + json.dumps(SONG, ensure_ascii=False) + ")")
         other = "```json\n" + json.dumps(OTHER, ensure_ascii=False) + "\n```"
