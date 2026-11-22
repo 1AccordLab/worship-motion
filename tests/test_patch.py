@@ -16,7 +16,8 @@ I13 「複製給 AI」的風格程式裡沒有編輯器內部的標記；AI 的�
 I14 設定的改動裡有 __proto__ 這類鍵：不套用並說明，不影響其他物件與別首歌。
 I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。
 I16 設定的改動換風格（set.style）：原本的配色與元素調整清掉，和從下拉選單換風格一樣；同一個改動裡給的調整留著。
-I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除；還原後「刪掉了」的訊息跟著消失。"""
+I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除；還原後「刪掉了」的訊息跟著消失。
+I18 同一則回覆又換風格（設定的改動的 set.style）又改畫面（patchScene）：先換風格，畫面的改動套在新風格上，是一筆歷史紀錄；改動在新風格上跑不起來、或設定的改動有錯，就整個不套用，風格、設定、這首歌存著的 AI 新風格都照舊。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -231,6 +232,24 @@ async def main():
             ok, st = await paste(cfg_patch(set={"style": "bauhaus", "elements": {"sun": None}}, sections={"副歌": {"elements": {"ring": None}}})); pj = await proj_now()
             rec("I16 換風格的同一個改動裡用 null 寫「拿掉原本的調整」：照樣套用", ok and pj["style"] == "bauhaus" and not pj.get("elements") and not any(s.get("elements") for s in pj["sections"]), (st[:120], pj.get("elements")))
         await safe("I16 設定的改動換風格", i16)
+
+        CROSS2 = "patchScene({ label: '加十字架', elements: { cross: { label: '十字架', in: ['peak'], after: 'sun', draw(f, x, e) { f.add(rect(940, 300, 980, 620, '#e8d9a8'), rect(860, 400, 1060, 440, '#e8d9a8')); } } } });"
+        async def i18():
+            await clean(); was = await proj_now(); code0 = await p.ev("__app.sceneCode()"); n0 = len((await p.ev("__app.history()"))["labels"])
+            ok, st = await paste("換成包浩斯並加十字架：\n" + fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus"})); pj = await proj_now(); await p.ev("__app.select(2,0)"); await p.shot(2, 0, 1.0); e = await els()
+            rec("I18 換成包浩斯幾何並加十字架：風格換了，十字架畫在新風格的高潮背景上", ok and pj["style"] == "bauhaus" and (await p.ev("__app.sceneInfo()"))["id"] == "bauhaus" and "brokenRing" in e and e.get("cross", {}).get("drawn", 0) > 0 and await labels() == ["加十字架"], (st[:60], sorted(e)[:6], await labels()))
+            rec("I18 是一筆歷史紀錄；還原回到網點印刷、沒有改動，重做又回來", len((await p.ev("__app.history()"))["labels"]) == n0 + 1 and await p.ev("__app.undo()") and await proj_now() == was and await labels() == [] and await p.ev("__app.sceneCode()") == code0 and await p.ev("__app.redo()") and (await proj_now())["style"] == "bauhaus" and await labels() == ["加十字架"], ((await p.ev("__app.history()"))["labels"][-2:], await labels()))
+            await clean(); was = await proj_now()
+            ok, st = await paste(fence("js", CROSS) + "\n" + cfg_patch(set={"style": "bauhaus"}))
+            rec("I18 改動用到原本風格的變數、在新風格上跑不起來：整個不套用並說明，風格與設定照舊", ok is False and "沒有套用" in st and await proj_now() == was and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
+            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "bpm": 999}))
+            rec("I18 畫面的改動沒問題、設定的改動有錯：整個不套用，風格與設定照舊", ok is False and "bpm" in st and await proj_now() == was and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
+            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "nothing"}))
+            rec("I18 要換的風格不存在：整個不套用並說明", ok is False and "nothing" in st and await proj_now() == was and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
+            assert await p.ev("c=>__app.pasteScene(c)", MIN); await p.ev("__app.tab('self')"); await pg.select_option("#style", "riso"); await p.wait("__app.project.style==='riso'"); kept = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
+            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "bpm": 999})); now = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
+            rec("I18 這首歌存著 AI 的新風格時，沒套用成功的改動不會把它弄丟", ok is False and kept == "bars" and now == "bars" and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("[...document.querySelectorAll('#style option')].some(o=>o.value==='bars')"), (kept, now, st[:80]))
+        await safe("I18 同一則回覆換風格又改畫面", i18)
 
         async def i17():
             await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()"); code = txt.split("```js\n", 1)[1].split("\n```", 1)[0]
