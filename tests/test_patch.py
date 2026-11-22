@@ -47,8 +47,8 @@ async def main():
         async def paste(text): ok = await p.ev("t=>__app.paste(t)", text); return ok, await p.ev("__app.status()")
         async def labels(): return [x["label"] for x in await p.ev("__app.patches()")]
         async def fresh(style="riso"):
-            if await p.ev("__app.patches().length"):
-                for _ in range(await p.ev("__app.patches().length")): await p.ev("__app.removePatch(0)")
+            assert await p.ev("x=>__app.load(x)", proj(style))
+            for _ in range(await p.ev("__app.patches().length")): await p.ev("__app.removePatch(0)")
             assert await p.ev("x=>__app.load(x)", proj(style)); assert await labels() == []
         async def safe(name, fn):
             try: await fn()
@@ -157,7 +157,9 @@ async def main():
         await safe("I10 整塊的背景與原本的貼法", i10)
 
         async def clean():
-            for i in reversed(range(await p.ev("__app.patches().length"))): await p.ev(f"__app.removePatch({i})")
+            for style in ("bauhaus", "riso"):
+                assert await p.ev("x=>__app.load(x)", proj(style))
+                for i in reversed(range(await p.ev("__app.patches().length"))): await p.ev(f"__app.removePatch({i})")
             assert await p.ev("x=>__app.load(x)", proj("riso")); assert await labels() == []
         async def rows(): return await p.ev("[...document.querySelectorAll('#patchList .patchrow .patchname')].map(x=>x.textContent)")
 
@@ -238,10 +240,10 @@ async def main():
 
         CROSS2 = "patchScene({ label: '加十字架', elements: { cross: { label: '十字架', in: ['peak'], after: 'sun', draw(f, x, e) { f.add(rect(940, 300, 980, 620, '#e8d9a8'), rect(860, 400, 1060, 440, '#e8d9a8')); } } } });"
         async def i18():
-            await clean(); was = await proj_now(); code0 = await p.ev("__app.sceneCode()"); n0 = len((await p.ev("__app.history()"))["labels"])
+            await clean(); was = await proj_now(); code0 = await p.ev("__app.sceneCode()"); last0 = (await p.ev("__app.history()"))["labels"][-1]
             ok, st = await paste("換成包浩斯並加十字架：\n" + fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus"})); pj = await proj_now(); await p.ev("__app.select(2,0)"); await p.shot(2, 0, 1.0); e = await els()
             rec("I18 換成包浩斯幾何並加十字架：風格換了，十字架畫在新風格的高潮背景上", ok and pj["style"] == "bauhaus" and (await p.ev("__app.sceneInfo()"))["id"] == "bauhaus" and "brokenRing" in e and e.get("cross", {}).get("drawn", 0) > 0 and await labels() == ["加十字架"], (st[:60], sorted(e)[:6], await labels()))
-            rec("I18 是一筆歷史紀錄；還原回到網點印刷、沒有改動，重做又回來", len((await p.ev("__app.history()"))["labels"]) == n0 + 1 and await p.ev("__app.undo()") and await proj_now() == was and await labels() == [] and await p.ev("__app.sceneCode()") == code0 and await p.ev("__app.redo()") and (await proj_now())["style"] == "bauhaus" and await labels() == ["加十字架"], ((await p.ev("__app.history()"))["labels"][-2:], await labels()))
+            rec("I18 是一筆歷史紀錄；還原回到網點印刷、沒有改動，重做又回來", (await p.ev("__app.history()"))["labels"][-2:] == [last0, "套用 AI 的改動"] and await p.ev("__app.undo()") and await proj_now() == was and await labels() == [] and await p.ev("__app.sceneCode()") == code0 and await p.ev("__app.redo()") and (await proj_now())["style"] == "bauhaus" and await labels() == ["加十字架"], ((await p.ev("__app.history()"))["labels"][-2:], await labels()))
             await clean(); was = await proj_now()
             ok, st = await paste(fence("js", CROSS) + "\n" + cfg_patch(set={"style": "bauhaus"}))
             rec("I18 改動用到原本風格的變數、在新風格上跑不起來：整個不套用並說明，風格與設定照舊", ok is False and "沒有套用" in st and await proj_now() == was and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
@@ -249,9 +251,9 @@ async def main():
             rec("I18 畫面的改動沒問題、設定的改動有錯：整個不套用，風格與設定照舊", ok is False and "bpm" in st and await proj_now() == was and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
             ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "nothing"}))
             rec("I18 要換的風格不存在：整個不套用並說明", ok is False and "nothing" in st and await proj_now() == was and await p.ev("__app.sceneCode()") == code0 and await labels() == [], st[:140])
-            assert await p.ev("c=>__app.pasteScene(c)", MIN); await p.ev("__app.tab('self')"); await pg.select_option("#style", "riso"); await p.wait("__app.project.style==='riso'"); kept = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
-            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "bpm": 999})); now = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
-            rec("I18 這首歌存著 AI 的新風格時，沒套用成功的改動不會把它弄丟", ok is False and kept == "bars" and now == "bars" and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("[...document.querySelectorAll('#style option')].some(o=>o.value==='bars')"), (kept, now, st[:80]))
+            assert await p.ev("c=>__app.pasteScene(c)", MIN); await p.ev("__app.tab('self')"); await pg.select_option("#style", "riso"); await p.wait("__app.project.style==='riso'"); kept = [x for x in await p.ev("__app.songs()") if x["active"]][0]["customs"]
+            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "bpm": 999})); now = [x for x in await p.ev("__app.songs()") if x["active"]][0]["customs"]
+            rec("I18 這首歌存著 AI 的新風格時，沒套用成功的改動不會把它弄丟", ok is False and "bars" in kept and now == kept and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("[...document.querySelectorAll('#style option')].some(o=>o.value==='bars')"), (kept, now, st[:80]))
             await paste(cfg_patch(sections={"副歌": {"background": "peak"}})); was = await proj_now(); code0 = await p.ev("__app.sceneCode()")
             only, st0 = await paste(cfg_patch(set={"style": "bars"})); both, st = await paste(fence("js", "patchScene({ label: '加星星', elements: { star: { label: '星星', draw(f, x, e) { f.add(circle(1500, 240, 60, '#e8d9a8')); } } } });") + "\n" + cfg_patch(set={"style": "bars"}))
             rec("I18 新風格沒有歌用到的背景：有沒有畫面的改動都一樣擋下並說明，風格與設定照舊", only is False and both is False and "peak" in st0 and "peak" in st and await proj_now() == was and await p.ev("__app.sceneCode()") == code0, (st0[:80], st[:80]))
@@ -283,15 +285,15 @@ async def main():
         async def i21():
             await clean(); await paste(fence("js", CROSS)); await paste(fence("js", STAR)); await p.ev("__app.markSaved()"); await p.ev("__app.flushHist()")
             await p.ev("""(()=>{const kb=Object.keys(localStorage).find(x=>x.endsWith(':book')),kh=kb.replace(':book',':hist'),ks=kb.replace(':book',':saved'),bare=s=>s.split('{ __wmPatch();').join('{');
-              const d=JSON.parse(bare(localStorage.getItem(kb)));for(const s of d.songs){const c=(s.customs||[])[0]||s.custom;delete s.customs;s.custom=c?{id:c.id,code:c.code}:null;}
+              const d=JSON.parse(bare(localStorage.getItem(kb)));for(const s of d.songs){const c=(s.customs||[]).find(x=>x.id===s.P.style)||s.custom;delete s.customs;s.custom=c?{id:c.id,code:c.code}:null;}
               const h=JSON.parse(bare(localStorage.getItem(kh)));h.codes=Object.fromEntries(Object.values(h.codes).map(c=>[fnv(c),c]));
-              const old=t=>{const st=JSON.parse(t),c=st.cs?st.cs[0]:st.c;delete st.cs;st.c=c?{id:c.id,h:fnv(bare(CODES[c.h]))}:null;return JSON.stringify(st);};
+              const old=t=>{const st=JSON.parse(t),c=[st.c,...(st.o||[])].find(x=>x&&x.id===st.P.style);delete st.o;st.c=c?{id:c.id,h:fnv(bare(CODES[c.h]))}:null;return JSON.stringify(st);};
               for(const g of Object.values(h.songs))for(const e of g.stack)e.s=old(e.s);
               localStorage.setItem(kb,JSON.stringify(d));localStorage.setItem(kh,JSON.stringify(h));
               localStorage.setItem(ks,fnv(JSON.stringify(d.songs.map(s=>[s.P,s.custom?s.custom.code:'']))));})()""")
             await p.reload(); await p.ev("__app.tab('adv')"); r = await rows(); saved = (await p.ev("__app.saveState()"))["saved"]
             rec("I21 少了記號的資料讀進來：清單是兩列、名稱都在，仍顯示已存成檔案", r == ["加十字架", "加星星"] and saved is True, (r, (await p.ev("__app.saveState()"))["text"]))
-            await p.ev("__app.undo()"); await p.ev("__app.tab('adv')"); r = await rows()
+            await p.ev("__app.undo()"); await p.ev("__app.select(2,0)"); await p.ev("__app.tab('adv')"); r = await rows()
             rec("I21 還原到之前的紀錄：改動的名稱還在", r == ["加十字架"] and "cross" in await ids(), (r, await labels()))
         await safe("I21 少了記號的資料", i21)
 
