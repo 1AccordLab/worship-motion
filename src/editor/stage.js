@@ -138,11 +138,13 @@ function clickSelect(drag) {
   if (drag.add) { setSelection(isSelected(top) ? selEls.filter(id => id !== top) : [...selEls, top]); return; }
   pickOnly(clickTarget(drag.stack, drag.p0), drag.p0);
 }
-// 注意：選取變了或拖完之後滑鼠可能沒動，不會有 pointermove；提示要自己用最後的位置重算
+// 注意：選取變了或拖完之後滑鼠可能沒動，不會有 pointermove；提示要自己用最後的位置重算。拖到預覽外面時 pointerleave 早就發生過，放開的位置在外面就不能再叫出提示；觸控沒有「停在上面」，也不顯示
 function refreshHover() { if (!hoverWant) return; hoverWant = { ...hoverWant }; if (!hoverBusy) runHover(); }
 function finishDrag(drag, keep) {
   if (drag.over) return;
-  endDrag(drag, keep); hoverWant = editOn ? drag.last : null; refreshHover();
+  endDrag(drag, keep);
+  hoverWant = editOn && !drag.touch && inBox([0, 0, W, H], drag.last) ? drag.last : null;
+  if (hoverWant) refreshHover(); else if (!hoverBusy) setHover(null);
 }
 function endDrag(drag, keep) {
   drag.over = true;
@@ -167,7 +169,7 @@ function onStageDown(ev) {
   ev.preventDefault();
   if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   const handle = ev.target.closest('.h'), p0 = stagePoint(ev);
-  const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, add: ev.shiftKey, free: ev.ctrlKey || ev.metaKey, hit: null, stack: [] };
+  const drag = stageDrag = { mode: handle ? (handle.classList.contains('rot') ? 'rotate' : 'scale') : 'move', p0, last: p0, shift: ev.shiftKey, add: ev.shiftKey, free: ev.ctrlKey || ev.metaKey, touch: ev.pointerType === 'touch', hit: null, stack: [] };
   drag.onMove = e => { drag.last = stagePoint(e); drag.shift = e.shiftKey; drag.free = e.ctrlKey || e.metaKey; applyDrag(drag); };
   drag.onUp = () => { if (drag.armed) finishDrag(drag, true); else drag.released = true; };
   drag.onCancel = () => { if (drag.armed) finishDrag(drag, false); else { drag.released = true; drag.cancelled = true; } };
@@ -195,7 +197,7 @@ function runHover() {
   })
     .catch(() => setHover(null)).then(() => { hoverBusy = false; if (hoverWant !== want) runHover(); });
 }
-function onStageHover(ev) { if (!editOn || stageDrag || ev.buttons) return; hoverWant = stagePoint(ev); if (!hoverBusy) runHover(); }
+function onStageHover(ev) { if (!editOn || stageDrag || ev.buttons || ev.pointerType === 'touch') return; hoverWant = stagePoint(ev); if (!hoverBusy) runHover(); }
 function bindStage() {
   const ovl = $('#stageOvl');
   ovl.addEventListener('pointerdown', onStageDown); ovl.addEventListener('pointermove', onStageHover);

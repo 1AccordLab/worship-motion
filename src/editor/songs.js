@@ -79,7 +79,7 @@ async function activateInner(i, first) {
       try { await useStyle(want); ok = true; }
       catch (e) { notice('scene', `「${raw.title || ''}」的風格「${want}」載入失敗：${fmtErr(e)}。先用內建「${BUILTIN[0].name}」。`, e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(want); } } : null); }
     } else notice('scene', `「${raw.title || ''}」用的風格「${want}」找不到（新風格的程式沒有一起存），先用內建「${BUILTIN[0].name}」。`);
-    if (!ok && !(scene && scene.code === BUILTIN[0].code)) await useStyle(BUILTIN[0].id);
+    if (!ok && !(scene && scene.code === BUILTIN[0].code)) await commitScene(await prepareScene(BUILTIN[0].code, false));
   } else if (src.custom && !(customOf(want) && customOf(want).code === src.code)) putCustom({ id: want, code: src.code, name: meta().name });
   let n = normalize(raw, meta(), meta().id);
   if (!n.project) { const q = clone(raw); adapt(q, meta()); n = normalize(q, meta(), meta().id); }
