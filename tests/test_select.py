@@ -179,6 +179,11 @@ async def main():
             await at(2, 0, 0); await click(*spot); await picked(); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('sun')"); seen = []
             for _ in range(2): await click(*spot); seen.append(await picked())
             rec("E10 從清單選了太陽，再點它一下：還是太陽；同一個位置再點一下換成光芒", seen == [["sun"], ["rays"]], seen)
+            await at(2, 0, 0); await click(*spot); await picked(); u = await unit()
+            await pg.keyboard.down("Control"); await drag(spot, (spot[0] + 5 * u, spot[1])); await pg.keyboard.up("Control"); moved = ((await proj_now()).get("elements") or {}).get("sun", {}).get("dx", 0); await click(*spot)
+            rec("E10 選到太陽後只拖一點點就放開，原地再點一下：還是太陽", moved > 0 and await picked() == ["sun"], (moved, await picked()))
+            await at(1, 1, 3.0, "type"); await p.ev("__app.selectElement('panel')"); await click(120, 180); one = await picked(); await click(120, 180)
+            rec("E10 疊三層的地方（大字排版華麗字幕）：從清單選了中間的色塊再點，選到最上面的字；再點換回色塊", one == ["words"] and await picked() == ["panel"], (one, await picked()))
         await safe("E10 疊著的地方其他規則照舊", e10)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])

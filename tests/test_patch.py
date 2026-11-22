@@ -227,6 +227,9 @@ async def main():
             rec("I16 還原後回到網點印刷，調整都回來", await proj_now() == was, (await proj_now()).get("elements"))
             ok, st = await paste(cfg_patch(set={"style": "paper", "elements": {"sun": {"scale": 1.1}}})); pj = await proj_now()
             rec("I16 換風格的同一個改動裡給的調整留著，原本的不帶過去", ok and pj["style"] == "paper" and pj.get("elements") == {"sun": {"scale": 1.1}}, (st[:60], pj.get("elements")))
+            await clean(); await paste(cfg_patch(set={"elements": {"sun": {"dx": -300}}}, sections={"副歌": {"elements": {"ring": {"visible": False}}}}))
+            ok, st = await paste(cfg_patch(set={"style": "bauhaus", "elements": {"sun": None}}, sections={"副歌": {"elements": {"ring": None}}})); pj = await proj_now()
+            rec("I16 換風格的同一個改動裡用 null 寫「拿掉原本的調整」：照樣套用", ok and pj["style"] == "bauhaus" and not pj.get("elements") and not any(s.get("elements") for s in pj["sections"]), (st[:120], pj.get("elements")))
         await safe("I16 設定的改動換風格", i16)
 
         async def i17():
