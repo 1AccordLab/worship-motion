@@ -153,7 +153,11 @@ function patchedConfig(project, patch) {
   for (const k of Object.keys(patch)) if (!['format', 'set', 'sections'].includes(k)) errors.push(`改動裡的「${k}」看不懂：只能有 set（整首歌的設定）和 sections（依段落名稱）。`);
   if (patch.set !== undefined) {
     if (!isObj(patch.set)) errors.push('set 要是物件，例如 {"bpm":96}。');
-    else { const { sections, format, ...rest } = patch.set; if (sections !== undefined) errors.push('段落的改動寫在 sections（依段落名稱），不要放在 set 裡。'); mergeDeep(raw, rest); }
+    else {
+      const { sections, format, ...rest } = patch.set; if (sections !== undefined) errors.push('段落的改動寫在 sections（依段落名稱），不要放在 set 裡。');
+      if (rest.style != null && String(rest.style).toLowerCase() !== raw.style) { raw.palette = {}; raw.params = {}; delete raw.elements; for (const s of raw.sections) delete s.elements; }
+      mergeDeep(raw, rest);
+    }
   }
   if (patch.sections !== undefined) {
     if (!isObj(patch.sections)) errors.push('sections 要是物件，鍵是段落名稱，例如 {"副歌":{"jumpBeats":8}}。');

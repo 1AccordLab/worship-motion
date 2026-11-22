@@ -1,6 +1,6 @@
 let uidN = 0;
 const newUid = () => 's' + Date.now().toString(36) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 6);
-const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, custom: x.custom && x.custom.code ? { id: String(x.custom.id || 'custom').toLowerCase(), code: x.custom.code } : null, fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
+const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, custom: x.custom && x.custom.code ? { id: String(x.custom.id || 'custom').toLowerCase(), code: withPatchCalls(x.custom.code) } : null, fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
 const songFromFile = e => mkSong({ P: e.project, custom: e.scene });
 function stash() { const s = SONGS[ACT]; if (s && P && !SWITCHING) { s.P = P; s.cur = cur; s.clipIdx = clipIdx; s.custom = CUSTOM; } }
 function persist() { stash(); store.set('book', JSON.stringify({ v: 1, active: ACT, songs: SONGS.map(s => ({ uid: s.uid, P: s.P, custom: s.custom, fresh: s.fresh, orig: s.orig })) })); }

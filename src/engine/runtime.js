@@ -322,7 +322,7 @@ function patchScene(p) {
     for (const u of def.use) if (u.id !== UNDER && !u.whole && !sc.elements[u.id]) bad(`${what}.${k} 用到的元素「${u.id}」不存在`);
   }
   const keys = Object.keys(p).filter(k => k !== 'label');
-  sc.patches.push({ seg: PATCH_SEG >= 0 ? PATCH_SEG : sc.patches.length, label: typeof p.label === 'string' && p.label.trim() ? p.label.trim().slice(0, 40) : `改動 ${sc.patches.length + 1}`, adds, only: keys.length === 1 && keys[0] === 'elements' && adds.length === 1 && Object.keys(p.elements).length === 1 });
+  sc.patches.push({ seg: PATCH_SEG, label: typeof p.label === 'string' && p.label.trim() ? p.label.trim().slice(0, 40) : `改動 ${sc.patches.length + 1}`, adds, only: keys.length === 1 && keys[0] === 'elements' && adds.length === 1 && Object.keys(p.elements).length === 1 });
 }
 const usesOf = (b, whole) => b.use ? [...new Set(b.use.map(u => u.id).filter(id => id !== UNDER))] : [whole];
 const wholeIn = defs => Object.values(defs).some(b => !b.use || b.use.some(u => u.whole));

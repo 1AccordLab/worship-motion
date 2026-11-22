@@ -87,7 +87,7 @@ async function removePatch(i) {
 // 注意：元素是某一段改動單獨加的，就整段拿掉；後面的改動用到它而拿不掉時，改成再加一筆「刪除」的改動
 async function deleteElement(id) {
   const m = meta(), d = ownProp(m.elements, id); if (!d || !d.added) return false;
-  const src = m.patches[d.patch], alone = !!src && src.only && m.patches.filter(x => x.seg === src.seg).length === 1;
+  const src = m.patches[d.patch], alone = !!src && src.only && src.seg >= 0 && m.patches.filter(x => x.seg === src.seg).length === 1;
   say('#elMsg', '');
   let dropped = false;
   if (alone) { try { await dropPatch(src.seg); dropped = true; } catch (e) { dropped = false; } }

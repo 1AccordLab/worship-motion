@@ -6,6 +6,7 @@ const PATCH_SPLIT = /\n\/\*@wm-patch\*\/\{(?: __wmPatch\(\);)?\n/, PATCH_MARKS =
 const patchParts = code => { const [base, ...rest] = String(code).split(PATCH_SPLIT); return { base, patches: rest.map(x => x.split(PATCH_CLOSE)[0]) }; };
 const joinPatches = (base, list) => base + list.map(c => PATCH_OPEN + c + PATCH_CLOSE).join('');
 // 注意：標記是編輯器自己切段用的。AI 看到會照抄，貼回來的程式裡有標記會把段切錯，所以給 AI 的程式不帶標記、貼進來的程式先去掉標記
+const withPatchCalls = code => { const { base, patches } = patchParts(code); return joinPatches(base, patches); };
 const withoutPatchMarks = code => String(code).replace(PATCH_MARKS, '');
 const readableScene = code => { const { base, patches } = patchParts(code); return base + patches.map(c => '\n{\n' + c + '\n}\n').join(''); };
 const withoutComments = code => String(code).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');

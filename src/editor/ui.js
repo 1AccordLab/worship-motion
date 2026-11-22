@@ -101,6 +101,7 @@ function renderStyle() {
   if (CUSTOM && !BUILTIN.some(b => b.id === CUSTOM.id)) list.push([CUSTOM.id, 'AI 新風格：' + (CUSTOM.id === meta().id ? meta().name : CUSTOM.id)]);
   for (const [k, v] of list) { const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o); }
   sel.value = meta().id;
+  for (const k of ['#elMsg', '#patchMsg']) say(k, '');
 }
 function renderGlobal() {
   const m = meta();

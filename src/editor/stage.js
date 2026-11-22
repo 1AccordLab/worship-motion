@@ -1,5 +1,5 @@
-let selEls = [], stageDrag = null, editOn = false, hoverEl = null, hoverWant = null, hoverBusy = false;
-const SNAP_CSS_PX = 6, DRAG_START_CSS_PX = 4, ROTATE_STEP = 15, BOX_MIN_CSS_PX = 48, ROTATE_HANDLE_ROOM_CSS_PX = 34;
+let selEls = [], stageDrag = null, editOn = false, hoverEl = null, hoverWant = null, hoverBusy = false, lastPick = null;
+const SNAP_CSS_PX = 6, DRAG_START_CSS_PX = 4, SAME_SPOT_CSS_PX = 6, ROTATE_STEP = 15, BOX_MIN_CSS_PX = 48, ROTATE_HANDLE_ROOM_CSS_PX = 34;
 const boxCenter = box => [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
 const inBox = (box, p) => p.x >= box[0] && p.x <= box[2] && p.y >= box[1] && p.y <= box[3];
 const joinBoxes = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
@@ -20,7 +20,7 @@ function selectionNow() {
 }
 function setSelection(ids) {
   const all = elementsNow(); selEls = [...new Set(ids)].filter(id => selectable(all.find(e => e.id === id)));
-  syncElementRows(); renderStage();
+  lastPick = null; syncElementRows(); renderStage();
 }
 function selectElement(id) {
   if (!id) { setSelection([]); return true; }
@@ -123,17 +123,16 @@ function applyDrag(drag) {
   for (const [id, patch] of patches) { writeElement(id, patch, drag.scope); drag.followed = drag.followed || followedSong; }
   syncElementRows(); pushElements();
 }
+const sameSpot = (a, p) => Math.hypot(a.x - p.x, a.y - p.y) <= SAME_SPOT_CSS_PX * p.unit;
+function pickOnly(id, p) { setSelection([id]); lastPick = { id, x: p.x, y: p.y }; }
+// 注意：drag.hit 是拖動的對象（這一點疊著的元素裡已選取的那個）；沒拖就放開時要看的是最上面的那個（drag.stack[0]），只有上一下也是在這個位置點出目前的選取，才換選底下
 function clickSelect(drag) {
   if (drag.mode !== 'move' && drag.mode !== 'marquee') return;
-  if (drag.mode === 'move') {
-    if (!drag.hit) return;
-    if (drag.add) setSelection(selEls.filter(id => id !== drag.hit));
-    else if (selEls.length > 1) setSelection([drag.hit]);
-    else setSelection([drag.stack[(drag.stack.indexOf(drag.hit) + 1) % drag.stack.length]]);
-    return;
-  }
-  if (drag.hit) setSelection(drag.add ? (isSelected(drag.hit) ? selEls.filter(id => id !== drag.hit) : [...selEls, drag.hit]) : [drag.hit]);
-  else if (!drag.add) setSelection([]);
+  const top = drag.stack[0];
+  if (!top) { if (drag.mode === 'marquee' && !drag.add) setSelection([]); return; }
+  if (drag.add) { setSelection(isSelected(top) ? selEls.filter(id => id !== top) : [...selEls, top]); return; }
+  const again = selEls.length === 1 && lastPick && lastPick.id === selEls[0] && sameSpot(lastPick, drag.p0), at = drag.stack.indexOf(selEls[0]);
+  pickOnly(again && at >= 0 ? drag.stack[(at + 1) % drag.stack.length] : top, drag.p0);
 }
 function finishDrag(drag, keep) {
   if (drag.over) return; drag.over = true;

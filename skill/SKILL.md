@@ -457,7 +457,7 @@ world: { z: .2,
 | 鍵 | 內容 |
 |---|---|
 | `format` | 固定 `"worship-motion-patch/1"` |
-| `set` | 整首歌的設定，欄位和第一節的設定 JSON 一樣（`sections` 除外）。物件會一層一層合併，只蓋掉列出的鍵 |
+| `set` | 整首歌的設定，欄位和第一節的設定 JSON 一樣（`sections` 除外）。物件會一層一層合併，只蓋掉列出的鍵。用 `style` 換風格時，原本的配色與元素調整會清掉（和同工自己換風格一樣），新風格要的調整寫在同一個改動裡 |
 | `sections` | 鍵是段落名稱。已有的段落只改列出的欄位（同名的段落都會改）；沒有的名稱＝新增一段，可用 `after` 或 `before` 指定排在哪一段旁邊；`null`＝刪掉那一段 |
 
 元素的調整寫在 `set.elements`（整首歌）或某一段的 `elements`：`visible`、`opacity`、`dx`、`dy`、`scale`、`rotate`、`params`、`colors`、`locked`。
@@ -483,7 +483,7 @@ patchScene({
 |---|---|
 | `label` | 這次改動的名字（例如「加十字架」），顯示在編輯器「進階 → 這首歌的改動」 |
 | `elements` | `{ 名稱: 元素 }`。新名稱＝新增；已有的名稱＝整個改寫那個元素（位置照舊）；`null`＝刪掉。元素的寫法和第二節「把畫面拆成元素」一樣，另外可以加：`in`（放進哪些背景或字幕的名稱陣列，省略＝所有背景）、`after`／`before`（疊在哪個元素的上面／下面，省略＝最上面；那個元素要在 `in` 列的背景或字幕裡）、`args`（給 `e.args` 的資料） |
-| `backgrounds`、`subtitles` | `{ 名稱: … }`。只給 `label` 這類欄位＝改那幾個欄位；給 `use`＝新增一種或重排它的元素；`null`＝刪掉。這裡的 `jumpBeats`、`seconds` 是新段落的預設值，已經有的段落各自記著自己的值：要改某一段的速度或長度，用設定的改動（`sections` 裡那一段的 `jumpBeats`、`clipSeconds`） |
+| `backgrounds`、`subtitles` | `{ 名稱: … }`。只給 `label` 這類欄位＝改那幾個欄位；給 `use`＝新增一種或重排它的元素；`null`＝刪掉。`seconds` 是新段落的預設長度；`jumpBeats` 是這種背景的基準速度，改已有背景的 `jumpBeats` 會讓用它的每一段一起變快或變慢，所以新增背景時才寫。要改某一段的速度或長度，用設定的改動（`sections` 裡那一段的 `jumpBeats`、`clipSeconds`） |
 | `palette`、`labels` | 新增或改預設顏色與它在面板上的名稱 |
 | `look`、`textures`、`params` | 後製、質感層、風格的滑桿，寫法同 `defineScene`（`textures` 是整組換掉） |
 
