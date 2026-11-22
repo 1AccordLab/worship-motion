@@ -8,7 +8,8 @@ E5 按住 Shift 點元素：加入選取或從選取中拿掉。
 E6 從選取範圍裡開始拖：選取的元素一起移動同樣的距離，是一筆歷史紀錄，還原後全部回到原位。
 E7 鎖定：清單上按鎖定後，設定記下 locked；在預覽上點不到、範圍選取選不到、點清單名稱也選不到；解鎖後恢復。
 E8 點清單上的名稱會自動打開「調整畫面」；關掉「調整畫面」會取消選取。
-E9 元素疊在一起的地方：點一下選最上面的；對已選取的元素在同一個位置再點一下（沒有拖），換選它底下的那一個，輪到最底再回到最上面；選到底下的元素後從那裡拖，移動的是它。"""
+E9 元素疊在一起的地方：點一下選最上面的；對已選取的元素在同一個位置再點一下（沒有拖），換選它底下的那一個，輪到最底再回到最上面；選到底下的元素後從那裡拖，移動的是它。
+E10 疊著的地方其他規則照舊：按住 Shift 點是把最上面的那個加進選取或拿掉；多選後不按 Shift 點一下，只選最上面的那個；選取不是在這個位置點出來的（例如從清單選的），點一下選的是最上面的那個，再點才換底下。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -164,6 +165,21 @@ async def main():
             for _ in range(8): await click(cx, cy); seen.append(await picked())
             rec("E9 大字排版被字蓋住的重點短線：在它上面連點，輪得到它", ["underline"] in seen, seen)
         await safe("E9 再點一下選底下", e9)
+
+        async def e10():
+            spot = (706, 871)
+            await at(2, 0, 0); await click(*spot); await click(*spot); one = await picked()
+            await click(*spot, shift=True); both = await picked(); await click(*spot, shift=True)
+            rec("E10 選著底下的光芒，按住 Shift 點同一個位置：最上面的太陽加進選取，再點拿掉太陽", one == ["rays"] and both == ["rays", "sun"] and await picked() == ["rays"], (one, both, await picked()))
+            await at(2, 0, 0); await click(*spot); await click(*spot); await click(250, 190, shift=True); multi = await picked(); await click(*spot)
+            rec("E10 多選（光芒＋小圓）後不按 Shift 點太陽蓋住光芒的地方：只選太陽", multi == ["dot", "rays"] and await picked() == ["sun"], (multi, await picked()))
+            await at(2, 0, 0); await click(*spot); await click(*spot); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('rays')"); seen = [await picked()]
+            for _ in range(2): await click(*spot); seen.append(await picked())
+            rec("E10 從清單選了底下的光芒，再去點蓋在它上面的太陽：選到太陽；同一個位置再點一下才換成光芒", seen == [["rays"], ["sun"], ["rays"]], seen)
+            await at(2, 0, 0); await click(*spot); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('sun')"); seen = []
+            for _ in range(2): await click(*spot); seen.append(await picked())
+            rec("E10 從清單選了太陽，再點它一下：還是太陽；同一個位置再點一下換成光芒", seen == [["sun"], ["rays"]], seen)
+        await safe("E10 疊著的地方其他規則照舊", e10)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()

@@ -14,7 +14,9 @@ I11 AI 加的元素被後面的改動用到時，按「刪除」照樣刪得掉�
 I12 一個 js 區塊呼叫好幾次 patchScene：清單上是同一列，「拿掉」是整列一起拿掉，不會拿到別列。
 I13 「複製給 AI」的風格程式裡沒有編輯器內部的標記；AI 的回覆裡出現那種標記也照常套用，之後的改動貼得進來、前面的拿得掉。
 I14 設定的改動裡有 __proto__ 這類鍵：不套用並說明，不影響其他物件與別首歌。
-I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。"""
+I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。
+I16 設定的改動換風格（set.style）：原本的配色與元素調整清掉，和從下拉選單換風格一樣；同一個改動裡給的調整留著。
+I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -216,6 +218,25 @@ async def main():
             d = await p.ev("t=>__app.detect(t)", fence("js", "// 這個改動接在 defineScene( 的後面\n" + STAR))
             rec("I15 註解裡提到 defineScene 的區塊：認成改動", d["patch"] is True and d["scene"] is False, d)
         await safe("I15 其他擋下的情況", i15)
+
+        async def i16():
+            await clean(); ok, st = await paste(cfg_patch(set={"palette": {"pink": "#c0392b"}, "elements": {"sun": {"dx": -300, "scale": .6}, "rays": {"opacity": .4}}}, sections={"副歌": {"elements": {"ring": {"visible": False}}}})); was = await proj_now()
+            ok2, st2 = await paste(cfg_patch(set={"style": "bauhaus"})); pj = await proj_now()
+            rec("I16 設定的改動換成包浩斯幾何：配色與元素的調整清掉（整首歌與每一段）", ok and ok2 and was["elements"]["sun"]["dx"] == -300 and pj["style"] == "bauhaus" and not pj.get("elements") and not any(s.get("elements") for s in pj["sections"]) and not pj.get("palette"), (st2[:60], pj.get("elements"), [s.get("elements") for s in pj["sections"]], pj.get("palette")))
+            await p.ev("__app.undo()")
+            rec("I16 還原後回到網點印刷，調整都回來", await proj_now() == was, (await proj_now()).get("elements"))
+            ok, st = await paste(cfg_patch(set={"style": "paper", "elements": {"sun": {"scale": 1.1}}})); pj = await proj_now()
+            rec("I16 換風格的同一個改動裡給的調整留著，原本的不帶過去", ok and pj["style"] == "paper" and pj.get("elements") == {"sun": {"scale": 1.1}}, (st[:60], pj.get("elements")))
+        await safe("I16 設定的改動換風格", i16)
+
+        async def i17():
+            await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()"); code = txt.split("```js\n", 1)[1].split("\n```", 1)[0]
+            ok, st = await paste(fence("js", code + "\n" + star("t2", "加星星", 1500))); await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); had = await ids(); n0 = len((await p.ev("__app.history()"))["labels"])
+            done = await p.ev("__app.deleteElement('t2')"); msg = await pg.inner_text("#elMsg"); await p.shot(2, 0, 1.0)
+            rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and len((await p.ev("__app.history()"))["labels"]) == n0 + 1, (st[:40], had, await ids(), msg[:40]))
+            await p.ev("__app.tab('adv')")
+            rec("I17 「這首歌的改動」多的是那一筆刪除", await rows() == ["刪除「星星」"], await rows())
+        await safe("I17 整份貼回後的刪除", i17)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
