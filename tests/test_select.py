@@ -173,10 +173,10 @@ async def main():
             rec("E10 選著底下的光芒，按住 Shift 點同一個位置：最上面的太陽加進選取，再點拿掉太陽", one == ["rays"] and both == ["rays", "sun"] and await picked() == ["rays"], (one, both, await picked()))
             await at(2, 0, 0); await click(*spot); await click(*spot); await click(250, 190, shift=True); multi = await picked(); await click(*spot)
             rec("E10 多選（光芒＋小圓）後不按 Shift 點太陽蓋住光芒的地方：只選太陽", multi == ["dot", "rays"] and await picked() == ["sun"], (multi, await picked()))
-            await at(2, 0, 0); await click(*spot); await click(*spot); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('rays')"); seen = [await picked()]
+            await at(2, 0, 0); await click(*spot); await click(*spot); await picked(); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('rays')"); seen = [await picked()]
             for _ in range(2): await click(*spot); seen.append(await picked())
             rec("E10 從清單選了底下的光芒，再去點蓋在它上面的太陽：選到太陽；同一個位置再點一下才換成光芒", seen == [["rays"], ["sun"], ["rays"]], seen)
-            await at(2, 0, 0); await click(*spot); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('sun')"); seen = []
+            await at(2, 0, 0); await click(*spot); await picked(); await p.ev("__app.selectElement('dot')"); await p.ev("__app.selectElement('sun')"); seen = []
             for _ in range(2): await click(*spot); seen.append(await picked())
             rec("E10 從清單選了太陽，再點它一下：還是太陽；同一個位置再點一下換成光芒", seen == [["sun"], ["rays"]], seen)
         await safe("E10 疊著的地方其他規則照舊", e10)

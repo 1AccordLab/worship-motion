@@ -16,7 +16,7 @@ I13 「複製給 AI」的風格程式裡沒有編輯器內部的標記；AI 的�
 I14 設定的改動裡有 __proto__ 這類鍵：不套用並說明，不影響其他物件與別首歌。
 I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。
 I16 設定的改動換風格（set.style）：原本的配色與元素調整清掉，和從下拉選單換風格一樣；同一個改動裡給的調整留著。
-I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除。"""
+I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除；還原後「刪掉了」的訊息跟著消失。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -236,6 +236,8 @@ async def main():
             rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and len((await p.ev("__app.history()"))["labels"]) == n0 + 1, (st[:40], had, await ids(), msg[:40]))
             await p.ev("__app.tab('adv')")
             rec("I17 「這首歌的改動」多的是那一筆刪除", await rows() == ["刪除「星星」"], await rows())
+            await p.ev("__app.undo()"); await p.shot(2, 0, 1.0)
+            rec("I17 還原後星星回來，「刪掉了」的訊息跟著消失", "t2" in await ids() and (await pg.inner_text("#elMsg")).strip() == "", await pg.inner_text("#elMsg"))
         await safe("I17 整份貼回後的刪除", i17)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
