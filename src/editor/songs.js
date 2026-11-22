@@ -1,11 +1,18 @@
 let uidN = 0;
 const newUid = () => 's' + Date.now().toString(36) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 6);
-const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, custom: x.custom && x.custom.code ? { id: String(x.custom.id || 'custom').toLowerCase(), code: withPatchCalls(x.custom.code) } : null, fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
-const songFromFile = e => mkSong({ P: e.project, custom: e.scene });
-function stash() { const s = SONGS[ACT]; if (s && P && !SWITCHING) { s.P = P; s.cur = cur; s.clipIdx = clipIdx; s.custom = CUSTOM; } }
-function persist() { stash(); store.set('book', JSON.stringify({ v: 1, active: ACT, songs: SONGS.map(s => ({ uid: s.uid, P: s.P, custom: s.custom, fresh: s.fresh, orig: s.orig })) })); }
+const asCustom = c => c && c.code ? { id: String(c.id || 'custom').toLowerCase(), code: withPatchCalls(c.code) } : null;
+function customsFrom(x) {
+  const out = [];
+  for (const c of [...(Array.isArray(x.customs) ? x.customs : []), x.custom].map(asCustom)) if (c && !out.some(o => o.id === c.id)) out.push(c);
+  return out;
+}
+const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, customs: customsFrom(x), fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
+const songFromFile = e => mkSong({ P: e.project, customs: e.scenes, custom: e.scene });
+function stash() { const s = SONGS[ACT]; if (s && P && !SWITCHING) { s.P = P; s.cur = cur; s.clipIdx = clipIdx; s.customs = CUSTOMS; } }
+function persist() { stash(); store.set('book', JSON.stringify({ v: 1, active: ACT, songs: SONGS.map(s => ({ uid: s.uid, P: s.P, customs: s.customs, fresh: s.fresh, orig: s.orig })) })); }
 function save(label = '調整設定', key = null) { persist(); commit(label, key); renderSaveState(); renderSongName(); }
-const snap = () => { stash(); return fnv(JSON.stringify(SONGS.map(s => [s.P, s.custom ? s.custom.code : '']))); };
+const snapWith = shape => { stash(); return fnv(JSON.stringify(SONGS.map(s => [s.P, s.customs.map(c => shape(c.code)).join('\n')]))); };
+const snap = () => snapWith(code => code);
 const isSaved = () => !!P && store.get('saved') === snap();
 const isFresh = () => !!P && !!SONGS[ACT] && SONGS[ACT].fresh === fnv(JSON.stringify(P));
 function renderSaveState() {
@@ -63,7 +70,7 @@ async function activate0(i, { first = false, noStash = false } = {}) {
   if (!first) { renderStyle(); await refresh(); }
 }
 async function activateInner(i, first) {
-  ACT = Math.max(0, Math.min(i, SONGS.length - 1)); const sg = SONGS[ACT]; CUSTOM = sg.custom || null;
+  ACT = Math.max(0, Math.min(i, SONGS.length - 1)); const sg = SONGS[ACT]; CUSTOMS = sg.customs || [];
   const raw = sg.P && typeof sg.P === 'object' ? sg.P : clone(SAMPLE);
   const want = raw.style ? String(raw.style).toLowerCase() : BUILTIN[0].id, src = sourceFor(want);
   if (!(scene && src && scene.code === src.code)) {
@@ -73,7 +80,7 @@ async function activateInner(i, first) {
       catch (e) { notice('scene', `「${raw.title || ''}」的風格「${want}」載入失敗：${fmtErr(e)}。先用內建「${BUILTIN[0].name}」。`, e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(want); } } : null); }
     } else notice('scene', `「${raw.title || ''}」用的風格「${want}」找不到（新風格的程式沒有一起存），先用內建「${BUILTIN[0].name}」。`);
     if (!ok && !(scene && scene.code === BUILTIN[0].code)) await useStyle(BUILTIN[0].id);
-  } else if (src.custom && !(CUSTOM && CUSTOM.code === src.code)) { CUSTOM = { id: want, code: src.code }; sg.custom = CUSTOM; }
+  } else if (src.custom && !(customOf(want) && customOf(want).code === src.code)) putCustom({ id: want, code: src.code });
   let n = normalize(raw, meta(), meta().id);
   if (!n.project) { const q = clone(raw); adapt(q, meta()); n = normalize(q, meta(), meta().id); }
   P = n.project || (() => { const q = clone(SAMPLE); adapt(q, meta()); return normalize(q, meta(), meta().id).project; })();

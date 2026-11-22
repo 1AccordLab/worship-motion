@@ -10,11 +10,12 @@ function doneText(prefix, ch, warnings = []) {
     (ch.length ? '\n改了：\n・' + ch.slice(0, 10).join('\n・') + (ch.length > 10 ? `\n・…還有 ${ch.length - 10} 項` : '') : prefix ? '' : '\n（內容和原本一樣）') +
     (warnings.length ? '\n注意：\n・' + warnings.join('\n・') : '') + '\n下一步：在左邊點段落、點影片看預覽。';
 }
-const noStyle = want => `style「${want}」不存在。可用：${[...new Set([...BUILTIN.map(b => b.id), ...(CUSTOM ? [CUSTOM.id] : [])])].join('、')}（AI 做的新風格要連同 \`\`\`js 框一起貼上）。`;
+const noStyle = want => `style「${want}」不存在。可用：${[...new Set([...BUILTIN.map(b => b.id), ...CUSTOMS.map(c => c.id)])].join('、')}（AI 做的新風格要連同 \`\`\`js 框一起貼上）。`;
 async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   const out = (s, k) => say(where, s, k);
-  const before = pre ? pre.before : (P ? clone(P) : null), mOld = pre ? pre.mOld : (scene ? meta() : null), prefix = pre ? pre.prefix : '';
+  const before = pre ? pre.before : (P ? clone(P) : null), mOld = pre ? pre.mOld : (scene ? meta() : null), prefix = pre ? pre.prefix : '', same = !!(pre && pre.same);
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { out(`${source}沒有套用：設定要用 { } 包起來。`, true); return false; }
+  if (raw.style != null && typeof raw.style !== 'string') { out(`${source}沒有套用，請修正後再試：\n・${STYLE_NOT_TEXT}`, true); return false; }
   const want = raw.style != null ? String(raw.style).toLowerCase() : meta().id;
   let prep = null, m = meta();
   if (want !== m.id) {
@@ -25,11 +26,11 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   const n = normalize(raw, m, m.id);
   if (!n.project) { if (prep) prep.host.kill(); out(`${source}沒有套用，請修正後再試：\n・` + n.errors.join('\n・'), true); return false; }
   if (prep) await commitScene(prep);
-  const chg = changes(before, n.project, mOld, m);
+  const chg = changes(before, n.project, mOld, m, same);
   P = n.project; cur = 0; clipIdx = 0; t = 0;
   save(chg.otherSong ? chg.lines[0] : source === 'AI 的設定' ? '套用 AI 的回覆' : source === 'AI 的改動' ? '套用 AI 的改動' : '載入' + source);
   renderStyle(); await refresh();
-  out(doneText(prefix, changes(before, P, mOld, meta()).lines, n.warnings), 'ok');
+  out(doneText(prefix, changes(before, P, mOld, meta(), same).lines, n.warnings), 'ok');
   return true;
 }
 async function pasteScene(code) {
@@ -57,7 +58,7 @@ function reconcileProject() {
   cur = Math.min(cur, P.sections.length - 1);
 }
 async function loadPatched(base, list) {
-  if (!list.length) { const plain = BUILTIN.find(b => b.code === base); if (plain) { CUSTOM = null; if (SONGS[ACT]) SONGS[ACT].custom = null; await useStyle(plain.id); return; } }
+  if (!list.length) { const plain = BUILTIN.find(b => b.code === base); if (plain) { dropCustom(plain.id); await useStyle(plain.id); return; } }
   await commitScene(await prepareScene(joinPatches(base, list), true));
 }
 const patchSegs = () => { const list = meta().patches; return patchParts(sceneCode).patches.map((_, i) => { const calls = list.filter(x => x.seg === i); return { calls, label: calls.map(x => x.label).join('＋') || `改動 ${i + 1}` }; }); };
@@ -107,8 +108,8 @@ async function pasteAny(text, where = '#cfgStatus') {
     if (!(await pasteScene(withoutPatchMarks(p.code)))) { say(where, '新風格沒有套用（保留原本的風格）：\n' + lastSceneErr, true); return false; }
     prefix = `新風格「${meta().name}」\n`;
   }
-  const kept = { code: sceneCode, custom: CUSTOM, P: clone(P) };
-  const cfg = p.patchJson ? p.patchJson.set : p.json, target = isObj(cfg) && cfg.style != null ? String(cfg.style).toLowerCase() : meta().id, switching = p.patches.length > 0 && target !== meta().id;
+  const kept = { code: sceneCode, customs: CUSTOMS, P: clone(P) };
+  const cfg = p.patchJson ? p.patchJson.set : p.json, target = isObj(cfg) && typeof cfg.style === 'string' ? cfg.style.toLowerCase() : meta().id, switching = p.patches.length > 0 && target !== meta().id;
   const early = switching && p.patchJson ? patchedConfig(P, p.patchJson) : null;
   if (early && early.errors.length) { say(where, '改動沒有套用，請修正後再試：\n・' + early.errors.join('\n・'), true); return false; }
   if (p.patches.length) {
@@ -123,7 +124,7 @@ async function pasteAny(text, where = '#cfgStatus') {
     }
     catch (e) {
       const switched = sceneCode !== kept.code; await undoPatches(kept, switched);
-      say(where, '改動沒有套用（保留原本的樣子）：\n' + (switched ? `這則回覆同時要換成風格「${target}」，畫面的改動是接在新風格後面執行的。\n` : '') + fmtErr(e), true); return false;
+      say(where, '改動沒有套用（保留原本的樣子）：\n' + (switched ? `這則回覆同時要換成風格「${target}」，畫面的改動是接在新風格後面執行的。建議請 AI 分兩次：先只換風格，貼上後再按一次「複製給 AI」，再請它加東西。\n` : '') + fmtErr(e), true); return false;
     }
     prefix += `改動：${meta().patches.slice(n0).map(x => '「' + x.label + '」').join('、')}\n`;
   }
@@ -134,7 +135,7 @@ async function pasteAny(text, where = '#cfgStatus') {
     raw = pc.raw; if (!p.patches.length) prefix += '改動\n';
   }
   if (raw) {
-    const ok = await applyRaw(raw, p.patchJson ? 'AI 的改動' : 'AI 的設定', where, { before, mOld, prefix });
+    const ok = await applyRaw(raw, p.patchJson ? 'AI 的改動' : 'AI 的設定', where, { before, mOld, prefix, same: !!p.patchJson });
     if (!ok) await undoPatches(kept, p.patches.length);
     return ok;
   }
@@ -145,7 +146,7 @@ async function undoPatches(kept, n) {
   if (!n) return;
   const parts = patchParts(kept.code);
   await loadPatched(parts.base, parts.patches);
-  CUSTOM = kept.custom; if (SONGS[ACT]) SONGS[ACT].custom = kept.custom;
+  setCustoms(kept.customs);
   P = kept.P; renderStyle(); await refresh();
 }
 function exportText() { return JSON.stringify(P, null, 2); }

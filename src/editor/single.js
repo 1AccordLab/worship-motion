@@ -4,7 +4,7 @@ const BOOT = `(async()=>{const b=Uint8Array.from(atob(document.getElementById('w
 function bookJSON(which = 'book') {
   stash();
   const list = which === 'one' ? [SONGS[ACT]] : SONGS;
-  return { format: 'worship-motion-book/1', active: which === 'one' ? 0 : ACT, songs: list.map(s => ({ project: s.P, scene: s.custom ? { id: s.custom.id, code: s.custom.code } : null })) };
+  return { format: 'worship-motion-book/1', active: which === 'one' ? 0 : ACT, songs: list.map(s => ({ project: s.P, scene: mainCustom(s), scenes: s.customs })) };
 }
 async function singleHTML(which = 'book') {
   const attr = s => String(s).replace(/[&"<>]/g, c => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);

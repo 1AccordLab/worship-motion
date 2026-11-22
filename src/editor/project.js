@@ -147,6 +147,7 @@ function mergeDeep(base, add) {
   return base;
 }
 /* 注意：改動只列有變的地方，null 代表刪掉；合併完還是交給 normalize 檢查，錯誤訊息才會和整份設定一樣 */
+const STYLE_NOT_TEXT = 'style 要是風格的名稱（文字），例如 "riso"。';
 function patchedConfig(project, patch) {
   const raw = clone(project), errors = [], danger = unsafeKey(patch);
   if (danger) return { raw, errors: [`改動裡不能有「${danger}」這個鍵。`] };
@@ -155,6 +156,8 @@ function patchedConfig(project, patch) {
     if (!isObj(patch.set)) errors.push('set 要是物件，例如 {"bpm":96}。');
     else {
       const { sections, format, ...rest } = patch.set; if (sections !== undefined) errors.push('段落的改動寫在 sections（依段落名稱），不要放在 set 裡。');
+      for (const k of ['title', 'style', 'bpm']) if (rest[k] === null) errors.push(`${k} 不能刪掉（null）：要改就寫新的值。`);
+      if (rest.style != null && typeof rest.style !== 'string') errors.push(STYLE_NOT_TEXT);
       if (rest.style != null && String(rest.style).toLowerCase() !== raw.style) { raw.palette = {}; raw.params = {}; raw.elements = {}; for (const s of raw.sections) s.elements = {}; }
       mergeDeep(raw, rest);
     }
@@ -195,17 +198,23 @@ function splitPaste(text) {
 const JUMP_WORD = { 1: '很快', 2: '快', 4: '中', 8: '慢' };
 const bgLabel = (m, k) => (m && m.backgrounds[k] || {}).label || k;
 const subLabel = (m, k) => k === 'none' ? '不要' : ((m && m.subtitles[k]) || {}).label || k;
-function changes(a, b, mOld, mNew) {
+function pairSections(a, b) {
+  const used = new Set(), from = b.map(s => { const i = a.findIndex((o, k) => !used.has(k) && o.name === s.name); if (i >= 0) used.add(i); return i; });
+  if (a.length === b.length) from.forEach((i, j) => { if (i < 0 && !used.has(j)) { from[j] = j; used.add(j); } });
+  return { from, gone: a.filter((_, k) => !used.has(k)) };
+}
+function changes(a, b, mOld, mNew, sameSong = false) {
   if (!a) return { lines: [], otherSong: false };
-  if (a.title !== b.title) return { lines: [`換成另一首歌「${b.title}」`], otherSong: true };
-  const out = [];
+  if (a.title !== b.title && !sameSong) return { lines: [`換成另一首歌「${b.title}」`], otherSong: true };
+  const out = [], { from, gone } = pairSections(a.sections, b.sections), kept = from.filter(i => i >= 0);
+  if (a.title !== b.title) out.push(`歌名：${a.title} → ${b.title}`);
   if (a.style !== b.style) out.push(`風格：${mOld ? mOld.name : a.style} → ${mNew.name}`);
   if (a.bpm !== b.bpm) out.push(`速度：${a.bpm} → ${b.bpm}`);
   if (a.style === b.style && JSON.stringify(a.palette || {}) !== JSON.stringify(b.palette || {})) out.push('配色');
   if (a.style === b.style && JSON.stringify(a.params || {}) !== JSON.stringify(b.params || {})) out.push('質感參數');
   if (a.style === b.style && JSON.stringify(a.elements || {}) !== JSON.stringify(b.elements || {})) out.push('畫面元素');
-  b.sections.forEach((s, i) => {
-    const o = a.sections[i]; if (!o) { out.push(`新增一段「${s.name}」`); return; }
+  b.sections.forEach((s, j) => {
+    const o = a.sections[from[j]]; if (!o) { out.push(`新增一段「${s.name}」`); return; }
     const c = [];
     if (o.name !== s.name) c.push(`名稱改成「${s.name}」`);
     if (o.background !== s.background) c.push(`背景 ${bgLabel(mOld, o.background)} → ${bgLabel(mNew, s.background)}`);
@@ -220,6 +229,7 @@ function changes(a, b, mOld, mNew) {
     if (a.style === b.style && JSON.stringify(o.elements || {}) !== JSON.stringify(s.elements || {})) c.push('畫面元素');
     if (c.length) out.push(`${o.name}：${c.join('、')}`);
   });
-  if (a.sections.length > b.sections.length) out.push(`刪掉：${a.sections.slice(b.sections.length).map(s => s.name).join('、')}`);
+  if (gone.length) out.push(`刪掉：${gone.map(s => s.name).join('、')}`);
+  if (kept.some((i, k) => k > 0 && i < kept[k - 1])) out.push('段落順序');
   return { lines: out, otherSong: false };
 }

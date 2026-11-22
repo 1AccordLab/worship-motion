@@ -1,9 +1,14 @@
 let CODES = {}, BOOKOPS = [], CLOSED = [], restoring = false, histT = null;
-const snapHash = s => { const c = JSON.parse(s).c; return c ? c.h : null; };
-function snapOf(sg) { const c = sg.custom; if (c && c.code) CODES[fnv(c.code)] = c.code; return JSON.stringify({ P: sg.P, c: c && c.code ? { id: c.id, h: fnv(c.code) } : null }); }
+const snapCustoms = st => [st.c, ...(Array.isArray(st.o) ? st.o : [])].filter(Boolean);
+const snapHashes = s => snapCustoms(JSON.parse(s)).map(c => c.h);
+// 注意：快照是字串，會直接拿來比「和上一筆一樣嗎」「是不是打開時的樣子」，所以同樣的內容要產生同樣的字串：風格程式依 id 排序，只有一份時只寫 c
+function snapOf(sg) {
+  const list = [...(sg.customs || [])].sort((a, b) => a.id < b.id ? -1 : 1).map(c => { const h = fnv(c.code); CODES[h] = c.code; return { id: c.id, h }; });
+  return JSON.stringify(list.length > 1 ? { P: sg.P, c: list[0], o: list.slice(1) } : { P: sg.P, c: list[0] || null });
+}
 function histOf(sg) { if (!sg.hist || !Array.isArray(sg.hist.stack) || !sg.hist.stack.length) sg.hist = { stack: [{ label: '打開這首歌', at: Date.now(), s: snapOf(sg) }], pos: 0 }; sg.hist.pos = Math.max(0, Math.min(sg.hist.pos | 0, sg.hist.stack.length - 1)); return sg.hist; }
 function commit(label, key) {
-  const sg = SONGS[ACT]; if (restoring || !sg || !P) return; sg.P = P; sg.custom = CUSTOM;
+  const sg = SONGS[ACT]; if (restoring || !sg || !P) return; sg.P = P; sg.customs = CUSTOMS;
   const h = histOf(sg), s = snapOf(sg), top = h.stack[h.pos], now = Date.now();
   if (top && top.s === s) return;
   if (key && top && top.key === key && h.pos > 0 && h.pos === h.stack.length - 1 && now - top.at < HIST_MERGE_MS) { top.s = s; top.at = now; }
@@ -16,14 +21,14 @@ function writeHist() {
   clearTimeout(histT);
   const all = [...SONGS, ...CLOSED.map(c => c.song)], songs = {};
   for (const sg of all) if (sg.hist) songs[sg.uid] = sg.hist;
-  const memo = new Map(), hashOf = s => { if (!memo.has(s)) memo.set(s, snapHash(s)); return memo.get(s); };
+  const memo = new Map(), hashesOf = s => { if (!memo.has(s)) memo.set(s, snapHashes(s)); return memo.get(s); };
   const pack = () => {
     const used = new Set();
-    for (const h of Object.values(songs)) for (const e of h.stack) used.add(hashOf(e.s));
-    for (const sg of all) if (sg.custom && sg.custom.code) used.add(fnv(sg.custom.code));
-    for (const sg of all) if (sg.orig) used.add(hashOf(sg.orig));
+    for (const h of Object.values(songs)) for (const e of h.stack) for (const k of hashesOf(e.s)) used.add(k);
+    for (const sg of all) for (const c of sg.customs || []) used.add(fnv(c.code));
+    for (const sg of all) if (sg.orig) for (const k of hashesOf(sg.orig)) used.add(k);
     return JSON.stringify({ v: 1, codes: Object.fromEntries([...used].filter(k => CODES[k]).map(k => [k, CODES[k]])), songs, ops: BOOKOPS,
-      closed: CLOSED.map(c => ({ id: c.id, i: c.i, at: c.at, title: c.title, song: { uid: c.song.uid, P: c.song.P, custom: c.song.custom, orig: c.song.orig } })) });
+      closed: CLOSED.map(c => ({ id: c.id, i: c.i, at: c.at, title: c.title, song: { uid: c.song.uid, P: c.song.P, customs: c.song.customs, orig: c.song.orig } })) });
   };
   let str = pack(), n = 0;
   // 注意：localStorage 配額有限，超過就從最長的那條歷史丟掉最早的紀錄
@@ -59,7 +64,7 @@ async function restoreSnap(e) {
   const sg = SONGS[ACT], st = JSON.parse(e.s);
   restoring = true;
   try {
-    sg.P = st.P; sg.custom = st.c && CODES[st.c.h] ? { id: st.c.id, code: CODES[st.c.h] } : null; sg.cur = cur; sg.clipIdx = 0;
+    sg.P = st.P; sg.customs = customsFrom({ customs: snapCustoms(st).map(c => ({ id: c.id, code: CODES[c.h] })) }); sg.cur = cur; sg.clipIdx = 0;
     await activate(ACT, { noStash: true });
   } finally { restoring = false; }
 }

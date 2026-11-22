@@ -7,6 +7,7 @@ const patchParts = code => { const [base, ...rest] = String(code).split(PATCH_SP
 const joinPatches = (base, list) => base + list.map(c => PATCH_OPEN + c + PATCH_CLOSE).join('');
 // 注意：標記是編輯器自己切段用的。AI 看到會照抄，貼回來的程式裡有標記會把段切錯，所以給 AI 的程式不帶標記、貼進來的程式先去掉標記
 const withPatchCalls = code => { const { base, patches } = patchParts(code); return joinPatches(base, patches); };
+const withoutPatchCalls = code => String(code).split(PATCH_OPEN).join(PATCH_OPEN.replace(' __wmPatch();', ''));
 const withoutPatchMarks = code => String(code).replace(PATCH_MARKS, '');
 const readableScene = code => { const { base, patches } = patchParts(code); return base + patches.map(c => '\n{\n' + c + '\n}\n').join(''); };
 const withoutComments = code => String(code).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
@@ -51,8 +52,14 @@ const SAMPLE = {
 const fmtErr = e => (e && e.line > 0 ? `第 ${e.line} 行：` : '') + (e && e.message || e);
 const errAt = (msg, line) => Object.assign(new Error(msg), { line: line || 0 });
 
-let P = null, cur = 0, clipIdx = 0, r = null, clip = null, scene = null, canvasHost = null, CUSTOM = null, sceneCode = '';
+let P = null, cur = 0, clipIdx = 0, r = null, clip = null, scene = null, canvasHost = null, CUSTOMS = [], sceneCode = '';
 let SONGS = [], ACT = 0;
+const customOf = id => CUSTOMS.find(c => c.id === id) || null;
+function setCustoms(list) { CUSTOMS = list; if (SONGS[ACT]) SONGS[ACT].customs = list; }
+const putCustom = c => setCustoms(customOf(c.id) ? CUSTOMS.map(x => x.id === c.id ? c : x) : [...CUSTOMS, c]);
+const dropCustom = id => setCustoms(CUSTOMS.filter(x => x.id !== id));
+const mainCustom = s => (s.customs || []).find(c => c.id === (s.P || {}).style) || (s.customs || [])[(s.customs || []).length - 1] || null;
+const styleNameIn = code => { const m = /\bname\s*:\s*(['"`])((?:(?!\1).)+)\1/.exec(code.slice(Math.max(0, code.indexOf('defineScene(')))); return m ? m[2] : ''; };
 const VERIFIED = new Set();
 let playing = true, t = 0, last = performance.now(), frameNo = 0, exporting = false, cancel = false, needAtlas = false, recovering = false;
 let shaderInfo = null;

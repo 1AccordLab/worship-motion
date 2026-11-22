@@ -6,7 +6,7 @@ async function boot() {
   if (book.from === 'store') readHist();
   if (lastProbe) notice('probe', `上次在試跑「${lastProbe.name || lastProbe.kind}」的${lastProbe.kind === 'shader' ? '自訂 shader' : '新風格程式'}時，頁面當掉或被關閉。這段程式已暫停使用，其他內容照常。`);
   await activate(ACT, { first: true });
-  if (book.from === 'file' && !store.get('saved')) markSaved();
+  if ((book.from === 'file' && !store.get('saved')) || store.get('saved') === snapWith(withoutPatchCalls)) markSaved();
   if (book.from === 'sample') markFresh();
   renderStyle(); await refresh(); renderDetect();
   requestAnimationFrame(tick);
@@ -42,7 +42,7 @@ function testApi() {
     dialog: () => ({ open: $('#dlg').open, title: $('#dlgT').textContent, body: $('#dlgB').textContent, buttons: [...document.querySelectorAll('#dlgBtns button')].map(b => b.dataset.v) }),
     answer: v => { const b = document.querySelector(`#dlgBtns button[data-v="${v}"]`); if (b) b.click(); return !!b; },
     dialogInput: v => { $('#dlgIn').value = v; },
-    songs: () => { stash(); return SONGS.map((s, i) => ({ title: (s.P || {}).title, style: (s.P || {}).style, custom: s.custom ? s.custom.id : null, active: i === ACT })); },
+    songs: () => { stash(); return SONGS.map((s, i) => ({ title: (s.P || {}).title, style: (s.P || {}).style, custom: (mainCustom(s) || {}).id || null, customs: s.customs.map(c => c.id), active: i === ACT })); },
     active: () => ACT, switchSong, closeSong, undoClose, undo, redo, undoInfo, reopenSong, closed: () => CLOSED.map(c => ({ id: c.id, title: c.title })),
     history: () => { const h = histOf(SONGS[ACT]); return { pos: h.pos, labels: h.stack.map(e => e.label) }; }, goHist, flushHist: () => writeHist(), moveSong, moveSongTo, renameSong, importText, bookJSON, allSongsPlan: async () => (await allSongsFiles({ encode: false })).map(f => f.name),
     headerOf, readSong: (t, o) => readSong(t, o || {}), isFresh, histPanel: () => $('#histCard').innerText,

@@ -1,4 +1,4 @@
-let selEls = [], stageDrag = null, editOn = false, hoverEl = null, hoverWant = null, hoverBusy = false, lastPick = null;
+let selEls = [], stageDrag = null, editOn = false, hoverEl = null, hoverChanges = false, hoverWant = null, hoverBusy = false, lastPick = null;
 const SNAP_CSS_PX = 6, DRAG_START_CSS_PX = 4, SAME_SPOT_CSS_PX = 6, ROTATE_STEP = 15, BOX_MIN_CSS_PX = 48, ROTATE_HANDLE_ROOM_CSS_PX = 34;
 const boxCenter = box => [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
 const inBox = (box, p) => p.x >= box[0] && p.x <= box[2] && p.y >= box[1] && p.y <= box[3];
@@ -49,13 +49,13 @@ function shownBox(box) {
   const [x0, x1] = span(box[0], box[2], W), [y0, y1] = span(box[1], box[3], H);
   return [x0, y0, x1, y1];
 }
-function setHover(id) {
-  hoverEl = id || null; showHover();
+function setHover(id, changes = false, moves = false) {
+  hoverEl = id || null; hoverChanges = changes; $('#stageOvl').classList.toggle('moves', moves); showHover();
 }
 function showHover() {
   const box = $('#hoverBox'), e = hoverEl && editOn && !stageDrag && !exporting ? elementsNow().find(x => x.id === hoverEl && selectable(x)) : null;
   box.hidden = !(e && e.box); if (box.hidden) return;
-  placeBox(box, shownBox(e.box)); $('#hoverName').textContent = e.label;
+  placeBox(box, shownBox(e.box)); $('#hoverName').textContent = (hoverChanges ? '點一下改選：' : '') + e.label;
 }
 // 注意：選取框與把手只畫在畫面範圍內（元素可以超出畫面，把手要抓得到、不能蓋住預覽外面的控制列），而且至少留一塊抓得到的中間；旋轉把手上方沒空間就放下方，都沒有才放框內
 // 注意：選取框裡的空白處只有在元素本身很難點到時（太小、或大半在畫面外）才算抓到它；不然選取框蓋滿預覽時就點不到空白處、沒辦法取消選取
@@ -124,15 +124,19 @@ function applyDrag(drag) {
   syncElementRows(); pushElements();
 }
 const sameSpot = (a, p) => Math.hypot(a.x - p.x, a.y - p.y) <= SAME_SPOT_CSS_PX * p.unit;
-function pickOnly(id, p) { setSelection([id]); lastPick = { id, x: p.x, y: p.y }; }
-// 注意：drag.hit 是拖動的對象（這一點疊著的元素裡已選取的那個）；沒拖就放開時要看的是最上面的那個（drag.stack[0]），只有上一下也是在這個位置點出目前的選取，才換選底下
+function pickOnly(id, p) { setSelection([id]); lastPick = { id, x: p.x, y: p.y, clip }; }
+// 注意：拖動的對象是這一點疊著的元素裡已選取的那個，點一下（沒拖）要選的卻是最上面的那個；只有上一下也是在同一個位置點出目前的選取，才換選底下。換影片、改設定都會重建 clip，所以用它是不是同一個物件來認「還是剛才那支影片」
+function clickTarget(stack, p) {
+  const top = stack[0] || null, at = stack.indexOf(selEls[0]);
+  const again = selEls.length === 1 && at >= 0 && !!lastPick && lastPick.id === selEls[0] && lastPick.clip === clip && sameSpot(lastPick, p);
+  return again ? stack[(at + 1) % stack.length] : top;
+}
 function clickSelect(drag) {
   if (drag.mode !== 'move' && drag.mode !== 'marquee') return;
   const top = drag.stack[0];
   if (!top) { if (drag.mode === 'marquee' && !drag.add) setSelection([]); return; }
   if (drag.add) { setSelection(isSelected(top) ? selEls.filter(id => id !== top) : [...selEls, top]); return; }
-  const again = selEls.length === 1 && lastPick && lastPick.id === selEls[0] && sameSpot(lastPick, drag.p0), at = drag.stack.indexOf(selEls[0]);
-  pickOnly(again && at >= 0 ? drag.stack[(at + 1) % drag.stack.length] : top, drag.p0);
+  pickOnly(clickTarget(drag.stack, drag.p0), drag.p0);
 }
 function finishDrag(drag, keep) {
   if (drag.over) return; drag.over = true;
@@ -165,17 +169,24 @@ function onStageDown(ev) {
   document.body.classList.add('stagedrag'); setHover(null);
   if (handle) { if (!armTransform(drag)) finishDrag(drag, false); return; }
   serial(async () => {
-    const stack = drag.stack = (await scene.hit(clip.map(t), p0.x, p0.y)).els, held = stack.find(isSelected), hit = drag.hit = held || stack[0] || null, sel = selectionNow();
-    const onSelection = hit ? !!held : !drag.add && !!sel && hardToHit(sel.box) && inBox(shownBox(sel.box), p0);
-    if (onSelection) { if (!armTransform(drag)) { finishDrag(drag, false); return; } }
+    const stack = drag.stack = (await scene.hit(clip.map(t), p0.x, p0.y)).els; drag.hit = stack.find(isSelected) || stack[0] || null;
+    if (dragsSelection(stack, p0, drag.add)) { if (!armTransform(drag)) { finishDrag(drag, false); return; } }
     else { drag.mode = 'marquee'; drag.armed = true; }
     applyDrag(drag);
     if (drag.released) finishDrag(drag, !drag.cancelled);
   }).catch(() => finishDrag(drag, false));
 }
+function dragsSelection(stack, p, adding) {
+  const sel = selectionNow();
+  return stack.length ? stack.some(isSelected) : !adding && !!sel && hardToHit(sel.box) && inBox(shownBox(sel.box), p);
+}
 function runHover() {
   hoverBusy = true; const want = hoverWant;
-  serial(async () => { setHover(want && editOn && clip && scene && !stageDrag && !exporting ? (await scene.hit(clip.map(t), want.x, want.y)).el : null); })
+  serial(async () => {
+    if (!(want && editOn && clip && scene && !stageDrag && !exporting)) { setHover(null); return; }
+    const stack = (await scene.hit(clip.map(t), want.x, want.y)).els, target = clickTarget(stack, want), same = selEls.length === 1 && selEls[0] === target;
+    setHover(same ? null : target, stack.some(isSelected), dragsSelection(stack, want, false));
+  })
     .catch(() => setHover(null)).then(() => { hoverBusy = false; if (hoverWant !== want) runHover(); });
 }
 function onStageHover(ev) { if (!editOn || stageDrag || ev.buttons) return; hoverWant = stagePoint(ev); if (!hoverBusy) runHover(); }
