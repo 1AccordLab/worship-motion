@@ -100,7 +100,7 @@ async def main():
             if up:
                 note = await p.ev("__app.notices()"); btn = await p.ev("[...document.querySelectorAll('#guard button')].map(b=>b.textContent.trim())")
                 rec("K7 重新載入後有提示說明那一份已暫停使用，並有「仍要試跑」", any("暫停使用" in x for x in note) and "仍要試跑" in btn and not any("。。" in x for x in note), (note, btn))
-                await use("paper"); await p.ev("__app.tab('self')"); await pg.select_option("#style", "swiss"); await p.wait("__app.project.style==='swiss'&&__app.sceneInfo().id==='swiss'", 30000); note = await p.ev("__app.notices()")
+                await use("paper"); await p.ev("__app.tab('self')"); await pg.select_option("#style", "swiss"); await p.wait("__app.project.style==='swiss'&&__app.sceneInfo().id==='swiss'&&__app.notices().some(x=>x.includes('暫停使用'))", 30000); note = await p.ev("__app.notices()")
                 rec("K7 換到剪紙拼貼再換回瑞士網格：換得回去（內建的樣子），同樣有提示", any("暫停使用" in x for x in note) and await labels() == [], (note, await pg.inner_text("#selfMsg")))
                 await pg.click("#guard button >> text=仍要試跑"); await p.wait("__app.patches().length===1||__app.notices().some(x=>x.includes('卡住'))", 60000); await p.ev("__app.elements()")
                 rec("K7 按「仍要試跑」：那一份被載回來（或再次卡住而退回），沒有頁面錯誤", not p.log, (await labels(), (await p.ev("__app.sceneInfo()"))["id"], p.log[:2]))
