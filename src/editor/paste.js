@@ -108,9 +108,19 @@ async function pasteAny(text, where = '#cfgStatus') {
   }
   const kept = { code: sceneCode, custom: CUSTOM, P: clone(P) };
   if (p.patches.length) {
-    const n0 = meta().patches.length;
-    try { await applyScenePatches(p.patches); }
-    catch (e) { say(where, '改動沒有套用（保留原本的樣子）：\n' + fmtErr(e), true); return false; }
+    const cfg = p.patchJson ? p.patchJson.set : p.json, target = isObj(cfg) && cfg.style != null ? String(cfg.style).toLowerCase() : meta().id;
+    let n0 = meta().patches.length;
+    try {
+      if (target !== meta().id) {
+        if (!sourceFor(target)) throw errAt(`style「${target}」不存在。可用：${[...BUILTIN.map(b => b.id), ...(CUSTOM ? [CUSTOM.id] : [])].join('、')}`);
+        await useStyle(target); adapt(P, meta()); n0 = meta().patches.length;
+      }
+      await applyScenePatches(p.patches);
+    }
+    catch (e) {
+      const switched = sceneCode !== kept.code; await undoPatches(kept, switched);
+      say(where, '改動沒有套用（保留原本的樣子）：\n' + (switched ? `這則回覆同時要換成風格「${target}」，畫面的改動是接在新風格後面執行的。\n` : '') + fmtErr(e), true); return false;
+    }
     prefix += `改動：${meta().patches.slice(n0).map(x => '「' + x.label + '」').join('、')}\n`;
   }
   let raw = p.json;
@@ -130,8 +140,9 @@ async function pasteAny(text, where = '#cfgStatus') {
 async function undoPatches(kept, n) {
   if (!n) return;
   const parts = patchParts(kept.code);
+  await loadPatched(parts.base, parts.patches);
   CUSTOM = kept.custom; if (SONGS[ACT]) SONGS[ACT].custom = kept.custom;
-  await loadPatched(parts.base, parts.patches); P = kept.P; renderStyle(); await refresh();
+  P = kept.P; renderStyle(); await refresh();
 }
 function exportText() { return JSON.stringify(P, null, 2); }
 const CHIPS = [
