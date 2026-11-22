@@ -8,7 +8,7 @@ K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進
 K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。
 K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作；畫面上有提示說明並可以「仍要試跑」；從別的風格換回來也是先用內建的樣子加提示。
 K8 風格的提示跟著那首歌：同一首歌改一下再還原，提示還在；換到別首歌，上一首的提示與按鈕不在畫面上，換回來又出現。被暫停的是預設以外的內建風格那一份時，墊底用的是同一個風格的內建樣子，還原、重新載入後風格不會變成別的。
-K9 提示指的那一份風格程式不在這首歌裡了（例如還原到貼它之前），提示就拿掉。按「仍要試跑」載回同一個風格自己那一份時，元素調整留著、不記成換風格。被暫停的 AI 新風格從風格選單選它，會有提示與「仍要試跑」。按了還是換不過去時，畫面上的提示換成原因，和實際狀態一致。"""
+K9 提示指的那一份風格程式不在這首歌裡了（例如還原到貼它之前），提示就拿掉。按「仍要試跑」載回同一個風格自己那一份時，元素調整留著、不記成換風格。被暫停的 AI 新風格從風格選單選它，會有提示與「仍要試跑」。按了之後那個風格又卡住時，畫面上的提示換成這次的結果，和實際狀態一致。"""
 import asyncio, sys, pathlib, json, time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -159,8 +159,8 @@ async def main():
             timed = MIN.replace("id: 'bars', name: '色帶'", "id: 'timed', name: '過一陣子卡住'").replace("const y = x.step", "if (Date.now() > %d) for (;;) { } const y = x.step" % at)
             await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso", sections=one)); ok = await p.ev("c=>__app.pasteScene(c)", timed); await use("riso"); await p.ev("addSuspect(fnv(customOf('timed').code))")
             await asyncio.sleep(max(0, at / 1000 - time.time()) + 1); await p.ev("__app.tab('self')"); await pg.select_option("#style", "timed"); await p.wait("document.querySelector('#guard').innerText.includes('仍要試跑')", 30000)
-            await pg.click("#guard button >> text=仍要試跑"); await p.wait("document.querySelector('#guard').innerText.includes('換不了風格')&&!document.querySelector('#guard').innerText.includes('已暫停使用')", 90000); g3 = await guard()
-            rec("K9 按「仍要試跑」但試跑又卡住：畫面上的提示換成換不了的原因，和實際狀態一致，風格沒變", ok and "換不了風格" in g3 and (await p.ev("__app.project"))["style"] == "riso" and await agree(), (ok, g3[:90], await p.ev("__app.notices()")))
+            await pg.click("#guard button >> text=仍要試跑"); await p.wait("(t=>!t.includes('已暫停使用')&&(t.includes('換不了風格')||t.includes('退回內建')))(document.querySelector('#guard').innerText)", 90000); await p.ev("__app.elements()"); g3 = await guard(); now = ((await p.ev("__app.project"))["style"], (await p.ev("__app.sceneInfo()"))["id"])
+            rec("K9 按「仍要試跑」但那個風格又卡住：畫面上的提示換成這次的結果，和實際狀態一致，風格不是卡住的那個", ok and "已暫停使用" not in g3 and now[0] == now[1] and now[0] != "timed" and await agree(), (ok, g3[:90], now, await p.ev("__app.notices()")))
             p.log.clear()
         await safe("K9 提示和實際狀態一致", k9)
 
