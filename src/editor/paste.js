@@ -10,6 +10,7 @@ function doneText(prefix, ch, warnings = []) {
     (ch.length ? '\n改了：\n・' + ch.slice(0, 10).join('\n・') + (ch.length > 10 ? `\n・…還有 ${ch.length - 10} 項` : '') : prefix ? '' : '\n（內容和原本一樣）') +
     (warnings.length ? '\n注意：\n・' + warnings.join('\n・') : '') + '\n下一步：在左邊點段落、點影片看預覽。';
 }
+const noStyle = want => `style「${want}」不存在。可用：${[...new Set([...BUILTIN.map(b => b.id), ...(CUSTOM ? [CUSTOM.id] : [])])].join('、')}（AI 做的新風格要連同 \`\`\`js 框一起貼上）。`;
 async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   const out = (s, k) => say(where, s, k);
   const before = pre ? pre.before : (P ? clone(P) : null), mOld = pre ? pre.mOld : (scene ? meta() : null), prefix = pre ? pre.prefix : '';
@@ -18,7 +19,7 @@ async function applyRaw(raw, source, where = '#cfgStatus', pre = null) {
   let prep = null, m = meta();
   if (want !== m.id) {
     const src = sourceFor(want);
-    if (!src) { out(`${source}沒有套用，請修正後再試：\n・style「${want}」不存在。可用：${[...BUILTIN.map(b => b.id), ...(CUSTOM ? [CUSTOM.id] : [])].join('、')}（AI 做的新風格要連同 \`\`\`js 框一起貼上）。`, true); return false; }
+    if (!src) { out(`${source}沒有套用，請修正後再試：\n・${noStyle(want)}`, true); return false; }
     try { prep = await prepareScene(src.code, src.custom); m = prep.meta; } catch (e) { out(`${source}沒有套用：風格「${want}」載入失敗：${fmtErr(e)}`, true); return false; }
   }
   const n = normalize(raw, m, m.id);
@@ -107,13 +108,16 @@ async function pasteAny(text, where = '#cfgStatus') {
     prefix = `新風格「${meta().name}」\n`;
   }
   const kept = { code: sceneCode, custom: CUSTOM, P: clone(P) };
+  const cfg = p.patchJson ? p.patchJson.set : p.json, target = isObj(cfg) && cfg.style != null ? String(cfg.style).toLowerCase() : meta().id, switching = p.patches.length > 0 && target !== meta().id;
+  const early = switching && p.patchJson ? patchedConfig(P, p.patchJson) : null;
+  if (early && early.errors.length) { say(where, '改動沒有套用，請修正後再試：\n・' + early.errors.join('\n・'), true); return false; }
   if (p.patches.length) {
-    const cfg = p.patchJson ? p.patchJson.set : p.json, target = isObj(cfg) && cfg.style != null ? String(cfg.style).toLowerCase() : meta().id;
     let n0 = meta().patches.length;
     try {
-      if (target !== meta().id) {
-        if (!sourceFor(target)) throw errAt(`style「${target}」不存在。可用：${[...BUILTIN.map(b => b.id), ...(CUSTOM ? [CUSTOM.id] : [])].join('、')}`);
-        await useStyle(target); adapt(P, meta()); n0 = meta().patches.length;
+      if (switching) {
+        if (!sourceFor(target)) throw errAt(noStyle(target));
+        try { await useStyle(target); } catch (e) { throw errAt(`風格「${target}」載入失敗：${fmtErr(e)}`); }
+        n0 = meta().patches.length;
       }
       await applyScenePatches(p.patches);
     }
@@ -125,7 +129,7 @@ async function pasteAny(text, where = '#cfgStatus') {
   }
   let raw = p.json;
   if (p.patchJson) {
-    const pc = patchedConfig(P, p.patchJson);
+    const pc = early || patchedConfig(P, p.patchJson);
     if (pc.errors.length) { await undoPatches(kept, p.patches.length); say(where, '改動沒有套用，請修正後再試：\n・' + pc.errors.join('\n・'), true); return false; }
     raw = pc.raw; if (!p.patches.length) prefix += '改動\n';
   }
