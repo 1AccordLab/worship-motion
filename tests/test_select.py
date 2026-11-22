@@ -9,7 +9,9 @@ E6 從選取範圍裡開始拖：選取的元素一起移動同樣的距離，�
 E7 鎖定：清單上按鎖定後，設定記下 locked；在預覽上點不到、範圍選取選不到、點清單名稱也選不到；解鎖後恢復。
 E8 點清單上的名稱會自動打開「調整畫面」；關掉「調整畫面」會取消選取。
 E9 元素疊在一起的地方：點一下選最上面的；對已選取的元素在同一個位置再點一下（沒有拖），換選它底下的那一個，輪到最底再回到最上面；選到底下的元素後從那裡拖，移動的是它。
-E10 疊著的地方其他規則照舊：按住 Shift 點是把最上面的那個加進選取或拿掉；多選後不按 Shift 點一下，只選最上面的那個；選取不是在這個位置點出來的（例如從清單選的），點一下選的是最上面的那個，再點才換底下。"""
+E10 疊著的地方其他規則照舊：按住 Shift 點是把最上面的那個加進選取或拿掉；多選後不按 Shift 點一下，只選最上面的那個；選取不是在這個位置點出來的（例如從清單選的），點一下選的是最上面的那個，再點才換底下。
+E11 游標提示：提示框框的是「點一下會選到的那個」；游標底下有已選取的元素（被蓋住也算）時，名稱寫成「點一下改選：…」，游標變成移動的樣子（從這裡拖是移動已選取的）；點了也不會變時不顯示提示框。
+E12 切到別支影片再回來，在同一個位置點一下：選的是最上面的那個，不算「再點一下」。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -185,6 +187,29 @@ async def main():
             await at(1, 1, 3.0, "type"); await p.ev("__app.selectElement('panel')"); await click(120, 180); one = await picked(); await click(120, 180)
             rec("E10 疊三層的地方（大字排版華麗字幕）：從清單選了中間的色塊再點，選到最上面的字；再點換回色塊", one == ["words"] and await picked() == ["panel"], (one, await picked()))
         await safe("E10 疊著的地方其他規則照舊", e10)
+
+        async def e11():
+            spot = (706, 871); cursor = lambda: p.ev("getComputedStyle(document.querySelector('#stageOvl')).cursor"); name = lambda: p.ev("document.querySelector('#hoverName').textContent")
+            async def over(x, y): await hover(1500, 620); return await hover(x, y)
+            await at(2, 0, 0); lab = {k: v["label"] for k, v in (await els()).items()}
+            h = await over(*spot)
+            rec("E11 沒有選取時：框最上面的太陽，名稱就是它，游標不是移動", h and h["id"] == "sun" and await name() == lab["sun"] and await cursor() != "move", (h, await name(), await cursor()))
+            await click(*spot); await picked(); h = await over(*spot)
+            rec("E11 剛在這裡點選了太陽：框的是再點一下會換到的光芒，名稱寫「點一下改選：」，游標是移動", h and h["id"] == "rays" and await name() == "點一下改選：" + lab["rays"] and await cursor() == "move", (h, await name(), await cursor()))
+            await p.ev("__app.selectElement('rays')"); h = await over(*spot)
+            rec("E11 從清單選了被蓋住的光芒：框的是點一下會選到的太陽，游標是移動", h and h["id"] == "sun" and await name() == "點一下改選：" + lab["sun"] and await cursor() == "move", (h, await name(), await cursor()))
+            await p.ev("__app.selectElement('dot')"); h = await over(250, 190)
+            rec("E11 游標在已選取的小圓上、底下沒有別的：不顯示提示框，游標是移動", h is None and not await shown("#hoverBox") and await cursor() == "move", (h, await cursor()))
+            h = await over(*spot)
+            rec("E11 選著小圓、游標移到太陽上：框太陽，名稱就是它，游標不是移動", h and h["id"] == "sun" and await name() == lab["sun"] and await cursor() != "move", (h, await name(), await cursor()))
+        await safe("E11 游標提示", e11)
+
+        async def e12():
+            spot = (706, 871)
+            await at(2, 0, 0); await click(*spot); one = await picked()
+            await p.ev("__app.select(2,1)"); await p.ev("__app.select(2,0)"); await p.ev("__app.seek(0)"); await p.ev("__app.editMode(true)"); mid = await picked(); await click(*spot)
+            rec("E12 選了太陽後切到字幕影片再切回來，在同一個位置點一下：還是太陽", one == ["sun"] and await picked() == ["sun"], (one, mid, await picked()))
+        await safe("E12 切影片後不算再點一下", e12)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()

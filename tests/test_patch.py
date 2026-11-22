@@ -17,7 +17,10 @@ I14 設定的改動裡有 __proto__ 這類鍵：不套用並說明，不影響�
 I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。
 I16 設定的改動換風格（set.style）：原本的配色與元素調整清掉，和從下拉選單換風格一樣；同一個改動裡給的調整留著。
 I17 AI 把整份風格程式連同新的 patchScene 一起貼回來（成了新風格）之後：AI 加的元素照樣刪得掉，清單上多的是那一筆刪除；還原後「刪掉了」的訊息跟著消失。
-I18 同一則回覆又換風格（設定的改動的 set.style）又改畫面（patchScene）：先換風格，畫面的改動套在新風格上，是一筆歷史紀錄；改動在新風格上跑不起來、或設定的改動有錯，就整個不套用，風格、設定、這首歌存著的 AI 新風格都照舊。"""
+I18 同一則回覆又換風格（設定的改動的 set.style）又改畫面（patchScene）：先換風格，畫面的改動套在新風格上，是一筆歷史紀錄；改動在新風格上跑不起來、或設定的改動有錯，就整個不套用，風格、設定、這首歌存著的 AI 新風格都照舊。
+I19 給 AI 的說明要它分兩次：先只回換風格，同工貼上後再複製一次，才加東西；換風格又改畫面的回覆跑不起來時，訊息也這樣建議。
+I20 訊息：「改了：」依段落名稱比對（在前面插一段不會說別段改名）；設定的改動改歌名是「歌名：舊 → 新」，把歌名、速度、風格設成 null 會擋下並說明；style 不是文字會擋下。
+I21 段落開頭少了記號的資料（暫存、歷史紀錄）：讀進來後改動的名稱都在，還原到之前的紀錄也在；存過檔的仍顯示已存成檔案。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -256,6 +259,41 @@ async def main():
             ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "elements": {"sun": None}}, sections={"副歌": {"elements": {"ring": None}}})); pj = await proj_now()
             rec("I18 換風格又改畫面的回覆裡用 null 拿掉原本的調整：照樣套用，調整不帶過去", ok and pj["style"] == "bauhaus" and not pj.get("elements") and not any(x.get("elements") for x in pj["sections"]) and await labels() == ["加十字架"], (st[:120], pj.get("elements")))
         await safe("I18 同一則回覆換風格又改畫面", i18)
+
+        async def i19():
+            await clean(); txt = await p.ev("__app.aiText()")
+            rec("I19 複製給 AI 的說明：換風格又要加東西時分兩次回", "先只回換風格" in txt and "再按一次「複製給 AI」" in txt, [l for l in txt.split("\n") if "換風格" in l][:3])
+            ok, st = await paste(fence("js", CROSS) + "\n" + cfg_patch(set={"style": "bauhaus"}))
+            rec("I19 換風格又改畫面的回覆跑不起來：訊息建議分兩次", ok is False and "分兩次" in st and "複製給 AI" in st, st[:200])
+        await safe("I19 分兩次", i19)
+
+        async def i20():
+            await clean(); ok, st = await paste(cfg_patch(sections={"前奏": {"before": "主歌", "background": "calm", "subtitle": "none"}}))
+            rec("I20 在最前面插一段：訊息只說新增「前奏」，沒有說別段改名", ok and "新增一段「前奏」" in st and "名稱改成" not in st and "新增一段「副歌」" not in st, st[:200])
+            ok, st = await paste(cfg_patch(sections={"導歌": None, "副歌": {"jumpBeats": 8}}))
+            rec("I20 刪掉中間一段並改後面那段：訊息說刪掉導歌、副歌的色塊換位", ok and "刪掉：導歌" in st and "副歌：色塊換位" in st and "名稱改成" not in st, st[:200])
+            await clean(); was = await proj_now()
+            for key, patch in [("title", cfg_patch(set={"title": None})), ("bpm", cfg_patch(set={"bpm": None})), ("style", cfg_patch(set={"style": None})), ("style", cfg_patch(set={"style": ["bauhaus"]})), ("style", fence("json", json.dumps({**proj("riso"), "style": ["bauhaus"]}, ensure_ascii=False)))]:
+                ok, st = await paste(patch)
+                rec(f"I20 {key} 設成 {'null' if 'null' in patch else '陣列'}：擋下並說明，設定照舊", ok is False and key in st and "沒有套用" in st and await proj_now() == was, st[:120])
+            ok, st = await paste(cfg_patch(set={"title": "新歌名示意"}))
+            rec("I20 設定的改動改歌名：訊息是「歌名：測試 → 新歌名示意」，紀錄是套用 AI 的改動", ok and "歌名：測試 → 新歌名示意" in st and "另一首歌" not in st and (await p.ev("__app.history()"))["labels"][-1] == "套用 AI 的改動", (st[:120], (await p.ev("__app.history()"))["labels"][-1]))
+        await safe("I20 訊息", i20)
+
+        async def i21():
+            await clean(); await paste(fence("js", CROSS)); await paste(fence("js", STAR)); await p.ev("__app.markSaved()"); await p.ev("__app.flushHist()")
+            await p.ev("""(()=>{const kb=Object.keys(localStorage).find(x=>x.endsWith(':book')),kh=kb.replace(':book',':hist'),ks=kb.replace(':book',':saved'),bare=s=>s.split('{ __wmPatch();').join('{');
+              const d=JSON.parse(bare(localStorage.getItem(kb)));for(const s of d.songs){const c=(s.customs||[])[0]||s.custom;delete s.customs;s.custom=c?{id:c.id,code:c.code}:null;}
+              const h=JSON.parse(bare(localStorage.getItem(kh)));h.codes=Object.fromEntries(Object.values(h.codes).map(c=>[fnv(c),c]));
+              const old=t=>{const st=JSON.parse(t),c=st.cs?st.cs[0]:st.c;delete st.cs;st.c=c?{id:c.id,h:fnv(bare(CODES[c.h]))}:null;return JSON.stringify(st);};
+              for(const g of Object.values(h.songs))for(const e of g.stack)e.s=old(e.s);
+              localStorage.setItem(kb,JSON.stringify(d));localStorage.setItem(kh,JSON.stringify(h));
+              localStorage.setItem(ks,fnv(JSON.stringify(d.songs.map(s=>[s.P,s.custom?s.custom.code:'']))));})()""")
+            await p.reload(); await p.ev("__app.tab('adv')"); r = await rows(); saved = (await p.ev("__app.saveState()"))["saved"]
+            rec("I21 少了記號的資料讀進來：清單是兩列、名稱都在，仍顯示已存成檔案", r == ["加十字架", "加星星"] and saved is True, (r, (await p.ev("__app.saveState()"))["text"]))
+            await p.ev("__app.undo()"); await p.ev("__app.tab('adv')"); r = await rows()
+            rec("I21 還原到之前的紀錄：改動的名稱還在", r == ["加十字架"] and "cross" in await ids(), (r, await labels()))
+        await safe("I21 少了記號的資料", i21)
 
         async def i17():
             await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()"); code = txt.split("```js\n", 1)[1].split("\n```", 1)[0]
