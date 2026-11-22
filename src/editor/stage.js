@@ -145,12 +145,13 @@ function finishDrag(drag, keep) {
     if (keep) serial(async () => { const ids = (await scene.touching(clip.map(t), dragRect(drag))).els; setSelection(drag.add ? [...selEls, ...ids] : ids); }).catch(() => { });
     return;
   }
+  lastPick = null;
   if (keep) save(scopePrefix(drag.scope) + DRAG_WORD[drag.mode] + drag.start.label + (drag.followed ? FOLLOWED_NOTE : ''));
   else { setOrDrop(scopeHost(drag.scope), drag.start.before); setOrDrop(sec(), drag.scope === 'section' ? drag.start.before : drag.start.beforeSection); pushElements(); }
   syncElementRows();
 }
 // 注意：點到哪個元素要問 Worker（形狀在那邊），是非同步的；這段時間的游標移動先記在 drag.last，問到結果才決定是移動還是範圍選取
-// 注意：按下的位置疊著好幾個元素時，已選取的那個優先（被蓋住也能拖）；沒拖就放開則換選它底下的那一個
+// 注意：按下的位置疊著好幾個元素時，已選取的那個優先（被蓋住也能拖）；沒拖就放開時選誰由 clickSelect 決定
 function onStageDown(ev) {
   if (!editOn || ev.button > 0 || exporting || !clip || !scene || stageDrag) return;
   ev.preventDefault();

@@ -155,7 +155,7 @@ function patchedConfig(project, patch) {
     if (!isObj(patch.set)) errors.push('set 要是物件，例如 {"bpm":96}。');
     else {
       const { sections, format, ...rest } = patch.set; if (sections !== undefined) errors.push('段落的改動寫在 sections（依段落名稱），不要放在 set 裡。');
-      if (rest.style != null && String(rest.style).toLowerCase() !== raw.style) { raw.palette = {}; raw.params = {}; delete raw.elements; for (const s of raw.sections) delete s.elements; }
+      if (rest.style != null && String(rest.style).toLowerCase() !== raw.style) { raw.palette = {}; raw.params = {}; raw.elements = {}; for (const s of raw.sections) s.elements = {}; }
       mergeDeep(raw, rest);
     }
   }
