@@ -8,6 +8,7 @@ P5 雙語時，小字屬於「歌詞」，跟著一起移動。
 P6 字幕整個是一個函式的風格（examples/minimal.js 的「色帶」）照常列出 背景、字幕。
 P7 AI 可以用 use 寫字幕（examples/elements.js），清單裡的 under 代表段落選的背景；under 放在背景的 use、元素取名 under 都會擋下並說明。
 P8 字很大的字幕（大字排版的華麗字幕）整支從頭畫到尾都畫得出來，畫面和直接跳到那一格相同。
+P9 換風格之後畫字幕，字的邊緣不會沾到上一個風格留下的字。
 另外用 python3 tests/test_golden.py --ref <實作前的 commit> 確認：沒有任何調整時，畫面和實作前一格不差。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -126,6 +127,17 @@ async def main():
             worst = max(hi for _, hi in ImageChops.difference(last, fresh).getextrema())
             rec("P8 一路畫過來的第 40 格和直接跳到那一格相同（每個通道差 2 以內）", worst <= 2, worst)
         await safe("P8 整支字幕每一格都畫得出來", p8)
+
+        async def p9():
+            async def run_through():
+                assert await p.ev("x=>__app.load(x)", proj("bauhaus")); await p.ev("__app.select(1,1)"); last = None
+                for i in range(46): last = await p.grab(i / 30)
+                return last
+            assert await p.ev("x=>__app.load(x)", proj("type")); await p.shot(0, 0, 1.0); after_type = await run_through()
+            await p.reload(); clean = await run_through()
+            worst = max(hi for _, hi in ImageChops.difference(after_type, clean).getextrema())
+            rec("P9 先看過大字排版再換包浩斯：字幕一路畫到第 46 格，和全新頁面畫的相同（每個通道差 2 以內）", worst <= 2, worst)
+        await safe("P9 換風格後的字幕", p9)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
