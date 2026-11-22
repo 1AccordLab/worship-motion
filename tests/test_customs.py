@@ -8,7 +8,8 @@ K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進
 K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。
 K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作；畫面上有提示說明並可以「仍要試跑」；從別的風格換回來也是先用內建的樣子加提示。
 K8 風格的提示跟著那首歌：同一首歌改一下再還原，提示還在；換到別首歌，上一首的提示與按鈕不在畫面上，換回來又出現。被暫停的是預設以外的內建風格那一份時，墊底用的是同一個風格的內建樣子，還原、重新載入後風格不會變成別的。
-K9 提示指的那一份風格程式不在這首歌裡了（例如還原到貼它之前），提示就拿掉。按「仍要試跑」載回同一個風格自己那一份時，元素調整留著、不記成換風格。被暫停的 AI 新風格從風格選單選它，會有提示與「仍要試跑」。按了之後那個風格又卡住時，畫面上的提示換成這次的結果，和實際狀態一致。"""
+K9 提示指的那一份風格程式不在這首歌裡了（例如還原到貼它之前），提示就拿掉。按「仍要試跑」載回同一個風格自己那一份時，元素調整留著、不記成換風格。被暫停的 AI 新風格從風格選單選它，會有提示與「仍要試跑」。按了之後那個風格又卡住時，畫面上的提示換成這次的結果，和實際狀態一致。
+K10 「進階」分頁列出這首歌的 AI 新風格，每個可以「移除」：不是目前在用的，移除後風格選單沒有它、目前的風格不變；目前在用的，先換回內建風格再移除並說明；被暫停的也能移除；都是一筆歷史紀錄、可以還原；別首歌的不受影響；重新載入後還是沒有。"""
 import asyncio, sys, pathlib, json, time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -163,6 +164,30 @@ async def main():
             rec("K9 按「仍要試跑」但那個風格又卡住：畫面上的提示換成這次的結果，和實際狀態一致，風格不是卡住的那個", ok and "已暫停使用" not in g3 and now[0] == now[1] and now[0] != "timed" and await agree(), (ok, g3[:90], now, await p.ev("__app.notices()")))
             p.log.clear()
         await safe("K9 提示和實際狀態一致", k9)
+
+        async def k10():
+            rows = lambda: p.ev("[...document.querySelectorAll('#styleList .stylerow .stylename')].map(x=>x.textContent)")
+            drop = lambda sid: pg.click(f"#styleList .stylerow[data-id={sid}] .styledrop")
+            a2 = MIN.replace("id: 'bars', name: '色帶'", "id: 'keep1', name: '留著的'"); b2 = MIN.replace("id: 'bars', name: '色帶'", "id: 'gone1', name: '要移除的'"); c2 = MIN.replace("id: 'bars', name: '色帶'", "id: 'stop1', name: '被暫停的'")
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso")); other = await p.ev("__app.active()"); assert await p.ev("c=>__app.pasteScene(c)", b2)
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso")); me = await p.ev("__app.active()")
+            await p.ev("__app.tab('adv')"); none = (await rows(), await pg.is_visible("#noStyles"))
+            for code in (a2, b2, c2): assert await p.ev("c=>__app.pasteScene(c)", code)
+            await use("riso"); await p.ev("addSuspect(fnv(customOf('stop1').code))"); await p.ev("__app.tab('adv')"); r0 = await rows()
+            rec("K10 「進階」列出這首歌的三個 AI 新風格；沒有的時候有一句說明", none == ([], True) and sorted(r0) == sorted(["留著的", "要移除的", "被暫停的"]) and not await pg.is_visible("#noStyles"), (none, r0))
+            last0 = (await p.ev("__app.history()"))["labels"][-1]; await drop("gone1"); await p.wait("!__app.songs().find(s=>s.active).customs.includes('gone1')"); await p.ev("__app.elements()"); msg = await pg.inner_text("#styleMsg")
+            rec("K10 移除不是目前在用的：清單與風格選單沒有它，目前的風格不變，一筆歷史紀錄", await customs() == ["keep1", "stop1"] and "gone1" not in await styles() and "要移除的" not in await rows() and (await p.ev("__app.project"))["style"] == "riso" and (await p.ev("__app.history()"))["labels"][-2:] == [last0, "移除新風格「要移除的」"] and "要移除的" in msg, (await customs(), await rows(), msg[:60]))
+            await p.ev("__app.undo()"); back = await customs(); await p.ev("__app.redo()"); await p.ev("__app.tab('adv')")
+            rec("K10 還原放回來，重做又移除", back == ["gone1", "keep1", "stop1"] and await customs() == ["keep1", "stop1"], (back, await customs()))
+            await drop("stop1"); await p.wait("!__app.songs().find(s=>s.active).customs.includes('stop1')"); await p.ev("__app.elements()")
+            rec("K10 被暫停的也能移除", await customs() == ["keep1"] and "stop1" not in await styles(), await customs())
+            await use("keep1"); await p.ev("__app.tab('adv')"); await drop("keep1"); await p.wait("__app.songs().find(s=>s.active).customs.length===0"); await p.ev("__app.elements()"); msg = await pg.inner_text("#styleMsg"); pj = await p.ev("__app.project")
+            rec("K10 移除目前在用的：先換回內建風格再移除，訊息有說明，看得到畫面", (await p.ev("__app.sceneInfo()"))["id"] == pj["style"] and pj["style"] in ("swiss", "riso") and "keep1" not in await styles() and "內建" in msg and (await p.shot(0, 0, 1.0)).getbbox() is not None and await rows() == [], (pj["style"], msg[:70]))
+            await p.ev("__app.undo()"); await p.ev("__app.elements()")
+            rec("K10 還原：回到那個新風格", (await p.ev("__app.project"))["style"] == "keep1" and (await p.ev("__app.sceneInfo()"))["id"] == "keep1" and await customs() == ["keep1"], (await p.ev("__app.project"))["style"])
+            await p.ev("__app.redo()"); await p.ev("__app.flushHist()"); await p.reload(); mine = await customs(); await p.ev(f"__app.switchSong({other})")
+            rec("K10 重新載入後這首還是沒有；別首歌的「要移除的」還在", mine == [] and await customs() == ["gone1"] and (await p.ev("__app.sceneInfo()"))["id"] == "gone1", (mine, await customs()))
+        await safe("K10 移除 AI 新風格", k10)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
