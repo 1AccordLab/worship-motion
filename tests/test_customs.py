@@ -7,8 +7,9 @@ K4 還原／重做、重新載入、存成單檔再打開之後都一樣。
 K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進來。
 K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。
 K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作；畫面上有提示說明並可以「仍要試跑」；從別的風格換回來也是先用內建的樣子加提示。
-K8 風格的提示跟著那首歌：同一首歌改一下再還原，提示還在；換到別首歌，上一首的提示與按鈕不在畫面上，換回來又出現。被暫停的是預設以外的內建風格那一份時，墊底用的是同一個風格的內建樣子，還原、重新載入後風格不會變成別的。"""
-import asyncio, sys, pathlib, json
+K8 風格的提示跟著那首歌：同一首歌改一下再還原，提示還在；換到別首歌，上一首的提示與按鈕不在畫面上，換回來又出現。被暫停的是預設以外的內建風格那一份時，墊底用的是同一個風格的內建樣子，還原、重新載入後風格不會變成別的。
+K9 提示指的那一份風格程式不在這首歌裡了（例如還原到貼它之前），提示就拿掉。按「仍要試跑」載回同一個風格自己那一份時，元素調整留著、不記成換風格。被暫停的 AI 新風格從風格選單選它，會有提示與「仍要試跑」。按了還是換不過去時，畫面上的提示換成原因，和實際狀態一致。"""
+import asyncio, sys, pathlib, json, time
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
 
@@ -130,6 +131,38 @@ async def main():
             rec("K8 重新載入後也是剪紙拼貼，有提示", (await p.ev("__app.project"))["style"] == "paper" and (await p.ev("__app.sceneInfo()"))["id"] == "paper" and "暫停使用" in g5, ((await p.ev("__app.project"))["style"], g5[:60]))
             p.log.clear()
         await safe("K8 提示跟著那首歌", k8)
+
+        async def k9():
+            one = [{"name": "主歌", "background": "calm", "subtitle": "none"}]; cfg = lambda d: "```json\n" + json.dumps({"format": "worship-motion-patch/1", **d}) + "\n```"
+            guard = lambda: p.ev("(()=>{const g=document.querySelector('#guard');return g.hidden?'':g.innerText})()")
+            agree = lambda: p.ev("(()=>{const g=document.querySelector('#guard'),n=__app.notices();return (g.hidden?0:g.querySelectorAll('.callout').length)===n.length&&n.every(t=>g.innerText.includes(t))})()")
+            hang = "```js\npatchScene({ label: '晚點卡住的方塊', elements: { box9: { label: '方塊', draw(f, x, e) { if (x.t > 3 && x.t < 4) for (;;) { } f.add(rect(1400, 200, 1500, 300, '#e8d9a8')); } } } });\n```"
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("swiss", sections=one)); await paste(cfg({"set": {"elements": {"rings": {"opacity": 0.5}}}}))
+            await paste(hang); await p.ev("__app.elements()"); away = (await p.ev("__app.sceneInfo()"))["id"]
+            await p.ev("__app.undo()"); await p.ev("__app.elements()"); g1 = await guard(); await p.ev("__app.undo()"); await p.ev("__app.elements()"); g2 = await guard(); pj = await p.ev("__app.project")
+            rec("K9 還原到貼那個改動之前：提示與「仍要試跑」不在了，元素調整還在", away != "swiss" and "仍要試跑" in g1 and "仍要試跑" not in g2 and "載入失敗" not in g2 and pj["style"] == "swiss" and pj.get("elements") == {"rings": {"opacity": 0.5}} and await agree(), (away, g1[:40], g2[:60], pj.get("elements")))
+
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso")); await paste(star("加星星")); await paste(cfg({"set": {"elements": {"sun": {"dx": -100}}}}))
+            await p.ev("addSuspect(fnv(__app.sceneCode()))"); await p.ev("__app.flushHist()"); p.log.clear(); await p.reload(); g1 = await guard(); mid = (await labels(), (await p.ev("__app.project")).get("elements"))
+            await pg.click("#guard button >> text=仍要試跑"); await p.wait("__app.patches().length===1", 60000); await p.ev("__app.elements()"); pj = await p.ev("__app.project"); last = (await p.ev("__app.history()"))["labels"][-1]
+            rec("K9 按「仍要試跑」載回網點印刷自己那一份：改動回來，元素調整留著，不記成換風格，提示消失", "仍要試跑" in g1 and mid == ([], {"sun": {"dx": -100}}) and await labels() == ["加星星"] and pj.get("elements") == {"sun": {"dx": -100}} and not last.startswith("換風格") and "仍要試跑" not in await guard() and await agree(), (g1[:40], mid, pj.get("elements"), last, (await guard())[:40]))
+
+            calm2 = MIN.replace("id: 'bars', name: '色帶'", "id: 'calm2', name: '色帶三'")
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso", sections=one)); n = await p.ev("__app.active()"); assert await p.ev("c=>__app.pasteScene(c)", calm2); await use("riso")
+            await p.ev("addSuspect(fnv(customOf('calm2').code))"); await p.ev("__app.tab('self')"); await pg.select_option("#style", "calm2"); await p.wait("document.querySelector('#guard').innerText.includes('仍要試跑')", 30000); g1 = await guard(); st = (await p.ev("__app.project"))["style"]
+            rec("K9 被暫停的 AI 新風格從選單選它：換不過去，但有提示與「仍要試跑」", "暫停使用" in g1 and st == "riso" and await agree(), (g1[:70], st))
+            await p.ev("__app.newSong({quiet:true})"); g2 = await guard(); await p.ev(f"__app.switchSong({n})"); await p.ev("__app.tab('self')"); await pg.select_option("#style", "calm2"); await p.wait("document.querySelector('#guard').innerText.includes('仍要試跑')", 30000)
+            await pg.click("#guard button >> text=仍要試跑"); await p.wait("__app.project.style==='calm2'&&__app.sceneInfo().id==='calm2'", 60000); await p.ev("__app.elements()")
+            rec("K9 換到別首再回來，從選單再選一次也有「仍要試跑」；按了換得過去，提示消失", "仍要試跑" not in g2 and "仍要試跑" not in await guard() and await agree(), (g2[:40], (await guard())[:40]))
+
+            at = int(time.time() * 1000) + 12000
+            timed = MIN.replace("id: 'bars', name: '色帶'", "id: 'timed', name: '過一陣子卡住'").replace("const y = x.step", "if (Date.now() > %d) for (;;) { } const y = x.step" % at)
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso", sections=one)); ok = await p.ev("c=>__app.pasteScene(c)", timed); await use("riso"); await p.ev("addSuspect(fnv(customOf('timed').code))")
+            await asyncio.sleep(max(0, at / 1000 - time.time()) + 1); await p.ev("__app.tab('self')"); await pg.select_option("#style", "timed"); await p.wait("document.querySelector('#guard').innerText.includes('仍要試跑')", 30000)
+            await pg.click("#guard button >> text=仍要試跑"); await p.wait("document.querySelector('#guard').innerText.includes('換不了風格')&&!document.querySelector('#guard').innerText.includes('已暫停使用')", 90000); g3 = await guard()
+            rec("K9 按「仍要試跑」但試跑又卡住：畫面上的提示換成換不了的原因，和實際狀態一致，風格沒變", ok and "換不了風格" in g3 and (await p.ev("__app.project"))["style"] == "riso" and await agree(), (ok, g3[:90], await p.ev("__app.notices()")))
+            p.log.clear()
+        await safe("K9 提示和實際狀態一致", k9)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
