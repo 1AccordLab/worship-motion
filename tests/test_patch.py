@@ -253,9 +253,9 @@ async def main():
 
         async def i17():
             await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()"); code = txt.split("```js\n", 1)[1].split("\n```", 1)[0]
-            ok, st = await paste(fence("js", code + "\n" + star("t2", "加星星", 1500))); await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); had = await ids(); n0 = len((await p.ev("__app.history()"))["labels"])
+            ok, st = await paste(fence("js", code + "\n" + star("t2", "加星星", 1500))); await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); had = await ids(); last0 = (await p.ev("__app.history()"))["labels"][-1]
             done = await p.ev("__app.deleteElement('t2')"); msg = await pg.inner_text("#elMsg"); await p.shot(2, 0, 1.0)
-            rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and len((await p.ev("__app.history()"))["labels"]) == n0 + 1, (st[:40], had, await ids(), msg[:40]))
+            rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and last0 != "刪除元素「星星」" and (await p.ev("__app.history()"))["labels"][-1] == "刪除元素「星星」", (st[:40], had, await ids(), msg[:40], (await p.ev("__app.history()"))["labels"][-2:]))
             await p.ev("__app.tab('adv')")
             rec("I17 「這首歌的改動」多的是那一筆刪除", await rows() == ["刪除「星星」"], await rows())
             await p.ev("__app.undo()"); await p.shot(2, 0, 1.0)
