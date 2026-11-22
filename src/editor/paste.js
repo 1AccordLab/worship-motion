@@ -1,16 +1,23 @@
 const endless = text => String(text).replace(/。+$/, '');
-const retryStyle = (e, id) => e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(id); } } : null;
+const pausedCopy = (e, id) => e.retry ? { id, hash: e.retry } : null;
+const retryStyle = (e, id, label = '仍要試跑') => e.retry ? { label, fn: async () => { unSuspect(e.retry); notices.delete('scene'); renderNotices(); await applyStyle(id); } } : null;
 // 注意：這首歌在某個內建風格上自己那一份（加了改動的）被暫停使用時，換到那個風格先用內建的樣子，不能讓那個風格整個選不到
+// 注意：id 和目前設定的風格相同＝把同一個風格自己那一份載回來，不是換風格：配色與元素調整要留著
 async function applyStyle(id) {
-  const from = meta().name; let paused = null;
+  const from = meta().name, reload = id === P.style; let paused = null;
   try {
     try { await useStyle(id); }
     catch (e) { const plain = e.retry && BUILTIN.find(b => b.id === id); if (!plain) throw e; await commitScene(await prepareScene(plain.code, false)); paused = e; }
-    const notes = adapt(P, meta()); save(`換風格：${from} → ${meta().name}`); renderStyle(); await refresh(); say('#selfMsg', notes.length ? '換風格：' + notes.join('；') : '');
-    if (paused) notice('scene', `這首歌在「${meta().name}」上的改動載入失敗：${endless(fmtErr(paused))}。先用內建的樣子。`, retryStyle(paused, id));
+    let notes = [];
+    if (reload) reconcileProject(); else notes = adapt(P, meta());
+    save(reload ? `載回「${meta().name}」自己的改動` : `換風格：${from} → ${meta().name}`); renderStyle(); await refresh(); say('#selfMsg', notes.length ? '換風格：' + notes.join('；') : '');
+    if (paused) notice('scene', `這首歌在「${meta().name}」上的改動載入失敗：${endless(fmtErr(paused))}。先用內建的樣子。`, retryStyle(paused, id), pausedCopy(paused, id));
     return true;
   }
-  catch (e) { renderStyle(); say('#selfMsg', '換不了風格：' + fmtErr(e), true); return false; }
+  catch (e) {
+    const text = '換不了風格：' + fmtErr(e);
+    renderStyle(); say('#selfMsg', text, true); notice('scene', text, retryStyle(e, id), pausedCopy(e, id)); return false;
+  }
 }
 function videoCount() { let subs = 0; for (const x of P.sections) subs += slidesOf(x).length; return { n: P.sections.length + subs, subs }; }
 function summaryLine() { const c = videoCount(); return `風格「${meta().name}」・${P.sections.length} 段・會產生 ${c.n} 支影片（背景 ${P.sections.length}、字幕 ${c.subs}）`; }

@@ -72,7 +72,7 @@ function fillSeg(box, opts, val, pick) {
   }
 }
 
-function notice(id, text, action) { notices.set(id, { text, action, song: SONGS[ACT] ? SONGS[ACT].uid : null }); renderNotices(); }
+function notice(id, text, action, about = null) { notices.set(id, { text, action, about, song: SONGS[ACT] ? SONGS[ACT].uid : null }); renderNotices(); }
 function renderNotices() {
   const box = $('#guard'); box.innerHTML = '';
   for (const [id, n] of notices) {

@@ -238,7 +238,7 @@ async function sceneFailed(e) {
     try { await useStyle(fb.id); } catch (x) { await commitScene(await prepareScene(fb.code, false)); }
     const notes = adapt(P, meta()); save('風格出錯，退回內建風格');
     notice('scene', `「${m.name}」${e.message} ${isCustom ? '已停用這個新風格，' : ''}退回內建「${meta().name}」。` + (notes.length ? '（' + notes.join('；') + '）' : ''),
-      isCustom ? { label: '再試一次新風格', fn: async () => { unSuspect(fnv(mine.code)); await applyStyle(mine.id); } } : null);
+      isCustom ? retryStyle({ retry: fnv(mine.code) }, mine.id, '再試一次新風格') : null, isCustom ? { id: mine.id, hash: fnv(mine.code) } : null);
     renderStyle(); refresh();
   } catch (x) { showErr('場景無法恢復：' + fmtErr(x)); }
 }
