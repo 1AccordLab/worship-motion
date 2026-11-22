@@ -249,13 +249,19 @@ async def main():
             assert await p.ev("c=>__app.pasteScene(c)", MIN); await p.ev("__app.tab('self')"); await pg.select_option("#style", "riso"); await p.wait("__app.project.style==='riso'"); kept = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
             ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "bpm": 999})); now = [x for x in await p.ev("__app.songs()") if x["active"]][0]["custom"]
             rec("I18 這首歌存著 AI 的新風格時，沒套用成功的改動不會把它弄丟", ok is False and kept == "bars" and now == "bars" and (await p.ev("__app.sceneInfo()"))["id"] == "riso" and await p.ev("[...document.querySelectorAll('#style option')].some(o=>o.value==='bars')"), (kept, now, st[:80]))
+            await paste(cfg_patch(sections={"副歌": {"background": "peak"}})); was = await proj_now(); code0 = await p.ev("__app.sceneCode()")
+            only, st0 = await paste(cfg_patch(set={"style": "bars"})); both, st = await paste(fence("js", "patchScene({ label: '加星星', elements: { star: { label: '星星', draw(f, x, e) { f.add(circle(1500, 240, 60, '#e8d9a8')); } } } });") + "\n" + cfg_patch(set={"style": "bars"}))
+            rec("I18 新風格沒有歌用到的背景：有沒有畫面的改動都一樣擋下並說明，風格與設定照舊", only is False and both is False and "peak" in st0 and "peak" in st and await proj_now() == was and await p.ev("__app.sceneCode()") == code0, (st0[:80], st[:80]))
+            await clean(); await paste(cfg_patch(set={"elements": {"sun": {"dx": -300}}}, sections={"副歌": {"elements": {"ring": {"visible": False}}}}))
+            ok, st = await paste(fence("js", CROSS2) + "\n" + cfg_patch(set={"style": "bauhaus", "elements": {"sun": None}}, sections={"副歌": {"elements": {"ring": None}}})); pj = await proj_now()
+            rec("I18 換風格又改畫面的回覆裡用 null 拿掉原本的調整：照樣套用，調整不帶過去", ok and pj["style"] == "bauhaus" and not pj.get("elements") and not any(x.get("elements") for x in pj["sections"]) and await labels() == ["加十字架"], (st[:120], pj.get("elements")))
         await safe("I18 同一則回覆換風格又改畫面", i18)
 
         async def i17():
             await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()"); code = txt.split("```js\n", 1)[1].split("\n```", 1)[0]
             ok, st = await paste(fence("js", code + "\n" + star("t2", "加星星", 1500))); await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); had = await ids(); last0 = (await p.ev("__app.history()"))["labels"][-1]
             done = await p.ev("__app.deleteElement('t2')"); msg = await pg.inner_text("#elMsg"); await p.shot(2, 0, 1.0)
-            rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and last0 != "刪除元素「星星」" and (await p.ev("__app.history()"))["labels"][-1] == "刪除元素「星星」", (st[:40], had, await ids(), msg[:40], (await p.ev("__app.history()"))["labels"][-2:]))
+            rec("I17 整份貼回後按星星的「刪除」：真的刪掉，多一筆歷史紀錄", ok and "cross" in had and "t2" in had and done and "t2" not in await ids() and "cross" in await ids() and "刪掉了" in msg and last0 != "刪除元素「星星」" and (await p.ev("__app.history()"))["labels"][-2:] == [last0, "刪除元素「星星」"], (st[:40], had, await ids(), msg[:40], (await p.ev("__app.history()"))["labels"][-2:]))
             await p.ev("__app.tab('adv')")
             rec("I17 「這首歌的改動」多的是那一筆刪除", await rows() == ["刪除「星星」"], await rows())
             await p.ev("__app.undo()"); await p.shot(2, 0, 1.0)
