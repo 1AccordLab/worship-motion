@@ -39,8 +39,9 @@ class Atlas {
   constructor() {
     this.a = new OffscreenCanvas(AW, AH); this.b = new OffscreenCanvas(AW, AH);
     this.ca = this.a.getContext('2d', { willReadFrequently: true }); this.cb = this.b.getContext('2d', { willReadFrequently: true });
-    this.reset();
+    this.reset(); this.stale = AH;
   }
+  /* 注意：換風格會開新的 Worker，畫面那邊的貼圖還留著上一個風格的字，所以一開始就當成整張都用過 */
   /* 注意：畫面那邊的圖集貼圖不會跟著清空；清空前用到多高記在 stale，下一次送出時把那一段一起蓋掉，新字的邊緣才不會取樣到上一批的字 */
   reset() { this.stale = Math.max(this.stale || 0, this.used || 0); this.ca.clearRect(0, 0, AW, AH); this.cb.clearRect(0, 0, AW, AH); this.x = 2; this.y = 2; this.rowH = 0; this.used = 0; this.map = new Map(); this.d0 = 1e9; this.d1 = -1; }
   get(text, { px = 96, weight = 700, font = FONT_CJK, spacing = 0, blur = 0, stroke = 0 } = {}) {
@@ -270,20 +271,26 @@ function defineScene(d) {
 /* 注意：整個背景或字幕是一個函式時，要在它上面加元素，先把它包成清單裡的一項（whole），原本的畫法照舊 */
 function asUseList(def, whole) { if (!def.use) { def.use = [{ id: whole, args: {}, whole: def.draw }]; } return def.use; }
 function placeElement(sc, k, v, bad) {
-  const names = v.in === undefined || v.in === 'all' ? Object.keys(sc.backgrounds) : v.in;
+  const names = v.in === undefined || v.in === 'all' ? Object.keys(sc.backgrounds) : v.in, anchor = v.before !== undefined ? v.before : v.after;
   if (!Array.isArray(names) || !names.length) bad(`elements.${k}.in 要是 "all" 或背景／字幕名稱的陣列，例如 ["peak"]`);
   for (const def of [...Object.values(sc.backgrounds), ...Object.values(sc.subtitles)]) if (def.use) def.use = def.use.filter(u => u.id !== k);
+  let anchored = anchor === undefined;
   for (const name of names) {
     const isBg = !!sc.backgrounds[name], def = sc.backgrounds[name] || sc.subtitles[name];
     if (!def) bad(`elements.${k}.in 的「${name}」不是這個風格的背景或字幕（可用：${[...Object.keys(sc.backgrounds), ...Object.keys(sc.subtitles)].join('、')}）`);
-    const list = asUseList(def, isBg ? 'bg' : 'text'), at = v.before !== undefined ? list.findIndex(u => u.id === v.before) : v.after !== undefined ? list.findIndex(u => u.id === v.after) + 1 || -1 : -1;
-    list.splice(at < 0 ? list.length : at, 0, { id: k, args: v.args && typeof v.args === 'object' ? v.args : {} });
+    const list = asUseList(def, isBg ? 'bg' : 'text'), found = anchor === undefined ? -1 : list.findIndex(u => u.id === anchor);
+    anchored = anchored || found >= 0;
+    list.splice(found < 0 ? list.length : found + (v.before !== undefined ? 0 : 1), 0, { id: k, args: v.args && typeof v.args === 'object' ? v.args : {} });
   }
+  if (!anchored) bad(`elements.${k}.${v.before !== undefined ? 'before' : 'after'} 的「${anchor}」不在要放進去的背景或字幕裡（可用：${Object.keys(sc.elements).join('、')}）`);
 }
+let PATCH_SEG = -1;
+function __wmPatch() { PATCH_SEG++; }
 function patchScene(p) {
   const bad = m => { throw new Error('patchScene：' + m); };
   if (!SCENE) bad('要接在風格程式（defineScene）後面');
   if (!p || typeof p !== 'object') bad('要傳入一個物件');
+  if (!Object.keys(p).some(k => k !== 'label')) bad('改動是空的：至少要有 elements、backgrounds、subtitles、palette 其中一樣');
   const sc = SCENE, adds = [];
   for (const [k, v] of Object.entries(p.palette || {})) { if (typeof v !== 'string' || !HEX6.test(v)) bad(`palette.${k} 要是 "#RRGGBB"`); sc.palette[k] = v; sc.defaults[k] = v; }
   if (p.labels) sc.labels = { ...(sc.labels || Object.fromEntries(Object.keys(sc.defaults).map(k => [k, k]))), ...p.labels };
@@ -297,8 +304,8 @@ function patchScene(p) {
       for (const def of [...Object.values(sc.backgrounds), ...Object.values(sc.subtitles)]) if (def.use) def.use = def.use.filter(u => u.id !== k);
       continue;
     }
-    const fresh = !sc.elements[k];
-    sc.elements[k] = { ...elementOf(k, v, sc.palette, bad), patch: sc.patches.length };
+    const old = sc.elements[k], fresh = !old;
+    sc.elements[k] = { ...elementOf(k, v, sc.palette, bad), patch: sc.patches.length, added: fresh || !!old.added };
     if (fresh) adds.push(k);
     if (fresh || v.in !== undefined) placeElement(sc, k, v, bad);
   }
@@ -315,7 +322,7 @@ function patchScene(p) {
     for (const u of def.use) if (u.id !== UNDER && !u.whole && !sc.elements[u.id]) bad(`${what}.${k} 用到的元素「${u.id}」不存在`);
   }
   const keys = Object.keys(p).filter(k => k !== 'label');
-  sc.patches.push({ label: typeof p.label === 'string' && p.label.trim() ? p.label.trim().slice(0, 40) : `改動 ${sc.patches.length + 1}`, adds, only: keys.length === 1 && keys[0] === 'elements' && adds.length === 1 && Object.keys(p.elements).length === 1 });
+  sc.patches.push({ seg: PATCH_SEG >= 0 ? PATCH_SEG : sc.patches.length, label: typeof p.label === 'string' && p.label.trim() ? p.label.trim().slice(0, 40) : `改動 ${sc.patches.length + 1}`, adds, only: keys.length === 1 && keys[0] === 'elements' && adds.length === 1 && Object.keys(p.elements).length === 1 });
 }
 const usesOf = (b, whole) => b.use ? [...new Set(b.use.map(u => u.id).filter(id => id !== UNDER))] : [whole];
 const wholeIn = defs => Object.values(defs).some(b => !b.use || b.use.some(u => u.whole));
@@ -548,7 +555,7 @@ function __wmReady() {
     look: SCENE.look, textures: SCENE.textures, patches: SCENE.patches,
     backgrounds: list(SCENE.backgrounds, (k, v) => ({ label: v.label || k, jumpBeats: [1, 2, 4, 8].includes(v.jumpBeats) ? v.jumpBeats : 4, uses: usesOf(v, 'bg') })),
     subtitles: list(SCENE.subtitles, (k, v) => ({ label: v.label || k, split: v.split || 'line', seconds: Math.max(2, Math.min(60, v.seconds || (v.split === 'block' ? 16 : 6))), uses: usesOf(v, 'text') })),
-    elements: { ...list(implicitInUse(), (k, label) => ({ label, fixed: isFixed(k), colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, fixed: e.fixed, colors: e.colors, params: e.params, patch: e.patch ?? null })) },
+    elements: { ...list(implicitInUse(), (k, label) => ({ label, fixed: isFixed(k), colors: [], params: {} })), ...list(SCENE.elements, (k, e) => ({ label: e.label, fixed: e.fixed, colors: e.colors, params: e.params, patch: e.patch ?? null, added: !!e.added })) },
     canvas: d.canvas ? { src: String(d.canvas.draw), z: d.canvas.z ?? .5, half: !!d.canvas.half } : null,
     shader: d.shader ? { code: d.shader.code, z: d.shader.z ?? .5 } : null,
     world: d.world ? { z: d.world.z ?? .5 } : null,

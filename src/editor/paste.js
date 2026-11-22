@@ -59,34 +59,51 @@ async function loadPatched(base, list) {
   if (!list.length) { const plain = BUILTIN.find(b => b.code === base); if (plain) { CUSTOM = null; if (SONGS[ACT]) SONGS[ACT].custom = null; await useStyle(plain.id); return; } }
   await commitScene(await prepareScene(joinPatches(base, list), true));
 }
+const patchSegs = () => { const list = meta().patches; return patchParts(sceneCode).patches.map((_, i) => { const calls = list.filter(x => x.seg === i); return { calls, label: calls.map(x => x.label).join('＋') || `改動 ${i + 1}` }; }); };
+function patchSyntaxError(code) { try { new Function(code); return ''; } catch (e) { return e.message; } }
+// 注意：改動是接在風格程式後面、包在一對大括號裡執行的。大括號不成對的改動會把外層接歪，錯誤訊息會指到編輯器自己的程式，所以先單獨檢查語法
 async function applyScenePatches(codes) {
-  const { base, patches } = patchParts(sceneCode), before = joinPatches(base, patches).split('\n').length + 1;
-  try { await loadPatched(base, [...patches, ...codes]); }
-  catch (e) { throw errAt(e.message, e.line > before ? e.line - before : 0); }
-  reconcileProject();
+  const { base, patches } = patchParts(sceneCode), before = joinPatches(base, patches).split('\n').length + 1, fresh = codes.map(withoutPatchMarks);
+  const broken = fresh.map(patchSyntaxError).find(Boolean), syntax = () => errAt(`改動的程式有語法錯誤（大括號可能不成對）：${broken}`);
+  let prep;
+  try { prep = await prepareScene(joinPatches(base, [...patches, ...fresh]), true); }
+  catch (e) { throw broken && !String(e.message).includes(broken) ? syntax() : errAt(e.message, e.line > before ? e.line - before : 0); }
+  const idle = fresh.some((_, i) => !prep.meta.patches.some(x => x.seg === patches.length + i));
+  if (broken || idle) { prep.host.kill(); throw broken ? syntax() : errAt('這段程式沒有真的呼叫 patchScene。改動要寫成 patchScene({ … })，直接寫在最外層。'); }
+  await commitScene(prep); reconcileProject();
+}
+async function dropPatch(i) {
+  const { base, patches } = patchParts(sceneCode);
+  await loadPatched(base, patches.filter((_, k) => k !== i)); reconcileProject();
 }
 async function removePatch(i) {
-  const { base, patches } = patchParts(sceneCode), label = (meta().patches[i] || {}).label || `改動 ${i + 1}`;
-  if (i < 0 || i >= patches.length) return false;
-  try { await loadPatched(base, patches.filter((_, k) => k !== i)); }
+  const segs = patchSegs(); if (!(i >= 0 && i < segs.length)) return false;
+  const label = segs[i].label;
+  try { await dropPatch(i); }
   catch (e) { say('#patchMsg', `拿不掉「${label}」：後面的改動用到它。${fmtErr(e)}`, true); return false; }
-  reconcileProject(); save(`拿掉改動「${label}」`); renderStyle(); await refresh();
+  save(`拿掉改動「${label}」`); renderStyle(); await refresh();
   say('#patchMsg', `「${label}」這個改動移走了。按「↶ 還原」可以放回來。`, 'ok'); return true;
 }
+// 注意：元素是某一段改動單獨加的，就整段拿掉；後面的改動用到它而拿不掉時，改成再加一筆「刪除」的改動
 async function deleteElement(id) {
-  const m = meta(), d = ownProp(m.elements, id); if (!d || d.patch === null) return false;
-  const src = m.patches[d.patch];
-  if (src && src.only) return removePatch(d.patch);
-  try { await applyScenePatches([`patchScene({ label: ${JSON.stringify('刪除「' + d.label + '」')}, elements: { ${JSON.stringify(id)}: null } });`]); }
-  catch (e) { say('#patchMsg', `刪不掉「${d.label}」：${fmtErr(e)}`, true); return false; }
-  save(`刪除元素「${d.label}」`); renderStyle(); await refresh(); return true;
+  const m = meta(), d = ownProp(m.elements, id); if (!d || !d.added) return false;
+  const src = m.patches[d.patch], alone = !!src && src.only && m.patches.filter(x => x.seg === src.seg).length === 1;
+  say('#elMsg', '');
+  let dropped = false;
+  if (alone) { try { await dropPatch(src.seg); dropped = true; } catch (e) { dropped = false; } }
+  if (!dropped) {
+    try { await applyScenePatches([`patchScene({ label: ${JSON.stringify('刪除「' + d.label + '」')}, elements: { ${JSON.stringify(id)}: null } });`]); }
+    catch (e) { say('#elMsg', `刪不掉「${d.label}」：${e.message}`, true); return false; }
+  }
+  save(`刪除元素「${d.label}」`); renderStyle(); await refresh();
+  say('#elMsg', `「${d.label}」刪掉了。按「↶ 還原」可以放回來。`, 'ok'); return true;
 }
 async function pasteAny(text, where = '#cfgStatus') {
   const p = splitPaste(text), before = P ? clone(P) : null, mOld = scene ? meta() : null;
   if (!p.code && !p.json && !p.patches.length && !p.patchJson) { say(where, '沒有套用：' + (p.jsonErr && !/^找不到/.test(p.jsonErr) ? p.jsonErr : '找不到設定、新風格或改動。請在 AI 回覆下方按「複製」，整則貼進來。'), true); return false; }
   let prefix = '';
   if (p.code) {
-    if (!(await pasteScene(p.code))) { say(where, '新風格沒有套用（保留原本的風格）：\n' + lastSceneErr, true); return false; }
+    if (!(await pasteScene(withoutPatchMarks(p.code)))) { say(where, '新風格沒有套用（保留原本的風格）：\n' + lastSceneErr, true); return false; }
     prefix = `新風格「${meta().name}」\n`;
   }
   const kept = { code: sceneCode, custom: CUSTOM, P: clone(P) };
@@ -135,7 +152,7 @@ function aiText() {
   return [`我在用「詩歌影片編輯器」做教會敬拜詩歌的動態背景與字幕影片。請照最下面「只改一部分：改動」的寫法，只給我「改動」，我會整則貼回編輯器。`,
     `我想改：${want || '（我還說不清楚，請你用選擇題問我）'}`, '',
     `【目前的設定】（格式 ${FORMAT}）`, fence + 'json', exportText(), fence, '',
-    `【目前的風格程式】（風格「${meta().name}」）`, fence + 'js', sceneCode, fence, '', patchGuide()].join('\n');
+    `【目前的風格程式】（風格「${meta().name}」）`, fence + 'js', readableScene(sceneCode), fence, '', patchGuide()].join('\n');
 }
 function openingText(short) {
   const name = P && !isFresh() && P.title !== '新的詩歌' ? `「${P.title}」` : '';

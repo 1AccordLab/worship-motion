@@ -85,7 +85,7 @@ function renderNotices() {
 }
 const builtinBase = () => BUILTIN.some(b => b.code === patchParts(sceneCode).base);
 function renderPatches() {
-  const box = $('#patchList'), list = meta().patches; box.innerHTML = '';
+  const box = $('#patchList'), list = patchSegs(); box.innerHTML = '';
   $('#noPatches').hidden = !!list.length;
   list.forEach((pt, i) => {
     const row = document.createElement('div'); row.className = 'patchrow'; row.dataset.i = i;
@@ -109,7 +109,7 @@ function renderGlobal() {
   $('#bpm').value = P.bpm;
   const eb = effBpm();
   $('#bpmNote').textContent = Math.abs(eb - P.bpm) > 0.005 ? `為了讓背景頭尾接得起來，實際用 ${eb.toFixed(2)}。` : '';
-  $('#styleDesc').textContent = (isCustomNow() && !builtinBase() ? withPeriod(m.description || 'AI 做的新風格') : m.description) + (m.patches.length ? `這首歌另外套用了 ${m.patches.length} 個改動（在「進階」可以拿掉）。` : '');
+  $('#styleDesc').textContent = (isCustomNow() && !builtinBase() ? withPeriod(m.description || 'AI 做的新風格') : m.description) + (patchSegs().length ? `這首歌另外套用了 ${patchSegs().length} 個改動（在「進階」可以拿掉）。` : '');
   const box = $('#swatches'); box.innerHTML = '';
   for (const k of palKeys(m)) {
     const l = document.createElement('label'), i = document.createElement('input');
@@ -127,7 +127,7 @@ function renderGlobal() {
     l.append(s, i, v); pb.appendChild(l);
   }
   $('#noParams').hidden = !!Object.keys(m.params).length;
-  $('#sceneName').textContent = `目前風格：${m.name}` + (isCustomNow() && !builtinBase() ? '（AI 做的新風格）' : '（內建）') + (m.patches.length ? `＋${m.patches.length} 個改動` : '') +
+  $('#sceneName').textContent = `目前風格：${m.name}` + (isCustomNow() && !builtinBase() ? '（AI 做的新風格）' : '（內建）') + (patchSegs().length ? `＋${patchSegs().length} 個改動` : '') +
     (m.canvas ? '・自由畫層' + (canvasHost ? '' : '（停用）') : '') + (m.shader ? '・特效層' + (r.shader ? (r.shader.half ? '（半解析度）' : '') : '（停用）') : '') + (m.textures.length ? `・質感 ${m.textures.length} 層` : '');
   renderPatches();
   $('#songNote').hidden = !P.note; $('#songNote').textContent = P.note ? '這首歌的說明：' + P.note : '';
@@ -287,7 +287,7 @@ const pct = v => Math.round(v * 100) + '%', num = v => (+v).toFixed(2).replace(/
 function elementsNow() {
   const m = meta(), s = sec(), adj = clipElements(s), pal = resolvedPal();
   return clipElementIds(s, clipIdx, m).map(id => { const d = m.elements[id], a = adj[id] || {};
-    return { id, label: d.label, fixed: !!d.fixed, added: d.patch !== null && d.patch !== undefined, locked: !!a.locked, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
+    return { id, label: d.label, fixed: !!d.fixed, added: !!d.added, locked: !!a.locked, visible: a.visible !== false, opacity: a.opacity ?? 1, drawn: drawnByElement[id] || 0,
       dx: a.dx ?? 0, dy: a.dy ?? 0, scale: a.scale ?? 1, rotate: a.rotate ?? 0, box: frameBoxes[id] || null,
       params: Object.fromEntries(Object.entries(d.params).map(([k, p]) => [k, { ...p, value: (a.params || {})[k] ?? p.value }])),
       colors: Object.fromEntries(d.colors.map(k => [k, (a.colors || {})[k] || pal[k]])) }; });

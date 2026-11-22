@@ -130,17 +130,26 @@ function pairsOf(s, m = meta()) {
   return Array.from({ length: n }, (_, i) => ({ a: A[i] || '', b: B[i] || '' }));
 }
 const slidesOf = (s, m = meta()) => pairsOf(s, m).map(x => x.a || x.b);
+// 注意：JSON 裡的 "__proto__" 會被當成一般的鍵讀進來，照著合併就會改到所有物件共用的原型
+const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype'];
+function unsafeKey(o) {
+  if (!o || typeof o !== 'object') return null;
+  for (const [k, v] of Object.entries(o)) { if (UNSAFE_KEYS.includes(k)) return k; const deep = unsafeKey(v); if (deep) return deep; }
+  return null;
+}
 function mergeDeep(base, add) {
   for (const [k, v] of Object.entries(add)) {
+    if (UNSAFE_KEYS.includes(k)) continue;
     if (v === null) delete base[k];
-    else if (isObj(v) && isObj(base[k])) mergeDeep(base[k], v);
+    else if (isObj(v) && isObj(ownProp(base, k))) mergeDeep(base[k], v);
     else base[k] = isObj(v) || Array.isArray(v) ? clone(v) : v;
   }
   return base;
 }
 /* 注意：改動只列有變的地方，null 代表刪掉；合併完還是交給 normalize 檢查，錯誤訊息才會和整份設定一樣 */
 function patchedConfig(project, patch) {
-  const raw = clone(project), errors = [];
+  const raw = clone(project), errors = [], danger = unsafeKey(patch);
+  if (danger) return { raw, errors: [`改動裡不能有「${danger}」這個鍵。`] };
   for (const k of Object.keys(patch)) if (!['format', 'set', 'sections'].includes(k)) errors.push(`改動裡的「${k}」看不懂：只能有 set（整首歌的設定）和 sections（依段落名稱）。`);
   if (patch.set !== undefined) {
     if (!isObj(patch.set)) errors.push('set 要是物件，例如 {"bpm":96}。');
@@ -154,8 +163,9 @@ function patchedConfig(project, patch) {
       if (!isObj(v)) { errors.push(`sections 的「${name}」要是物件，或用 null 代表刪掉這一段。`); continue; }
       const { after, before, ...fields } = v;
       if (hits.length) { for (const s of hits) mergeDeep(s, fields); continue; }
-      const anchor = before !== undefined ? raw.sections.findIndex(s => s.name === before) : after !== undefined ? raw.sections.findIndex(s => s.name === after) + 1 || -1 : -1;
-      raw.sections.splice(anchor < 0 ? raw.sections.length : anchor, 0, mergeDeep({ name }, fields));
+      const beside = before !== undefined ? before : after, at = beside === undefined ? -1 : raw.sections.findIndex(s => s.name === beside);
+      if (beside !== undefined && at < 0) { errors.push(`新段落「${name}」的 ${before !== undefined ? 'before' : 'after'} 指到的段落「${beside}」不存在（目前有：${raw.sections.map(s => s.name).join('、')}）。`); continue; }
+      raw.sections.splice(at < 0 ? raw.sections.length : at + (before !== undefined ? 0 : 1), 0, mergeDeep({ name }, fields));
     }
   }
   return { raw, errors };
@@ -168,8 +178,9 @@ function splitPaste(text) {
     try { return JSON.parse(q.slice(a, b + 1)); } catch (e) { throw new Error('設定的格式有錯：' + e.message + '（常見原因：少了逗號、多了逗號、用了全形引號）'); } };
   const list = blocks.length ? blocks : [t];
   for (const b of list) {
-    if (/\bdefineScene\s*\(/.test(b)) { out.code = out.code || b; continue; }
-    if (/\bpatchScene\s*\(/.test(b)) { out.patches.push(b.trim()); continue; }
+    const bare = withoutComments(b);
+    if (/\bdefineScene\s*\(/.test(bare)) { out.code = out.code || b; continue; }
+    if (/\bpatchScene\s*\(/.test(bare)) { out.patches.push(b.trim()); continue; }
     if (out.json) continue;
     try { out.json = tryJSON(b); } catch (e) { out.jsonErr = e.message; }
   }
