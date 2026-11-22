@@ -5,7 +5,8 @@ K2 一首歌可以有好幾個 AI 新風格：都在風格清單，顯示風格�
 K3 每個風格各自記得自己的改動，換來換去都還在；拿掉內建風格的全部改動不影響別的風格。
 K4 還原／重做、重新載入、存成單檔再打開之後都一樣。
 K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進來。
-K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。"""
+K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。
+K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -81,6 +82,26 @@ async def main():
             await p.ev("__app.flushHist()"); await p.reload()
             rec("K6 重新載入後也一樣", (await p.ev("__app.saveState()"))["saved"] is True and list(await styles()) == order, ((await p.ev("__app.saveState()"))["text"], list(await styles())[-3:]))
         await safe("K6 還原後的存檔狀態與順序", k6)
+
+        async def k7():
+            late = MIN.replace("id: 'bars', name: '色帶'", "id: 'late', name: '晚點卡住'").replace("const y = x.step", "if (x.t > 3 && x.t < 4) for (;;) { } const y = x.step")
+            hang = "```js\npatchScene({ label: '晚點卡住的星星', elements: { star: { label: '星星', draw(f, x, e) { if (x.t > 3 && x.t < 4) for (;;) { } f.add(circle(1500, 240, 60, '#e8d9a8')); } } } });\n```"
+            assert "id: 'late'" in late and "for (;;)" in late
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("swiss", sections=[{"name": "主歌", "background": "calm", "subtitle": "none"}]))
+            await paste(hang); await p.ev("c=>__app.pasteScene(c)", late)
+            for _ in range(5):
+                try: await asyncio.wait_for(p.grab(3.5), 90); break
+                except Exception: pass
+            before = (await p.ev("__app.sceneInfo()"))["id"]; await p.ev("__app.flushHist()"); p.log.clear(); await pg.reload()
+            try: await pg.wait_for_function(READY, timeout=45000); up = True
+            except Exception: up = False
+            info = await p.ev("__app.sceneInfo()") if up else None
+            rec("K7 預設風格那一份被暫停使用時重新載入：編輯器開得起來，用的是內建風格", up and info and info["id"] == "swiss" and await p.ev("__app.songs().length") > 0, (before, up, info and info["id"], p.log[:2]))
+            if up:
+                await p.ev("__app.newSong({quiet:true})"); im = await p.shot(0, 0, 1.0)
+                rec("K7 開起來之後可以做新的一首、看得到畫面", im.getbbox() is not None and (await p.ev("__app.project"))["title"] == "新的詩歌", (await p.ev("__app.project"))["title"])
+            p.log.clear()
+        await safe("K7 被暫停的那一份不會讓編輯器開不起來", k7)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
