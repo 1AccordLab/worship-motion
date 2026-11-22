@@ -94,14 +94,26 @@ function renderPatches() {
     row.append(name, drop); box.appendChild(row);
   });
 }
+const aiStyles = () => CUSTOMS.filter(c => !BUILTIN.some(b => b.id === c.id));
+const styleLabel = c => c.id === meta().id ? meta().name : c.name || styleNameIn(c.code) || c.id;
+function renderStyles() {
+  const box = $('#styleList'), list = aiStyles(); box.innerHTML = '';
+  $('#noStyles').hidden = !!list.length;
+  for (const c of list) {
+    const row = document.createElement('div'); row.className = 'stylerow'; row.dataset.id = c.id;
+    const name = document.createElement('span'); name.className = 'stylename'; name.textContent = styleLabel(c);
+    const drop = document.createElement('button'); drop.type = 'button'; drop.className = 'small styledrop'; drop.textContent = '移除'; drop.title = '從這首歌移除這個新風格（可以還原）'; drop.onclick = () => removeStyle(c.id);
+    row.append(name, drop); box.appendChild(row);
+  }
+}
 const isCustomNow = () => { const c = scene ? customOf(meta().id) : null; return !!c && sceneCode === c.code; };
 function renderStyle() {
   const sel = $('#style'); sel.innerHTML = '';
   const list = BUILTIN.map(b => [b.id, b.id === meta().id ? meta().name : b.name]);
-  for (const c of CUSTOMS) if (!BUILTIN.some(b => b.id === c.id)) list.push([c.id, 'AI 新風格：' + (c.id === meta().id ? meta().name : c.name || styleNameIn(c.code) || c.id)]);
+  for (const c of aiStyles()) list.push([c.id, 'AI 新風格：' + styleLabel(c)]);
   for (const [k, v] of list) { const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o); }
   sel.value = meta().id;
-  for (const k of ['#elMsg', '#patchMsg']) say(k, '');
+  for (const k of ['#elMsg', '#patchMsg', '#styleMsg']) say(k, '');
 }
 function renderGlobal() {
   const m = meta();
@@ -130,7 +142,7 @@ function renderGlobal() {
   $('#noParams').hidden = !!Object.keys(m.params).length;
   $('#sceneName').textContent = `目前風格：${m.name}` + (isCustomNow() && !builtinBase() ? '（AI 做的新風格）' : '（內建）') + (patchSegs().length ? `＋${patchSegs().length} 個改動` : '') +
     (m.canvas ? '・自由畫層' + (canvasHost ? '' : '（停用）') : '') + (m.shader ? '・特效層' + (r.shader ? (r.shader.half ? '（半解析度）' : '') : '（停用）') : '') + (m.textures.length ? `・質感 ${m.textures.length} 層` : '');
-  renderPatches();
+  renderPatches(); renderStyles();
   $('#songNote').hidden = !P.note; $('#songNote').textContent = P.note ? '這首歌的說明：' + P.note : '';
   renderSaveState();
 }

@@ -116,6 +116,21 @@ async function deleteElement(id) {
   save(`刪除元素「${d.label}」`); renderStyle(); await refresh();
   say('#elMsg', `「${d.label}」刪掉了。按「↶ 還原」可以放回來。`, 'ok'); return true;
 }
+// 注意：正在用的那個要先換到內建風格才能移除（它的背景、字幕名稱與調整跟著 adapt 換掉）；提示若是在講這一份，一起拿掉
+async function removeStyle(id) {
+  const c = aiStyles().find(x => x.id === id); if (!c || exporting) return false;
+  const name = styleLabel(c), inUse = P.style === id, about = (notices.get('scene') || {}).about;
+  try {
+    if (inUse) {
+      try { await useStyle(BUILTIN[0].id); } catch (e) { await commitScene(await prepareScene(BUILTIN[0].code, false)); }
+      adapt(P, meta());
+    }
+  } catch (e) { say('#styleMsg', `移除不了「${name}」：${fmtErr(e)}`, true); return false; }
+  dropCustom(id);
+  if (about && about.id === id) { notices.delete('scene'); renderNotices(); }
+  save(`移除新風格「${name}」`); renderStyle(); await refresh();
+  say('#styleMsg', `「${name}」已經從這首歌移除${inUse ? `，這首歌先換回內建「${meta().name}」` : ''}。按「↶ 還原」可以放回來。`, 'ok'); return true;
+}
 async function pasteAny(text, where = '#cfgStatus') {
   const p = splitPaste(text), before = P ? clone(P) : null, mOld = scene ? meta() : null;
   if (!p.code && !p.json && !p.patches.length && !p.patchJson) { say(where, '沒有套用：' + (p.jsonErr && !/^找不到/.test(p.jsonErr) ? p.jsonErr : '找不到設定、新風格或改動。請在 AI 回覆下方按「複製」，整則貼進來。'), true); return false; }
