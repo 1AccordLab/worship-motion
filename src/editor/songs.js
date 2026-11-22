@@ -1,10 +1,10 @@
 let uidN = 0;
 const newUid = () => 's' + Date.now().toString(36) + (uidN++).toString(36) + Math.random().toString(36).slice(2, 6);
-const asCustom = c => c && c.code ? { id: String(c.id || 'custom').toLowerCase(), code: withPatchCalls(c.code) } : null;
+const asCustom = c => c && c.code ? { id: String(c.id || 'custom').toLowerCase(), code: withPatchCalls(c.code), ...(typeof c.name === 'string' && c.name ? { name: c.name } : {}) } : null;
 function customsFrom(x) {
   const out = [];
   for (const c of [...(Array.isArray(x.customs) ? x.customs : []), x.custom].map(asCustom)) if (c && !out.some(o => o.id === c.id)) out.push(c);
-  return out;
+  return byId(out);
 }
 const mkSong = x => ({ uid: x.uid || newUid(), hist: x.hist || null, P: x.P || null, customs: customsFrom(x), fresh: x.fresh || null, orig: x.orig || null, cur: 0, clipIdx: 0 });
 const songFromFile = e => mkSong({ P: e.project, customs: e.scenes, custom: e.scene });
@@ -80,7 +80,7 @@ async function activateInner(i, first) {
       catch (e) { notice('scene', `「${raw.title || ''}」的風格「${want}」載入失敗：${fmtErr(e)}。先用內建「${BUILTIN[0].name}」。`, e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(want); } } : null); }
     } else notice('scene', `「${raw.title || ''}」用的風格「${want}」找不到（新風格的程式沒有一起存），先用內建「${BUILTIN[0].name}」。`);
     if (!ok && !(scene && scene.code === BUILTIN[0].code)) await useStyle(BUILTIN[0].id);
-  } else if (src.custom && !(customOf(want) && customOf(want).code === src.code)) putCustom({ id: want, code: src.code });
+  } else if (src.custom && !(customOf(want) && customOf(want).code === src.code)) putCustom({ id: want, code: src.code, name: meta().name });
   let n = normalize(raw, meta(), meta().id);
   if (!n.project) { const q = clone(raw); adapt(q, meta()); n = normalize(q, meta(), meta().id); }
   P = n.project || (() => { const q = clone(SAMPLE); adapt(q, meta()); return normalize(q, meta(), meta().id).project; })();

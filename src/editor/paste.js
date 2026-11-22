@@ -124,7 +124,7 @@ async function pasteAny(text, where = '#cfgStatus') {
     }
     catch (e) {
       const switched = sceneCode !== kept.code; await undoPatches(kept, switched);
-      say(where, '改動沒有套用（保留原本的樣子）：\n' + (switched ? `這則回覆同時要換成風格「${target}」，畫面的改動是接在新風格後面執行的。建議請 AI 分兩次：先只換風格，貼上後再按一次「複製給 AI」，再請它加東西。\n` : '') + fmtErr(e), true); return false;
+      say(where, (p.code ? '新風格已經套用，但改動沒有套用：\n' : '改動沒有套用（保留原本的樣子）：\n') + (switched ? `這則回覆同時要換成風格「${target}」，畫面的改動是接在新風格後面執行的。建議請 AI 分兩次：先只換風格，貼上後再按一次「複製給 AI」，再請它加東西。\n` : '') + fmtErr(e), true); return false;
     }
     prefix += `改動：${meta().patches.slice(n0).map(x => '「' + x.label + '」').join('、')}\n`;
   }

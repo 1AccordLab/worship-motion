@@ -3,7 +3,7 @@ const snapCustoms = st => [st.c, ...(Array.isArray(st.o) ? st.o : [])].filter(Bo
 const snapHashes = s => snapCustoms(JSON.parse(s)).map(c => c.h);
 // 注意：快照是字串，會直接拿來比「和上一筆一樣嗎」「是不是打開時的樣子」，所以同樣的內容要產生同樣的字串：風格程式依 id 排序，只有一份時只寫 c
 function snapOf(sg) {
-  const list = [...(sg.customs || [])].sort((a, b) => a.id < b.id ? -1 : 1).map(c => { const h = fnv(c.code); CODES[h] = c.code; return { id: c.id, h }; });
+  const list = byId(sg.customs || []).map(c => { const h = fnv(c.code); CODES[h] = c.code; return { id: c.id, h }; });
   return JSON.stringify(list.length > 1 ? { P: sg.P, c: list[0], o: list.slice(1) } : { P: sg.P, c: list[0] || null });
 }
 function histOf(sg) { if (!sg.hist || !Array.isArray(sg.hist.stack) || !sg.hist.stack.length) sg.hist = { stack: [{ label: '打開這首歌', at: Date.now(), s: snapOf(sg) }], pos: 0 }; sg.hist.pos = Math.max(0, Math.min(sg.hist.pos | 0, sg.hist.stack.length - 1)); return sg.hist; }
@@ -64,7 +64,7 @@ async function restoreSnap(e) {
   const sg = SONGS[ACT], st = JSON.parse(e.s);
   restoring = true;
   try {
-    sg.P = st.P; sg.customs = customsFrom({ customs: snapCustoms(st).map(c => ({ id: c.id, code: CODES[c.h] })) }); sg.cur = cur; sg.clipIdx = 0;
+    sg.P = st.P; const named = sg.customs || []; sg.customs = customsFrom({ customs: snapCustoms(st).map(c => ({ id: c.id, code: CODES[c.h], name: (named.find(k => k.id === c.id) || {}).name })) }); sg.cur = cur; sg.clipIdx = 0;
     await activate(ACT, { noStash: true });
   } finally { restoring = false; }
 }

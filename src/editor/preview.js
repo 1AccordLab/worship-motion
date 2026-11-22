@@ -207,7 +207,7 @@ async function commitScene(prep) {
   scene = prep.host; sceneCode = prep.code; r.shader = null; r.canvasOn = false; clip = null;
   ['shader', 'canvas', 'scene'].forEach(k => notices.delete(k));
   shaderInfo = prep.meta.shader ? prep.shader : null;
-  if (prep.custom) putCustom({ id: prep.meta.id, code: prep.code });
+  if (prep.custom) putCustom({ id: prep.meta.id, code: prep.code, name: prep.meta.name });
   sceneToRenderer(r);
   if (shaderInfo) {
     if (shaderInfo.pipeline) { r.shader = { pipeline: shaderInfo.pipeline, half: shaderInfo.mode === 'half' };
@@ -235,7 +235,7 @@ async function sceneFailed(e) {
   if (isCustom) addSuspect(fnv(sceneCode));
   const fb = BUILTIN.find(b => b.id !== m.id) || BUILTIN[0];
   try {
-    await commitScene(await prepareScene(fb.code, false));
+    try { await useStyle(fb.id); } catch (x) { await commitScene(await prepareScene(fb.code, false)); }
     const notes = adapt(P, meta()); save('風格出錯，退回內建風格');
     notice('scene', `「${m.name}」${e.message} ${isCustom ? '已停用這個新風格，' : ''}退回內建「${meta().name}」。` + (notes.length ? '（' + notes.join('；') + '）' : ''),
       isCustom ? { label: '再試一次新風格', fn: async () => { unSuspect(fnv(mine.code)); await applyStyle(mine.id); } } : null);

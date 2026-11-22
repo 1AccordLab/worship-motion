@@ -98,7 +98,7 @@ const isCustomNow = () => { const c = scene ? customOf(meta().id) : null; return
 function renderStyle() {
   const sel = $('#style'); sel.innerHTML = '';
   const list = BUILTIN.map(b => [b.id, b.id === meta().id ? meta().name : b.name]);
-  for (const c of CUSTOMS) if (!BUILTIN.some(b => b.id === c.id)) list.push([c.id, 'AI 新風格：' + (c.id === meta().id ? meta().name : styleNameIn(c.code) || c.id)]);
+  for (const c of CUSTOMS) if (!BUILTIN.some(b => b.id === c.id)) list.push([c.id, 'AI 新風格：' + (c.id === meta().id ? meta().name : c.name || styleNameIn(c.code) || c.id)]);
   for (const [k, v] of list) { const o = document.createElement('option'); o.value = k; o.textContent = v; sel.appendChild(o); }
   sel.value = meta().id;
   for (const k of ['#elMsg', '#patchMsg']) say(k, '');

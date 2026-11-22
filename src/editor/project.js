@@ -199,7 +199,9 @@ const JUMP_WORD = { 1: '很快', 2: '快', 4: '中', 8: '慢' };
 const bgLabel = (m, k) => (m && m.backgrounds[k] || {}).label || k;
 const subLabel = (m, k) => k === 'none' ? '不要' : ((m && m.subtitles[k]) || {}).label || k;
 function pairSections(a, b) {
-  const used = new Set(), from = b.map(s => { const i = a.findIndex((o, k) => !used.has(k) && o.name === s.name); if (i >= 0) used.add(i); return i; });
+  const used = new Set(); let last = -1;
+  const free = (s, after) => a.findIndex((o, k) => k > after && !used.has(k) && o.name === s.name);
+  const from = b.map(s => { let i = free(s, last); if (i < 0) i = free(s, -1); if (i >= 0) { used.add(i); last = i; } return i; });
   if (a.length === b.length) from.forEach((i, j) => { if (i < 0 && !used.has(j)) { from[j] = j; used.add(j); } });
   return { from, gone: a.filter((_, k) => !used.has(k)) };
 }

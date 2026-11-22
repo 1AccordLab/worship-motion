@@ -55,8 +55,10 @@ const errAt = (msg, line) => Object.assign(new Error(msg), { line: line || 0 });
 let P = null, cur = 0, clipIdx = 0, r = null, clip = null, scene = null, canvasHost = null, CUSTOMS = [], sceneCode = '';
 let SONGS = [], ACT = 0;
 const customOf = id => CUSTOMS.find(c => c.id === id) || null;
-function setCustoms(list) { CUSTOMS = list; if (SONGS[ACT]) SONGS[ACT].customs = list; }
-const putCustom = c => setCustoms(customOf(c.id) ? CUSTOMS.map(x => x.id === c.id ? c : x) : [...CUSTOMS, c]);
+// 注意：清單一律依 id 排序。存檔狀態的雜湊、歷史快照、風格選單都照清單的順序，順序要和「怎麼加進來的」無關
+const byId = list => [...list].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+function setCustoms(list) { CUSTOMS = byId(list); if (SONGS[ACT]) SONGS[ACT].customs = CUSTOMS; }
+const putCustom = c => setCustoms([...CUSTOMS.filter(x => x.id !== c.id), c]);
 const dropCustom = id => setCustoms(CUSTOMS.filter(x => x.id !== id));
 const mainCustom = s => (s.customs || []).find(c => c.id === (s.P || {}).style) || (s.customs || [])[(s.customs || []).length - 1] || null;
 const styleNameIn = code => { const m = /\bname\s*:\s*(['"`])((?:(?!\1).)+)\1/.exec(code.slice(Math.max(0, code.indexOf('defineScene(')))); return m ? m[2] : ''; };

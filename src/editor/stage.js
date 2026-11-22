@@ -20,7 +20,7 @@ function selectionNow() {
 }
 function setSelection(ids) {
   const all = elementsNow(); selEls = [...new Set(ids)].filter(id => selectable(all.find(e => e.id === id)));
-  lastPick = null; syncElementRows(); renderStage();
+  lastPick = null; syncElementRows(); renderStage(); refreshHover();
 }
 function selectElement(id) {
   if (!id) { setSelection([]); return true; }
@@ -138,8 +138,14 @@ function clickSelect(drag) {
   if (drag.add) { setSelection(isSelected(top) ? selEls.filter(id => id !== top) : [...selEls, top]); return; }
   pickOnly(clickTarget(drag.stack, drag.p0), drag.p0);
 }
+// 注意：選取變了或拖完之後滑鼠可能沒動，不會有 pointermove；提示要自己用最後的位置重算
+function refreshHover() { if (!hoverWant) return; hoverWant = { ...hoverWant }; if (!hoverBusy) runHover(); }
 function finishDrag(drag, keep) {
-  if (drag.over) return; drag.over = true;
+  if (drag.over) return;
+  endDrag(drag, keep); hoverWant = editOn ? drag.last : null; refreshHover();
+}
+function endDrag(drag, keep) {
+  drag.over = true;
   removeEventListener('pointermove', drag.onMove); removeEventListener('pointerup', drag.onUp); removeEventListener('pointercancel', drag.onCancel);
   if (stageDrag === drag) stageDrag = null;
   document.body.classList.remove('stagedrag'); showGuides(null, null); $('#marquee').hidden = true;
