@@ -73,13 +73,16 @@ async function activateInner(i, first) {
   ACT = Math.max(0, Math.min(i, SONGS.length - 1)); const sg = SONGS[ACT]; CUSTOMS = sg.customs || [];
   const raw = sg.P && typeof sg.P === 'object' ? sg.P : clone(SAMPLE);
   const want = raw.style ? String(raw.style).toLowerCase() : BUILTIN[0].id, src = sourceFor(want);
+  // 注意：commitScene 會清掉風格的提示，所以載入失敗的提示要等墊底的內建風格載入之後才放
+  let warn = null; notices.delete('scene');
   if (!(scene && src && scene.code === src.code)) {
     let ok = false;
     if (src) {
       try { await useStyle(want); ok = true; }
-      catch (e) { notice('scene', `「${raw.title || ''}」的風格「${want}」載入失敗：${fmtErr(e)}。先用內建「${BUILTIN[0].name}」。`, e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(want); } } : null); }
-    } else notice('scene', `「${raw.title || ''}」用的風格「${want}」找不到（新風格的程式沒有一起存），先用內建「${BUILTIN[0].name}」。`);
+      catch (e) { warn = [`「${raw.title || ''}」的風格「${want}」載入失敗：${endless(fmtErr(e))}。先用內建「${BUILTIN[0].name}」。`, retryStyle(e, want)]; }
+    } else warn = [`「${raw.title || ''}」用的風格「${want}」找不到（新風格的程式沒有一起存），先用內建「${BUILTIN[0].name}」。`, null];
     if (!ok && !(scene && scene.code === BUILTIN[0].code)) await commitScene(await prepareScene(BUILTIN[0].code, false));
+    if (warn) notice('scene', ...warn);
   } else if (src.custom && !(customOf(want) && customOf(want).code === src.code)) putCustom({ id: want, code: src.code, name: meta().name });
   let n = normalize(raw, meta(), meta().id);
   if (!n.project) { const q = clone(raw); adapt(q, meta()); n = normalize(q, meta(), meta().id); }

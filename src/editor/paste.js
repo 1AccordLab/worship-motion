@@ -1,6 +1,15 @@
+const endless = text => String(text).replace(/。+$/, '');
+const retryStyle = (e, id) => e.retry ? { label: '仍要試跑', fn: async () => { unSuspect(e.retry); notices.delete('scene'); await applyStyle(id); } } : null;
+// 注意：這首歌在某個內建風格上自己那一份（加了改動的）被暫停使用時，換到那個風格先用內建的樣子，不能讓那個風格整個選不到
 async function applyStyle(id) {
-  const from = meta().name;
-  try { await useStyle(id); const notes = adapt(P, meta()); save(`換風格：${from} → ${meta().name}`); renderStyle(); await refresh(); say('#selfMsg', notes.length ? '換風格：' + notes.join('；') : ''); return true; }
+  const from = meta().name; let paused = null;
+  try {
+    try { await useStyle(id); }
+    catch (e) { const plain = e.retry && BUILTIN.find(b => b.id === id); if (!plain) throw e; await commitScene(await prepareScene(plain.code, false)); paused = e; }
+    const notes = adapt(P, meta()); save(`換風格：${from} → ${meta().name}`); renderStyle(); await refresh(); say('#selfMsg', notes.length ? '換風格：' + notes.join('；') : '');
+    if (paused) notice('scene', `這首歌在「${meta().name}」上的改動載入失敗：${endless(fmtErr(paused))}。先用內建的樣子。`, retryStyle(paused, id));
+    return true;
+  }
   catch (e) { renderStyle(); say('#selfMsg', '換不了風格：' + fmtErr(e), true); return false; }
 }
 function videoCount() { let subs = 0; for (const x of P.sections) subs += slidesOf(x).length; return { n: P.sections.length + subs, subs }; }

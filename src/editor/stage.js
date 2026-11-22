@@ -138,12 +138,12 @@ function clickSelect(drag) {
   if (drag.add) { setSelection(isSelected(top) ? selEls.filter(id => id !== top) : [...selEls, top]); return; }
   pickOnly(clickTarget(drag.stack, drag.p0), drag.p0);
 }
-// 注意：選取變了或拖完之後滑鼠可能沒動，不會有 pointermove；提示要自己用最後的位置重算。拖到預覽外面時 pointerleave 早就發生過，放開的位置在外面就不能再叫出提示；觸控沒有「停在上面」，也不顯示
+// 注意：選取變了或拖完之後滑鼠可能沒動，不會有 pointermove；提示要自己用最後的位置重算。拖到預覽外面時 pointerleave 早就發生過，放開時滑鼠不在預覽上（在外面、或預覽那一塊被別的東西蓋住）就不能再叫出提示；觸控沒有「停在上面」，也不顯示
 function refreshHover() { if (!hoverWant) return; hoverWant = { ...hoverWant }; if (!hoverBusy) runHover(); }
 function finishDrag(drag, keep) {
   if (drag.over) return;
   endDrag(drag, keep);
-  hoverWant = editOn && !drag.touch && inBox([0, 0, W, H], drag.last) ? drag.last : null;
+  hoverWant = editOn && !drag.touch && $('#stageOvl').matches(':hover') ? drag.last : null;
   if (hoverWant) refreshHover(); else if (!hoverBusy) setHover(null);
 }
 function endDrag(drag, keep) {
