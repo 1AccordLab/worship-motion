@@ -9,7 +9,12 @@ I6 改動寫錯（語法錯、執行錯、指到不存在的背景）會擋下�
 I7 「進階」分頁列出這首歌的改動，可以單獨拿掉；全部拿掉就回到風格原本的樣子；拿掉可以還原。
 I8 元素清單上 AI 加的元素可以刪除，內建的元素沒有刪除鈕。
 I9 存成單檔、重新載入後改動都還在。
-I10 整個背景是一個函式的風格（examples/minimal.js 的「色帶」）也能加元素；原本「完整設定」「完整新風格」的貼法照常。"""
+I10 整個背景是一個函式的風格（examples/minimal.js 的「色帶」）也能加元素；原本「完整設定」「完整新風格」的貼法照常。
+I11 AI 加的元素被後面的改動用到時，按「刪除」照樣刪得掉；真的刪不掉時，在「畫面元素」分頁當場說明原因。改寫內建元素不算 AI 加的，沒有「刪除」。
+I12 一個 js 區塊呼叫好幾次 patchScene：清單上是同一列，「拿掉」是整列一起拿掉，不會拿到別列。
+I13 「複製給 AI」的風格程式裡沒有編輯器內部的標記；AI 的回覆裡出現那種標記也照常套用，之後的改動貼得進來、前面的拿得掉。
+I14 設定的改動裡有 __proto__ 這類鍵：不套用並說明，不影響其他物件與別首歌。
+I15 指到不存在的東西都擋下：after／before 指到不存在的元素或段落、區塊裡沒有真的呼叫 patchScene、空的 patchScene、大括號不成對；註解裡提到 defineScene 的區塊仍然當成改動。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -144,6 +149,73 @@ async def main():
             ok = await p.ev("c=>__app.pasteScene(c)", PARTS)
             rec("I10 貼完整的新風格照常套用，是全新的風格（沒有改動）", ok and (await p.ev("__app.sceneInfo()"))["id"] == "parts" and await labels() == [], await labels())
         await safe("I10 整塊的背景與原本的貼法", i10)
+
+        async def clean():
+            for i in reversed(range(await p.ev("__app.patches().length"))): await p.ev(f"__app.removePatch({i})")
+            assert await p.ev("x=>__app.load(x)", proj("riso")); assert await labels() == []
+        async def rows(): return await p.ev("[...document.querySelectorAll('#patchList .patchrow .patchname')].map(x=>x.textContent)")
+
+        async def i11():
+            await clean(); await paste(fence("js", CROSS)); ok, st = await paste(fence("js", DAWN) + "\n" + cfg_patch(sections={"副歌": {"background": "dawn"}}))
+            await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); n0 = len((await p.ev("__app.history()"))["labels"])
+            await pg.click("#elList .elrow[data-id=cross] .eldelete"); await p.wait("__app.patches().length===3"); await p.shot(2, 0, 1.0)
+            rec("I11 十字架被破曉背景用到：按「刪除」照樣刪掉，多一筆歷史紀錄", ok and await ids() == ["sun"] and len((await p.ev("__app.history()"))["labels"]) == n0 + 1, (await ids(), await labels()))
+            await p.ev("__app.undo()"); await p.shot(2, 0, 1.0)
+            rec("I11 還原後十字架回來", await ids() == ["sun", "cross"], await ids())
+            await clean(); ok, st = await paste(fence("js", "patchScene({ label: '只有星星的背景', elements: { star: { label: '星星', draw(f, x, e) { f.add(circle(1500, 240, 60, RS.yel)); } } }, backgrounds: { solo: { label: '獨角', use: ['star'] } } });") + "\n" + cfg_patch(sections={"副歌": {"background": "solo"}}))
+            await p.ev("__app.select(2,0)"); await p.ev("__app.tab('el')"); keep = await labels()
+            await pg.click("#elList .elrow[data-id=star] .eldelete"); await p.wait("document.querySelector('#elMsg').textContent.trim().length>0"); msg = await pg.inner_text("#elMsg")
+            rec("I11 刪了會讓背景一個元素都不剩：刪不掉，在「畫面元素」分頁當場說明", ok and "刪不掉" in msg and await pg.is_visible("#elMsg") and await labels() == keep, (st[:40], msg[:120]))
+            await clean(); await paste(fence("js", MOON)); await p.ev("__app.select(2,0)"); e = await els()
+            rec("I11 改寫內建的太陽：它不算 AI 加的，沒有「刪除」", e["sun"]["label"] == "月亮" and e["sun"]["added"] is False, (e["sun"]["label"], e["sun"]["added"]))
+        await safe("I11 刪除被用到的元素", i11)
+
+        def star(name, label, cx): return f"patchScene({{ label: '{label}', elements: {{ {name}: {{ label: '星星', in: ['peak'], draw(f, x, e) {{ f.add(circle({cx}, 240, 60, RS.yel)); }} }} }} }});"
+        async def i12():
+            await clean(); ok, st = await paste(fence("js", star("t1", "左邊加星星", 300) + "\n" + star("t2", "中間加星星", 900))); await paste(fence("js", star("t3", "右邊加星星", 1500)))
+            await p.ev("__app.tab('adv')"); r = await rows()
+            rec("I12 一個區塊呼叫兩次：清單上是同一列，名字是兩個合起來", ok and len(r) == 2 and "左邊加星星" in r[0] and "中間加星星" in r[0] and r[1] == "右邊加星星", r)
+            await pg.click("#patchList .patchrow:nth-child(2) .patchdrop"); await p.wait("document.querySelector('#patchMsg').textContent.includes('移走')"); msg = await pg.inner_text("#patchMsg"); await p.shot(2, 0, 1.0)
+            rec("I12 按第 2 列的「拿掉」：消失的是右邊的星星，訊息說的也是它", [i for i in await ids() if i.startswith("t")] == ["t1", "t2"] and "右邊加星星" in msg, (await ids(), msg[:60]))
+            await pg.click("#patchList .patchrow:nth-child(1) .patchdrop"); await p.wait("__app.patches().length===0"); await p.shot(2, 0, 1.0)
+            rec("I12 拿掉第 1 列：那個區塊的兩次改動一起拿掉", not [i for i in await ids() if i.startswith("t")] and await rows() == [], (await ids(), await rows()))
+            await paste(fence("js", star("t1", "左邊加星星", 300) + "\n" + star("t2", "中間加星星", 900))); await paste(fence("js", star("t3", "右邊加星星", 1500)))
+            await p.ev("__app.deleteElement('t1')"); await p.shot(2, 0, 1.0)
+            rec("I12 刪除同一個區塊加的兩顆星星的其中一顆：只有它不見", [i for i in await ids() if i.startswith("t")] == ["t2", "t3"], await ids())
+        await safe("I12 一個區塊好幾次 patchScene", i12)
+
+        async def i13():
+            await clean(); await paste(fence("js", CROSS)); txt = await p.ev("__app.aiText()")
+            rec("I13 有改動時複製給 AI：帶著十字架的程式，沒有編輯器內部的標記", "function cross(" in txt and "@wm-" not in txt and "__wm" not in txt, [l for l in txt.split("\n") if "@wm" in l or "__wm" in l][:3])
+            ok, st = await paste(fence("js", "/*@wm-patch*/{\n" + STAR + "\n}/*@wm-end*/"))
+            ok2, st2 = await paste(fence("js", star("t9", "再加一顆", 300)))
+            rec("I13 AI 的回覆帶著那種標記：照常套用，之後的改動也貼得進來", ok and ok2 and await labels() == ["加十字架", "加星星", "再加一顆"], (st[:50], st2[:80]))
+            await p.ev("__app.tab('adv')"); r = await rows(); done = await p.ev("__app.removePatch(0)"); await p.shot(2, 0, 1.0)
+            rec("I13 清單是三列，第一筆（加十字架）拿得掉", r == ["加十字架", "加星星", "再加一顆"] and done and await labels() == ["加星星", "再加一顆"] and "cross" not in await ids(), (r, done, await labels()))
+        await safe("I13 標記", i13)
+
+        async def i14():
+            await clean(); await p.ev("__app.select(2,0)"); before = await proj_now()
+            ok, st = await paste(fence("json", '{"format":"worship-motion-patch/1","set":{"__proto__":{"elements":{"sun":{"visible":false}}}}}'))
+            leaked = await p.ev("({}).elements !== undefined"); await p.shot(2, 0, 1.0)
+            rec("I14 設定的改動裡有 __proto__：不套用並說明，其他物件沒被改到，太陽照常畫", ok is False and "__proto__" in st and leaked is False and (await els())["sun"]["drawn"] > 0 and await proj_now() == before, (st[:100], leaked))
+            ok, st = await paste(fence("json", '{"format":"worship-motion-patch/1","sections":{"副歌":{"constructor":{"prototype":{"x":1}}}}}'))
+            rec("I14 段落的改動裡有 constructor：不套用並說明", ok is False and "constructor" in st and await p.ev("({}).x === undefined"), st[:100])
+        await safe("I14 危險的鍵", i14)
+
+        async def i15():
+            await clean(); keep_code = await p.ev("__app.sceneCode()")
+            for name, text, word in [
+                ("after 指到不存在的元素", fence("js", "patchScene({ label: '壞掉', elements: { q: { in: ['peak'], after: 'nothing', draw(f) { } } } });"), "nothing"),
+                ("新段落的 after 指到不存在的段落", cfg_patch(sections={"橋段": {"after": "沒有這一段", "background": "build", "subtitle": "none"}}), "沒有這一段"),
+                ("區塊裡沒有真的呼叫 patchScene", fence("js", "if (false) patchScene({ label: '壞掉', elements: { q: { draw(f) { } } } });"), "patchScene"),
+                ("空的 patchScene", fence("js", "patchScene({});"), "空"),
+                ("大括號不成對", fence("js", "}\npatchScene({ label: '壞掉', elements: { q: { draw(f) { } } } });\n{"), "語法")]:
+                ok, st = await paste(text)
+                rec(f"I15 {name}：擋下並說明，風格程式與改動清單照舊", ok is False and word in st and "沒有套用" in st and "catch" not in st and await p.ev("__app.sceneCode()") == keep_code and await labels() == [], st[:140])
+            d = await p.ev("t=>__app.detect(t)", fence("js", "// 這個改動接在 defineScene( 的後面\n" + STAR))
+            rec("I15 註解裡提到 defineScene 的區塊：認成改動", d["patch"] is True and d["scene"] is False, d)
+        await safe("I15 其他擋下的情況", i15)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
