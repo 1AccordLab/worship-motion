@@ -6,7 +6,7 @@ K3 每個風格各自記得自己的改動，換來換去都還在；拿掉內�
 K4 還原／重做、重新載入、存成單檔再打開之後都一樣。
 K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進來。
 K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。
-K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作。"""
+K7 預設風格自己那一份改動因為卡住被暫停使用時，重新載入後編輯器照樣開得起來（先用內建的樣子），可以繼續操作；畫面上有提示說明並可以「仍要試跑」；從別的風格換回來也是先用內建的樣子加提示。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -98,6 +98,12 @@ async def main():
             info = await p.ev("__app.sceneInfo()") if up else None
             rec("K7 預設風格那一份被暫停使用時重新載入：編輯器開得起來，用的是內建風格", up and info and info["id"] == "swiss" and await p.ev("__app.songs().length") > 0, (before, up, info and info["id"], p.log[:2]))
             if up:
+                note = await p.ev("__app.notices()"); btn = await p.ev("[...document.querySelectorAll('#guard button')].map(b=>b.textContent.trim())")
+                rec("K7 重新載入後有提示說明那一份已暫停使用，並有「仍要試跑」", any("暫停使用" in x for x in note) and "仍要試跑" in btn and not any("。。" in x for x in note), (note, btn))
+                await use("paper"); await p.ev("__app.tab('self')"); await pg.select_option("#style", "swiss"); await p.wait("__app.project.style==='swiss'&&__app.sceneInfo().id==='swiss'", 30000); note = await p.ev("__app.notices()")
+                rec("K7 換到剪紙拼貼再換回瑞士網格：換得回去（內建的樣子），同樣有提示", any("暫停使用" in x for x in note) and await labels() == [], (note, await pg.inner_text("#selfMsg")))
+                await pg.click("#guard button >> text=仍要試跑"); await p.wait("__app.patches().length===1||__app.notices().some(x=>x.includes('卡住'))", 60000); await p.ev("__app.elements()")
+                rec("K7 按「仍要試跑」：那一份被載回來（或再次卡住而退回），沒有頁面錯誤", not p.log, (await labels(), (await p.ev("__app.sceneInfo()"))["id"], p.log[:2]))
                 await p.ev("__app.newSong({quiet:true})"); im = await p.shot(0, 0, 1.0)
                 rec("K7 開起來之後可以做新的一首、看得到畫面", im.getbbox() is not None and (await p.ev("__app.project"))["title"] == "新的詩歌", (await p.ev("__app.project"))["title"])
             p.log.clear()
