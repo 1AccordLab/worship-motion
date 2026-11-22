@@ -4,7 +4,8 @@ K1 這首歌有 AI 新風格時，換到內建風格再貼改動：新風格還�
 K2 一首歌可以有好幾個 AI 新風格：都在風格清單，顯示風格的名稱；同一個 id 再貼一次是換掉那一個。
 K3 每個風格各自記得自己的改動，換來換去都還在；拿掉內建風格的全部改動不影響別的風格。
 K4 還原／重做、重新載入、存成單檔再打開之後都一樣。
-K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進來。"""
+K5 只有一個自訂程式的資料（暫存、整本的 JSON）照樣讀得進來。
+K6 有好幾份風格程式的歌存檔後，改一下再還原：仍顯示已存成檔案，風格清單的順序不變。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -71,6 +72,15 @@ async def main():
             await p.reload(); n = await p.ev("__app.songs().length"); await p.ev(f"__app.switchSong({n - 1})")
             rec("K5 暫存裡只有一個自訂程式的資料：重新載入後讀得進來，風格能用", await customs() == ["bars"] and (await p.ev("__app.sceneInfo()"))["id"] == "bars", await customs())
         await safe("K5 只有一個自訂程式的資料", k5)
+
+        async def k6():
+            await p.ev("__app.newSong({quiet:true})"); assert await p.ev("x=>__app.load(x)", proj("riso")); await paste(star("加星星")); assert await p.ev("c=>__app.pasteScene(c)", PARTS); assert await p.ev("c=>__app.pasteScene(c)", MIN)
+            await p.ev("__app.markSaved()"); order = list(await styles()); was = (await p.ev("__app.saveState()"))["saved"]
+            ok, st = await paste('```json\n{"format":"worship-motion-patch/1","set":{"bpm":96}}\n```'); mid = (await p.ev("__app.saveState()"))["saved"]; await p.ev("__app.undo()")
+            rec("K6 三份風格程式的歌存檔後改速度再還原：仍顯示已存成檔案，風格清單順序不變", ok and was is True and mid is False and (await p.ev("__app.saveState()"))["saved"] is True and list(await styles()) == order, (was, mid, (await p.ev("__app.saveState()"))["text"], order[-3:], list(await styles())[-3:]))
+            await p.ev("__app.flushHist()"); await p.reload()
+            rec("K6 重新載入後也一樣", (await p.ev("__app.saveState()"))["saved"] is True and list(await styles()) == order, ((await p.ev("__app.saveState()"))["text"], list(await styles())[-3:]))
+        await safe("K6 還原後的存檔狀態與順序", k6)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()

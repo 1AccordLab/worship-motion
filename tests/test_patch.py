@@ -183,7 +183,7 @@ async def main():
             await clean(); ok, st = await paste(fence("js", star("t1", "左邊加星星", 300) + "\n" + star("t2", "中間加星星", 900))); await paste(fence("js", star("t3", "右邊加星星", 1500)))
             await p.ev("__app.tab('adv')"); r = await rows()
             rec("I12 一個區塊呼叫兩次：清單上是同一列，名字是兩個合起來", ok and len(r) == 2 and "左邊加星星" in r[0] and "中間加星星" in r[0] and r[1] == "右邊加星星", r)
-            await pg.click("#patchList .patchrow:nth-child(2) .patchdrop"); await p.wait("document.querySelector('#patchMsg').textContent.includes('右邊加星星')||__app.patches().length<3", 30000); await p.wait("__app.patches().length===2", 30000); msg = await pg.inner_text("#patchMsg"); await p.shot(2, 0, 1.0)
+            await pg.click("#patchList .patchrow:nth-child(2) .patchdrop"); await p.wait("document.querySelector('#patchMsg').textContent.includes('右邊加星星')||__app.patches().length<3", 30000); await p.wait("__app.patches().length===2&&document.querySelector('#patchMsg').textContent.includes('右邊加星星')", 30000); msg = await pg.inner_text("#patchMsg"); await p.shot(2, 0, 1.0)
             rec("I12 按第 2 列的「拿掉」：消失的是右邊的星星，訊息說的也是它", [i for i in await ids() if i.startswith("t")] == ["t1", "t2"] and "右邊加星星" in msg, (await ids(), msg[:60]))
             await pg.click("#patchList .patchrow:nth-child(1) .patchdrop"); await p.wait("__app.patches().length===0"); await p.shot(2, 0, 1.0)
             rec("I12 拿掉第 1 列：那個區塊的兩次改動一起拿掉", not [i for i in await ids() if i.startswith("t")] and await rows() == [], (await ids(), await rows()))

@@ -11,7 +11,8 @@ E8 點清單上的名稱會自動打開「調整畫面」；關掉「調整畫�
 E9 元素疊在一起的地方：點一下選最上面的；對已選取的元素在同一個位置再點一下（沒有拖），換選它底下的那一個，輪到最底再回到最上面；選到底下的元素後從那裡拖，移動的是它。
 E10 疊著的地方其他規則照舊：按住 Shift 點是把最上面的那個加進選取或拿掉；多選後不按 Shift 點一下，只選最上面的那個；選取不是在這個位置點出來的（例如從清單選的），點一下選的是最上面的那個，再點才換底下。
 E11 游標提示：提示框框的是「點一下會選到的那個」；游標底下有已選取的元素（被蓋住也算）時，名稱寫成「點一下改選：…」，游標變成移動的樣子（從這裡拖是移動已選取的）；點了也不會變時不顯示提示框。
-E12 切到別支影片再回來，在同一個位置點一下：選的是最上面的那個，不算「再點一下」。"""
+E12 切到別支影片再回來，在同一個位置點一下：選的是最上面的那個，不算「再點一下」。
+E13 選取變了而滑鼠沒動（剛點選完、按 Esc 取消選取）：游標提示跟著重算，和接下來點一下、拖動的結果一致。"""
 import asyncio, sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from wm import *
@@ -210,6 +211,18 @@ async def main():
             await p.ev("__app.select(2,1)"); await p.ev("__app.select(2,0)"); await p.ev("__app.seek(0)"); await p.ev("__app.editMode(true)"); mid = await picked(); await click(*spot)
             rec("E12 選了太陽後切到字幕影片再切回來，在同一個位置點一下：還是太陽", one == ["sun"] and await picked() == ["sun"], (one, mid, await picked()))
         await safe("E12 切影片後不算再點一下", e12)
+
+        async def e13():
+            spot = (706, 871); cursor = lambda: p.ev("getComputedStyle(document.querySelector('#stageOvl')).cursor"); name = lambda: p.ev("document.querySelector('#hoverName').textContent")
+            await at(2, 0, 0); lab = {k: v["label"] for k, v in (await els()).items()}
+            await hover(1500, 620); await hover(*spot); await click(*spot); one = await picked(); h = await p.ev("__app.hover()")
+            rec("E13 剛點選了太陽、滑鼠沒動：提示已經是「點一下改選：光芒」，游標是移動", one == ["sun"] and h and h["id"] == "rays" and await shown("#hoverBox") and await name() == "點一下改選：" + lab["rays"] and await cursor() == "move", (one, h, await name(), await cursor()))
+            await pg.keyboard.press("Escape"); none = await picked(); h = await p.ev("__app.hover()")
+            rec("E13 按 Esc 取消選取、滑鼠沒動：提示回到「太陽」，游標不是移動", none == [] and h and h["id"] == "sun" and await name() == lab["sun"] and await cursor() != "move", (none, h, await name(), await cursor()))
+            await click(*spot); await picked(); u = await unit()
+            await pg.keyboard.down("Control"); await drag(spot, (spot[0] + 300, spot[1] - 200)); await pg.keyboard.up("Control"); h = await p.ev("__app.hover()")
+            rec("E13 把太陽拖走後放開、滑鼠沒動：游標還在太陽上，游標是移動、不顯示提示框", await picked() == ["sun"] and h is None and await cursor() == "move", (await picked(), h, await cursor()))
+        await safe("E13 選取變了提示跟著重算", e13)
 
         rec("沒有頁面錯誤", not p.log, p.log[:3])
         if b: await b.close()
